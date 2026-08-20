@@ -1,21 +1,24 @@
 package com.inik.camcon.presentation.ui.screens.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Caption
+import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.Radius
-import com.inik.camcon.presentation.theme.Surface2
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 
 /**
@@ -44,14 +47,15 @@ import com.inik.camcon.presentation.theme.TextPrimaryV2
 fun BoxScope.FullscreenHintBadge(modifier: Modifier = Modifier) {
     // B1 최적화: Modifier chain memoize
     // 배경색과 패딩이 부모의 상태 변경에 영향을 받지 않도록 고정
+    // 룩은 모니터 오버레이 칩 언어와 통일 — Surface0 반투명 스크림 + 각형(Radius.sm) 헤어라인.
+    // (Radius.xl 은 BottomSheet 상단 전용이라 배지에 쓰지 않는다.)
     val badgeModifier = remember {
+        val shape = RoundedCornerShape(Radius.sm)
         Modifier
-            .padding(20.dp)
-            .background(
-                Surface2.copy(alpha = 0.8f),
-                RoundedCornerShape(Radius.xl)
-            )
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(Spacing.lg)
+            .background(Surface0.copy(alpha = 0.72f), shape)
+            .border(StrokeWidth.hairline, DividerLine, shape)
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
     }
 
     Box(
@@ -62,7 +66,7 @@ fun BoxScope.FullscreenHintBadge(modifier: Modifier = Modifier) {
         Text(
             text = stringResource(R.string.camera_control_double_click_fullscreen),
             color = TextPrimaryV2,
-            style = MaterialTheme.typography.bodySmall
+            style = Caption
         )
     }
 }

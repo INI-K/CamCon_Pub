@@ -7,6 +7,8 @@ import com.inik.camcon.domain.model.PtpTimeoutException
 import com.inik.camcon.domain.model.PtpSessionState
 import com.inik.camcon.domain.manager.CameraStateObserver
 import com.inik.camcon.domain.model.CameraAbilitiesInfo
+import com.inik.camcon.domain.model.manufacturerOf
+import com.inik.camcon.domain.model.modelWithoutManufacturer
 import com.inik.camcon.domain.model.CameraCapabilities
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
@@ -82,6 +84,11 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                     it.liveView.copy(isLiveViewActive = false, isLiveViewLoading = false)
                 else
                     it.liveView,
+                // 같은 이유로 초기화 오버레이("카메라 이벤트 초기화 중...")도 끊김에서 해제한다.
+                // isCameraInitializing 은 시작 시 true 로만 켜지고 해제는 onFlushComplete(성공 경로)
+                // 에서만 일어난다. gp_camera_init 이 실패하면 플러시가 없어 콜백이 오지 않으므로
+                // 오버레이가 화면을 영구히 막아 앱 강제 종료 외에 복구 수단이 없었다.
+                isCameraInitializing = if (!isConnected) false else it.isCameraInitializing,
                 error = when {
                     isConnected -> null
                     errorMessage != null -> UiText.Raw(errorMessage)
@@ -142,8 +149,20 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
      */
     override fun updateCameraCapabilities(capabilities: CameraCapabilities?) {
         _uiState.update {
+            // DeviceInfo 로 얻은 실제 이름("Nikon Corporation Z 8")이 abilities 의 드라이버 이름
+            // ("PTP/IP Camera")보다 우선한다. abilities 만 쓰면 제조사 추론이 "Unknown" 이 되어
+            // 설정 화면에 "Unknown PTP/IP Camera" 로 표시된다.
+            val deviceName = capabilities?.model?.takeIf { name -> name.isNotBlank() }
             it.copy(
                 settings = it.settings.copy(cameraCapabilities = capabilities),
+                connection = if (deviceName != null) {
+                    it.connection.copy(
+                        connectedCameraModel = modelWithoutManufacturer(deviceName),
+                        connectedCameraManufacturer = manufacturerOf(deviceName)
+                    )
+                } else {
+                    it.connection
+                },
                 error = if (capabilities == null && it.connection.isConnected)
                     UiText.Resource(R.string.camera_status_capabilities_unavailable) else it.error
             )

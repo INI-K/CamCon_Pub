@@ -41,7 +41,7 @@
     <string name="pipeline_film_sim">FILM SIM</string>
     <string name="pipeline_color_transfer">Farbübertragung</string>
     <string name="pipeline_off">OFF</string>
-    <string name="pipeline_none">—</string>
+    <string name="pipeline_none">OFF</string>
     <string name="pipeline_recent_waiting">Warten</string>
     <string name="pipeline_exposure_mode">MODE</string>
     <string name="cd_toggle_film_sim">Filmsimulation ein/aus</string>
@@ -199,6 +199,8 @@
 
     <!-- 빈 상태 -->
     <string name="no_photos">Keine Fotos</string>
+    <string name="preview_card_browse_unsupported_title">Kartenansicht nicht verfügbar</string>
+    <string name="preview_card_browse_unsupported_desc">Diese Kamera erlaubt während der Fernsteuerung keinen Zugriff auf die Speicherkarte.\nAufgenommene Fotos werden automatisch empfangen und in der Galerie gespeichert.\nUm die Karte zu durchsuchen, stellen Sie den USB-Verbindungsmodus der Kamera auf MTP und verbinden Sie sie per USB (Fernaufnahmen sind dann nicht möglich).</string>
     <string name="connect_camera_and_capture">Verbinden Sie Ihre Kamera über USB\nund nehmen Sie Fotos auf</string>
     <string name="check_camera_connection">• Prüfen Sie, ob die Kamera verbunden ist\n• Nach unten wischen zum Aktualisieren</string>
     <string name="image_load_failed">Bild kann nicht geladen werden</string>
@@ -344,7 +346,7 @@
     <string name="ptpip_check_scan_conditions">Bitte Scan-Bedingungen prüfen</string>
     <string name="ptpip_shutter_listen_start">Drahtlosen Empfang des physischen Auslösers starten</string>
     <string name="ptpip_shutter_listen_stop">Drahtlosen Empfang stoppen</string>
-    <string name="ptpip_no_camera_search_first">Keine Kamera — bitte zuerst im STA-Modus nach einer Kamera suchen</string>
+    <string name="ptpip_no_camera_search_first">Keine Kamera - bitte zuerst im STA-Modus nach einer Kamera suchen</string>
     <!-- === 미백필 진짜 누락 9키 (라이선스 화면 + camera_preview_live_view) === -->
     <string name="open_source_licenses">Open-Source-Lizenzen</string>
     <string name="licenses_description">Diese App verwendet die folgenden Open-Source-Bibliotheken:</string>
@@ -354,8 +356,18 @@
     <string name="gradle_dependencies_desc">Tippen Sie, um alle Lizenzen der Gradle-Abhängigkeiten anzuzeigen</string>
     <string name="license_version">Version:</string>
     <string name="license_type">Lizenz:</string>
+    <!-- LGPL 수정본 소스 서면 제공 오퍼 + 상표 면책 -->
+    <string name="licenses_modified_badge">Von CamCon modifiziert</string>
+    <string name="licenses_lgpl_offer_title">Modifizierter LGPL-Quellcode</string>
+    <string name="licenses_lgpl_offer_body">CamCon enthält modifizierte Builds von libgphoto2 und libgphoto2_port, die unter LGPL-2.1-or-later stehen. Wie diese Lizenz es verlangt, stellen wir den vollständigen zugehörigen Quellcode dieser modifizierten Versionen jeder anfragenden Person zur Verfügung, und zwar drei Jahre lang ab dem Tag, an dem diese Version verteilt wurde. Bitte geben Sie in der Anfrage die App-Version an.</string>
+    <string name="licenses_trademark_title">Marken</string>
+    <string name="licenses_trademark_body">Die in den Filmsimulationen gezeigten Film- und Kameramarken sind Eigentum der jeweiligen Markeninhaber. CamCon steht in keiner Verbindung zu ihnen und wird von ihnen weder gesponsert noch unterstützt. Die Namen dienen ausschließlich dazu, die Farbcharakteristik zu beschreiben, die die jeweilige Voreinstellung nachbilden möchte.</string>
+    <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->
+    <string name="licenses_contact_click_label">Per E-Mail kontaktieren</string>
+    <string name="contact_email_copied">Keine E-Mail-App gefunden. Die Adresse wurde in die Zwischenablage kopiert: %1$s</string>
     <string name="camera_preview_live_view">Live-Ansicht</string>
     <string name="photo_capture_failed">Foto konnte nicht aufgenommen/empfangen werden (Fehler %1$d)</string>
+    <string name="photo_transfer_rejected_by_camera">Die Kamera hat die Übertragung dieses Fotos abgelehnt. Übertragen Sie es erneut an der Kamera oder stellen Sie die Verbindung neu her.</string>
     <string name="photo_delete_camera_failed">Foto konnte nicht von der Kamera gelöscht werden</string>
     <string name="notif_channel_status_name">Kamerastatus</string>
     <string name="notif_channel_status_desc">Zeigt den Verbindungs- und Dateiempfangsstatus der Kamera an</string>

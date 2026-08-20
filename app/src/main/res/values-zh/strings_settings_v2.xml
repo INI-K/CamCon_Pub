@@ -30,7 +30,7 @@
     <string name="settings_v2_camera_controls_on">显示实时取景和相机控制界面</string>
     <string name="settings_v2_camera_controls_off">已禁用 - 将显示最新拍摄的照片</string>
     <string name="settings_v2_liveview_title">启用实时取景</string>
-    <string name="settings_v2_liveview_subtitle">显示实时相机画面（ADMIN 专用）</string>
+    <string name="settings_v2_liveview_subtitle">显示实时相机画面</string>
     <string name="settings_v2_liveview_quality_title">实时取景画质</string>
     <string name="settings_v2_liveview_quality_speed">速度优先</string>
     <string name="settings_v2_liveview_quality_balanced">平衡</string>
@@ -41,7 +41,7 @@
     <string name="settings_v2_auto_event_title">自动接收事件</string>
     <string name="settings_v2_auto_event_subtitle">进入相机控制标签时自动启动事件监听器</string>
     <string name="settings_v2_liveview_locked_title">实时取景功能</string>
-    <string name="settings_v2_liveview_locked_subtitle">仅 ADMIN 级别可用的功能</string>
+    <string name="settings_v2_liveview_locked_subtitle">需要 PRO 或更高级别的订阅</string>
     <string name="settings_v2_latest_photo_title">显示最新照片</string>
     <string name="settings_v2_latest_photo_subtitle">关闭相机控制时显示最近拍摄的照片</string>
 

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      서버 사진(내 사진) v3 — Hero readout 슬롯 전용 문자열.
+      *_eyebrow / *_unit 은 MicroLabel(11sp, tracking 1.4) 계측기 라벨이라
+      대문자 라틴 문자만 사용한다(트래킹 라벨에 CJK 금지).
+    -->
+    <string name="server_photos_v3_eyebrow">MY PHOTOS</string>
+    <string name="server_photos_v3_photos_unit">PHOTOS</string>
+    <string name="server_photos_v3_selected_eyebrow">SELECTED</string>
+
+    <!-- 스크린 리더 전용 — 일반 로컬라이즈 대상 -->
+    <string name="server_photos_v3_cd_unselected">未选择</string>
+</resources>

@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.R
+import com.inik.camcon.data.datasource.nativesource.NikonApplicationModeManager
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.model.CameraPhoto
@@ -105,7 +106,8 @@ class PhotoPreviewViewModel @Inject constructor(
     private val photoSelectionManager: PhotoSelectionManager,
     private val errorHandlingManager: ErrorHandlingManager,
     private val resumeNativeOperationsUseCase: ResumeNativeOperationsUseCase,
-    private val deleteCameraFileUseCase: DeleteCameraFileUseCase
+    private val deleteCameraFileUseCase: DeleteCameraFileUseCase,
+    private val nikonApplicationModeManager: NikonApplicationModeManager
 ) : ViewModel() {
 
     companion object {
@@ -165,6 +167,7 @@ class PhotoPreviewViewModel @Inject constructor(
     val photos = photoListManager.filteredPhotos
     val allPhotos = photoListManager.allPhotos
     val isLoadingPhotos = photoListManager.isLoading
+    val isStorageUnsupported = photoListManager.isStorageUnsupported
     val isLoadingMorePhotos = photoListManager.isLoadingMore
     val hasNextPage = photoListManager.hasNextPage
     val currentFilter = photoListManager.currentFilter
@@ -215,6 +218,9 @@ class PhotoPreviewViewModel @Inject constructor(
                 // PTPIP 연결 상태 확인
                 val isPtpipConnected = cameraRepository.isPtpipConnected().first()
                 Log.d(TAG, "📸 사진 미리보기 탭 진입 - PTPIP 연결 상태: $isPtpipConnected")
+
+                // 앱 모드 해제는 onTabEnter()가 담당한다 — 이 함수는 ViewModel 생성 시 1회만
+                // 실행되므로 여기에 두면 탭 재진입에서 토글이 걸리지 않는다(실측 2026-08-20 09:00).
 
                 if (isPtpipConnected) {
                     // Wi-Fi(PTPIP)는 이벤트 리스너를 유지한 채 파일 목록을 조회한다.
@@ -430,8 +436,16 @@ class PhotoPreviewViewModel @Inject constructor(
 
         errorObserveJob = viewModelScope.launch {
             errorHandlingManager.errorEvent.collect { errorEvent ->
-                emitError(errorEvent.message)
-                Log.e(TAG, "에러 이벤트 수신: ${errorEvent.type} - ${errorEvent.message}")
+                // LOW = 재시도가 무의미한 안내성 이벤트(예: 소니 PC리모트의 카드 탐색 미지원).
+                // 에러 토스트로 올리면 '재시도' 버튼이 같은 실패를 반복 유도한다(실측: 연타로
+                // 목록 조회 11회) → 자동 소멸 안내 토스트로 구분 표시.
+                if (errorEvent.severity == com.inik.camcon.domain.manager.ErrorSeverity.LOW) {
+                    emitInfo(errorEvent.message)
+                    Log.i(TAG, "안내 이벤트 수신: ${errorEvent.type} - ${errorEvent.message}")
+                } else {
+                    emitError(errorEvent.message)
+                    Log.e(TAG, "에러 이벤트 수신: ${errorEvent.type} - ${errorEvent.message}")
+                }
             }
         }
     }
@@ -761,6 +775,29 @@ class PhotoPreviewViewModel @Inject constructor(
     /**
      * 탭 이탈 시 이벤트 리스너 재시작 처리
      */
+    /**
+     * 미리보기(카드 탐색) 탭 진입. **화면 진입마다** 호출되어야 한다 — ViewModel 초기화는
+     * 1회뿐이라 거기에 두면 재진입 시 앱 모드가 켜진 채로 카드 탐색을 시도하게 된다.
+     *
+     * 앱 모드가 켜져 있으면 카드 저장소가 PTP 목록에서 사라지므로(저장소 제거 이벤트)
+     * 반드시 끈 뒤 목록을 읽는다. 상태가 실제로 바뀐 경우에만 목록을 다시 읽어
+     * 불필요한 재조회를 피한다(네이티브 폴더 캐시가 함께 무효화된 상태이므로 재조회가 필요).
+     */
+    fun onTabEnter() {
+        viewModelScope.launch {
+            try {
+                if (nikonApplicationModeManager.enterCardBrowsing()) {
+                    Log.d(TAG, "앱 모드 해제로 저장소 구성 변경 — 사진 목록 재조회")
+                    photoListManager.loadInitialPhotos(_uiState.value.isConnected)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "탭 진입 앱 모드 처리 실패 (무시하고 계속)", e)
+            }
+        }
+    }
+
     fun onTabExit() {
         Log.d(TAG, "📸 사진 미리보기 탭 이탈 감지 - 연결 상태별 처리")
 
@@ -773,6 +810,10 @@ class PhotoPreviewViewModel @Inject constructor(
                 val isPtpipConnected = _uiState.value.isPtpipConnected
 
                 Log.d(TAG, "📸 사진 미리보기 탭 종료 - 연결상태: $currentConnected, PTPIP: $isPtpipConnected")
+
+                // 카드 탐색 구간 이탈 — 앱 모드를 켜서 본체 재생(▶)을 해방한다.
+                // 니콘 사양상 PC 연결 중 본체 재생은 앱 모드에서만 허용된다(벤더 사양).
+                nikonApplicationModeManager.leaveCardBrowsing()
 
                 if (currentConnected) {
                     if (isPtpipConnected) {

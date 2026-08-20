@@ -28,14 +28,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -120,7 +124,7 @@ import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.CameraSettings
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.presentation.theme.CameraSpec
+import com.inik.camcon.presentation.theme.DisplayNum
 import com.inik.camcon.presentation.theme.Elevation
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Padding
@@ -132,8 +136,10 @@ import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.Micro
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoMicro
+import com.inik.camcon.presentation.theme.MonoReadout
 import com.inik.camcon.presentation.theme.Surface3
 import com.inik.camcon.presentation.theme.TextDisabled
 import com.inik.camcon.presentation.theme.TextPrimaryV2
@@ -146,6 +152,8 @@ import com.inik.camcon.presentation.ui.components.v2.StatusIndicator
 import com.inik.camcon.presentation.ui.components.v2.StatusKind
 import com.inik.camcon.presentation.ui.components.v2.ToastV2
 import com.inik.camcon.presentation.ui.components.v2.TransferProgressBadge
+import com.inik.camcon.presentation.ui.util.FullscreenOrientation
+import com.inik.camcon.presentation.ui.util.FullscreenOrientationPolicy
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PhotoLibrary
@@ -205,7 +213,8 @@ fun CameraControlScreen(
     val isLiveViewGridEnabled by appSettingsViewModel.isLiveViewGridEnabled.collectAsStateWithLifecycle()
     val isHistogramEnabled by appSettingsViewModel.isHistogramEnabled.collectAsStateWithLifecycle()
     val isFocusPeakingEnabled by appSettingsViewModel.isFocusPeakingEnabled.collectAsStateWithLifecycle()
-    val histogramData by viewModel.histogramData.collectAsStateWithLifecycle()
+    // histogramData 는 프레임레이트로 갱신되므로 여기서 수집하지 않는다.
+    // liveViewFrame 과 같은 이유로 각 레이아웃의 라이브뷰 최하위 스코프에서만 수집한다.
     val hasSeenCaptureCoachmark by appSettingsViewModel.hasSeenCaptureCoachmark.collectAsStateWithLifecycle()
     // CINE 이미지 파이프라인 패널 상태 (AppSettings 단일 소스 — 이미 존재하는 StateFlow 소비, VM 추가 없음)
     val isFilmSimulationEnabled by appSettingsViewModel.isFilmSimulationEnabled.collectAsStateWithLifecycle()
@@ -297,6 +306,11 @@ fun CameraControlScreen(
         )
     }
 
+    // ⚠️ 이 화면은 니콘 앱 모드를 **건드리지 않는다**.
+    // 촬영 화면에서는 본체 재생(▶)이 눌려야 한다는 것이 요구사항이고(사용자 결정 2026-08-20),
+    // ▶ 를 여는 유일한 수단이 앱 모드 ON 이다(벤더 사양). 앱 셔터를 UI 에서 제거했으므로
+    // 여기서 OFF 를 유지할 이유(카드 라우팅)도 없다. 카드 탐색 점유는 미리보기 탭만 잡는다.
+
     // 라이프사이클 관리 (통합된 버전) - 의존성 최적화
     DisposableEffect(lifecycleOwner, isAutoStartEventListener) {
         val observer = LifecycleEventObserver { _, event ->
@@ -357,12 +371,70 @@ fun CameraControlScreen(
     var showTimelapseDialog by rememberSaveable { mutableStateOf(false) }
     var showBottomSheet by rememberSaveable { mutableStateOf(false) }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Surface0,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { scaffoldPadding ->
+    // === 전체화면 방향 단일 소유 지점(SSOT) ===
+    // requestedOrientation 을 쓰는 곳은 이 파일에서 여기 하나뿐이어야 한다.
+    // 아래 AnimatedContent 의 자식들이 각자 방향을 걸면, 이탈하는 쪽이 fade 300ms 뒤에
+    // dispose 되면서 새로 들어온 쪽의 설정을 덮어써 방향이 어긋난다.
+    // 라이브뷰도 전체화면 대상이다 — 카메라 제어 설정에만 묶어 두면 그 토글을 못 켜는
+    // PRO·REFERRER 가 라이브뷰를 전체화면으로 볼 수 없다(2026-08-20).
+    val isFullscreenActive =
+        isFullscreen && (
+            appSettings.isCameraControlsEnabled ||
+                appSettings.isLiveViewEnabled ||
+                uiState.capturedPhotos.isNotEmpty()
+            )
+    val isShowingLiveView =
+        isFullscreenActive && appSettings.isLiveViewEnabled && uiState.isLiveViewActive
+
+    // 수동 180도 보정. AnimatedContent 자식 안에 있으면 전체화면을 나갔다 올 때마다 풀리므로
+    // 바깥으로 올리고 rememberSaveable 로 프로세스 사망도 견디게 한다.
+    var isRotated by rememberSaveable { mutableStateOf(false) }
+
+    // 표시 비율은 Coil 이 실제로 그린 비트맵에서만 얻는다.
+    // CapturedPhoto.width/height 는 생성 경로 6곳이 0 하드코딩이라 신뢰할 수 없다.
+    var photoAspectRatio by remember { mutableStateOf<Float?>(null) }
+    var fullscreenOrientation by remember { mutableStateOf(FullscreenOrientation.LANDSCAPE) }
+
+    LaunchedEffect(isShowingLiveView, photoAspectRatio) {
+        fullscreenOrientation = FullscreenOrientationPolicy.resolve(
+            isLiveView = isShowingLiveView,
+            photoAspectRatio = photoAspectRatio,
+            previous = fullscreenOrientation
+        )
+    }
+
+    LaunchedEffect(isFullscreenActive, fullscreenOrientation) {
+        val activity = context as? Activity ?: return@LaunchedEffect
+        activity.requestedOrientation = when {
+            !isFullscreenActive -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            fullscreenOrientation == FullscreenOrientation.PORTRAIT ->
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            // 단방향 고정이 상하반전의 원인이었다. c4d96581 이 LANDSCAPE 를 REVERSE_LANDSCAPE 로
+            // 바꿨지만 둘 다 한쪽 가로만 고정하므로, 반대로 눕히면 같은 증상이 그대로 재발했다.
+            // USER_LANDSCAPE 는 양방향 가로를 허용하면서 사용자의 자동회전 잠금은 존중한다
+            // (SENSOR_LANDSCAPE 는 잠금을 무시해 삼각대·케이지 사용자가 화면을 통제할 수 없다).
+            else -> ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
+        }
+        WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
+            if (isFullscreenActive) {
+                WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+                hide(WindowInsetsCompat.Type.systemBars())
+            } else {
+                show(WindowInsetsCompat.Type.systemBars())
+            }
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+
+    // MainActivity 가 이미 Scaffold(SubcomposeLayout) 안에서 이 화면을 NavHost 목적지로 띄운다.
+    // 여기서 Scaffold 를 또 열면 SubcomposeLayout 이 2중이 되어 측정 단계마다 슬롯 컴포지션 부기 비용을 이중으로 낸다.
+    // 이 Scaffold 가 쓰던 슬롯은 snackbarHost 하나뿐이고 contentWindowInsets 가 0이라
+    // 넘겨주던 padding 도 항상 0이었으므로, Box + SnackbarHost 로 치환한다(동작 보존).
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Surface0)
+    ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (showBottomSheet) {
                 ModalBottomSheet(
@@ -390,7 +462,7 @@ fun CameraControlScreen(
                 }
             }
             AnimatedContent(
-                targetState = isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty()),
+                targetState = isFullscreenActive,
                 transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(300)) },
                 label = "fullscreen_content"
             ) { isFullscreenMode ->
@@ -399,7 +471,7 @@ fun CameraControlScreen(
 //                        "CameraControl",
 //                        "🌟 전체화면 모드 렌더링 - isFullscreen=$isFullscreen, isCameraControlsEnabled=${appSettings.isCameraControlsEnabled}, capturedPhotos=${uiState.capturedPhotos.size}"
 //                    )
-                    // 전체화면 모드는 scaffoldPadding 무시 (시스템 UI 숨김)
+                    // 전체화면 모드는 contentPadding 무시 (시스템 UI 숨김)
                     FullscreenCameraLayout(
                         uiState = uiState,
                         cameraFeed = cameraFeed,
@@ -421,7 +493,6 @@ fun CameraControlScreen(
                         onToggleLiveViewGrid = {
                             appSettingsViewModel.setLiveViewGridEnabled(!isLiveViewGridEnabled)
                         },
-                        histogramData = histogramData,
                         isHistogramEnabled = isHistogramEnabled,
                         onToggleHistogram = {
                             appSettingsViewModel.setHistogramEnabled(!isHistogramEnabled)
@@ -431,7 +502,10 @@ fun CameraControlScreen(
                             appSettingsViewModel.setFocusPeakingEnabled(!isFocusPeakingEnabled)
                         },
                         liveViewQuality = liveViewQuality,
-                        onCycleLiveViewQuality = onCycleLiveViewQuality
+                        onCycleLiveViewQuality = onCycleLiveViewQuality,
+                        isRotated = isRotated,
+                        onToggleRotate = { isRotated = !isRotated },
+                        onPhotoAspectResolved = { photoAspectRatio = it }
                     )
                 } else {
                     // 일반 모드는 Scaffold contentPadding 적용
@@ -458,13 +532,12 @@ fun CameraControlScreen(
                         },
                         onShowBottomSheet = { showBottomSheet = true },
                         onGalleryClick = onGalleryClick,
-                        contentPadding = scaffoldPadding,
+                        contentPadding = PaddingValues(0.dp),   // 구 scaffoldPadding — insets 0 이라 항상 0이었다
                         isShutterSoundEnabled = isShutterSoundEnabled,
                         isLiveViewGridEnabled = isLiveViewGridEnabled,
                         onToggleLiveViewGrid = {
                             appSettingsViewModel.setLiveViewGridEnabled(!isLiveViewGridEnabled)
                         },
-                        histogramData = histogramData,
                         isHistogramEnabled = isHistogramEnabled,
                         onToggleHistogram = {
                             appSettingsViewModel.setHistogramEnabled(!isHistogramEnabled)
@@ -490,11 +563,17 @@ fun CameraControlScreen(
                         colorTransferReferenceImagePath = colorTransferReferenceImagePath,
                         onToggleColorTransfer = {
                             appSettingsViewModel.setColorTransferEnabled(!isColorTransferEnabled)
-                        }
+                        },
+                        onPhotoAspectResolved = { photoAspectRatio = it }
                     )
                 }
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 
     if (uiState.isUsbInitializing) {
@@ -711,7 +790,6 @@ private fun PortraitCameraLayout(
     isShutterSoundEnabled: Boolean = true,
     isLiveViewGridEnabled: Boolean = false,
     onToggleLiveViewGrid: () -> Unit = {},
-    histogramData: com.inik.camcon.presentation.util.HistogramData? = null,
     isHistogramEnabled: Boolean = false,
     onToggleHistogram: () -> Unit = {},
     isFocusPeakingEnabled: Boolean = false,
@@ -727,20 +805,13 @@ private fun PortraitCameraLayout(
     onLongPressFilmSim: () -> Unit = {},
     isColorTransferEnabled: Boolean = false,
     colorTransferReferenceImagePath: String? = null,
-    onToggleColorTransfer: () -> Unit = {}
+    onToggleColorTransfer: () -> Unit = {},
+    onPhotoAspectResolved: (Float) -> Unit = {}
 ) {
     val context = LocalContext.current
 
-    // 진입 시 1회만 — 화면 진입 시 portrait 강제 + 시스템 바 표시 동작은 재실행 필요 없음
-    LaunchedEffect(Unit) {
-        (context as? Activity)?.let { activity ->
-            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
-                show(WindowInsetsCompat.Type.systemBars())
-                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        }
-    }
+    // 방향·시스템바 제어는 CameraControlScreen 의 SSOT effect 로 이관했다.
+    // 여기서 다시 걸면 AnimatedContent dispose 순서에 따라 서로 덮어써 방향이 어긋난다.
 
     LaunchedEffect(appSettings) {
         LogcatManager.d(
@@ -807,18 +878,40 @@ private fun PortraitCameraLayout(
             .padding(contentPadding)
             .imePadding()
     ) {
-        // V2 StatusBar Row — 연결 상태 표시 + 토스트 슬롯 + 전송 진행 배지
-        Row(
+        // CINE Hero — 이 화면의 존재 이유(= 지금까지 카메라에서 넘어온 컷 수)를 최상위 타이포 슬롯으로 앵커한다.
+        // 위 행은 eyebrow(연결 상태 + 전송 진행 배지), 아래 행이 Hero 카운터.
+        // DisplayNum(34sp Bold, tnum 내장)이라 자릿수가 늘어도 좌우 흔들림이 없다.
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(CameraSpec.statusBarHeight)
-                .padding(horizontal = Spacing.lg),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = Spacing.lg, vertical = Spacing.sm)
         ) {
-            StatusIndicator(kind = statusKind, label = statusLabel)
-            Spacer(modifier = Modifier.weight(1f))
-            // 다운로드/처리 진행 카운트 배지 (요구 E7). 비활성 시 내부에서 early-return 으로 미표시.
-            TransferProgressBadge(queue = uiState.capture.transferQueue)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                StatusIndicator(kind = statusKind, label = statusLabel)
+                Spacer(modifier = Modifier.weight(1f))
+                // 다운로드/처리 진행 카운트 배지 (요구 E7). 비활성 시 내부에서 early-return 으로 미표시.
+                TransferProgressBadge(queue = uiState.capture.transferQueue)
+            }
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
+            ) {
+                Text(
+                    text = uiState.capturedPhotos.size.toString(),
+                    style = DisplayNum,
+                    color = TextPrimaryV2
+                )
+                // 단위는 로케일별 한글/CJK 가 들어오므로 MicroLabel(라틴 대문자 트래킹) 대신 Micro 를 쓴다.
+                Text(
+                    text = stringResource(R.string.cc_hero_shots_unit),
+                    style = Micro,
+                    color = TextTertiary,
+                    modifier = Modifier.padding(bottom = Spacing.xs)
+                )
+            }
         }
 
         val cameraStorageInfo by viewModel.cameraStorageInfo.collectAsStateWithLifecycle()
@@ -838,11 +931,17 @@ private fun PortraitCameraLayout(
                 .background(Surface0),
             contentAlignment = Alignment.Center
         ) {
-            if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
+            // ⚠️ 라이브뷰는 '카메라 제어' 설정과 무관하게 표시한다(사용자 결정 2026-08-20).
+            // 그 설정의 토글은 ADMIN/개발 빌드에만 노출되므로, 함께 묶으면 PRO·REFERRER 는
+            // 라이브뷰를 켤 방법이 아예 없다. 현재 원격 제어 기능은 노출값 조정뿐이고
+            // 라이브뷰가 이 화면의 실질적 본체다.
+            // '카메라 제어' 개념 자체는 남겨 둔다 — 추후 원격 제어를 되살릴 때 쓴다.
+            if (appSettings.isLiveViewEnabled) {
                 // ✅ 프레임/Bitmap 디코딩 수집은 이 최하위 스코프에서만 (IO 디스패처에서 처리됨).
                 // 프레임레이트 recomposition 을 CameraPreviewArea 서브트리로 국한한다.
                 val liveViewFrame by viewModel.liveViewFrame.collectAsStateWithLifecycle()
                 val decodedBitmap by viewModel.decodedLiveViewBitmap.collectAsStateWithLifecycle()
+                val histogramData by viewModel.histogramData.collectAsStateWithLifecycle()
 
                 CameraPreviewArea(
                     liveViewState = uiState.liveView,
@@ -914,7 +1013,10 @@ private fun PortraitCameraLayout(
                             if (canEnterFullscreen) {
                                 onEnterFullscreen()
                             }
-                        }
+                        },
+                        // 전체화면 진입 전에 비율을 미리 확보해 두면 진입 순간 가로로 한 번
+                        // 튀었다 돌아오는 현상이 없다(같은 사진을 여기서도 이미 그리고 있다).
+                        onAspectResolved = onPhotoAspectResolved
                     )
                 }
             }
@@ -924,15 +1026,18 @@ private fun PortraitCameraLayout(
         }
 
         // CINE 노출 스트립 — 모니터 '아래' 독립 행(목업 순서: 모니터 → 노출 → 파이프라인).
-        // 라이브뷰 ON/OFF 모두 같은 위치에 표시하고, 값은 마지막 판독(uiState.cameraSettings) 유지.
+        // 라이브뷰 활성 중에만 표시(사용자 결정 2026-08-18): LV 가 꺼지거나 끊긴 뒤에도
+        // 마지막 판독값이 남아 있으면 죽은 값(스테일)을 실측처럼 보여줘 혼란만 준다.
         // 6칼럼 균등(fullWidth) + 상하 헤어라인은 LiveViewExposureStrip 내부가 그린다.
         // 판독값이 하나도 없으면(초기/미연결) 내부에서 스스로 렌더를 생략한다.
-        uiState.cameraSettings?.let { s ->
-            LiveViewExposureStrip(
-                settings = s,
-                fullWidth = true,
-                modifier = Modifier.background(Surface0)
-            )
+        if (uiState.isLiveViewActive) {
+            uiState.cameraSettings?.let { s ->
+                LiveViewExposureStrip(
+                    settings = s,
+                    fullWidth = true,
+                    modifier = Modifier.background(Surface0)
+                )
+            }
         }
 
         // CINE 하단 = 이미지 파이프라인 패널. 셔터 버튼·촬영 모드 행은 이 화면 UI에서만 제거
@@ -943,12 +1048,13 @@ private fun PortraitCameraLayout(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column {
-                // 상단 헤어라인 (패널 구획)
+                // 상단 헤어라인 (패널 구획) — TopControlsBar 와 동일하게 DividerLine.
+                // Surface0 로 칠하면 Surface0 배경 위에 그려져 선이 보이지 않는다.
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(StrokeWidth.hairline)
-                        .background(Surface0)
+                        .background(DividerLine)
                 )
 
                 // ISO/셔터스피드/조리개/EV 조절 컨트롤 — 셔터/모드가 아니므로 유지.
@@ -1087,15 +1193,29 @@ private fun PipelineChip(
     modifier: Modifier = Modifier,
     isLocked: Boolean = false
 ) {
+    // 누름 상태는 ripple 대신 surface tier 승강(투명 → Surface2) + 1px 앰버 엣지로 표현한다.
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .background(
+                color = if (isPressed) Surface2 else Color.Transparent,
+                shape = RoundedCornerShape(Radius.sm)
+            )
             .border(
                 width = StrokeWidth.hairline,
-                color = if (isOn) Accent.copy(alpha = 0.6f) else Surface3,
+                color = when {
+                    isPressed -> Accent
+                    isOn -> Accent.copy(alpha = 0.6f)
+                    else -> Surface3
+                },
                 shape = RoundedCornerShape(Radius.sm)
             )
             .combinedClickable(
+                interactionSource = interactionSource,
+                indication = null,
                 onClick = onTap,
                 onLongClick = onLongPress,
                 onClickLabel = contentDescription
@@ -1130,12 +1250,13 @@ private fun PipelineChip(
                     imageVector = Icons.Outlined.Lock,
                     contentDescription = stringResource(R.string.fs_selected_film_locked_hint),
                     tint = TextTertiary,
-                    modifier = Modifier.size(12.dp)
+                    modifier = Modifier.size(IconSize.sm)
                 )
             }
+            // 값은 라벨(MicroLabel 11sp)의 1.45배로 키워 위계를 색이 아닌 크기가 전담하게 한다.
             Text(
                 text = value,
-                style = MonoMicro,
+                style = MonoReadout,
                 color = if (isOn) TextPrimaryV2 else TextDisabled,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1241,29 +1362,21 @@ private fun FullscreenCameraLayout(
     isShutterSoundEnabled: Boolean = true,
     isLiveViewGridEnabled: Boolean = false,
     onToggleLiveViewGrid: () -> Unit = {},
-    histogramData: com.inik.camcon.presentation.util.HistogramData? = null,
     isHistogramEnabled: Boolean = false,
     onToggleHistogram: () -> Unit = {},
     isFocusPeakingEnabled: Boolean = false,
     onToggleFocusPeaking: () -> Unit = {},
     liveViewQuality: LiveViewQuality = LiveViewQuality.BALANCED,
-    onCycleLiveViewQuality: () -> Unit = {}
+    onCycleLiveViewQuality: () -> Unit = {},
+    isRotated: Boolean = false,
+    onToggleRotate: () -> Unit = {},
+    onPhotoAspectResolved: (Float) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showTimelapseDialog by rememberSaveable { mutableStateOf(false) }
-    var isRotated by remember { mutableStateOf(false) }
 
-    // 진입 시 1회만 — 전체화면 진입 시 landscape 전환 + 시스템 바 숨김은 재실행 불필요
-    LaunchedEffect(Unit) {
-        (context as? Activity)?.let { activity ->
-            activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
-            WindowCompat.setDecorFitsSystemWindows(activity.window, false)
-            WindowInsetsControllerCompat(activity.window, activity.window.decorView).apply {
-                hide(WindowInsetsCompat.Type.systemBars())
-                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        }
-    }
+    // 방향·시스템바 제어와 isRotated 는 CameraControlScreen 의 SSOT 로 이관했다.
+    // isRotated 를 여기 두면 전체화면을 나갔다 올 때마다 180도 보정이 풀린다.
 
     Box(
         modifier = Modifier
@@ -1276,6 +1389,7 @@ private fun FullscreenCameraLayout(
             // 프레임레이트 recomposition 을 CameraPreviewArea 서브트리로 국한한다.
             val liveViewFrame by viewModel.liveViewFrame.collectAsStateWithLifecycle()
             val decodedBitmap by viewModel.decodedLiveViewBitmap.collectAsStateWithLifecycle()
+            val histogramData by viewModel.histogramData.collectAsStateWithLifecycle()
 
             // 라이브뷰 모드
             CameraPreviewArea(
@@ -1329,7 +1443,8 @@ private fun FullscreenCameraLayout(
                     modifier = Modifier.fillMaxSize(),
                     emptyTextColor = TextSecondaryV2,
                     isRotated = isRotated,
-                    onDoubleClick = onExitFullscreen
+                    onDoubleClick = onExitFullscreen,
+                    onAspectResolved = onPhotoAspectResolved
                 )
             }
         }
@@ -1350,7 +1465,7 @@ private fun FullscreenCameraLayout(
                 onToggleHistogram = onToggleHistogram,
                 isFocusPeakingEnabled = isFocusPeakingEnabled,
                 onToggleFocusPeaking = onToggleFocusPeaking,
-                onRotate = { isRotated = !isRotated },
+                onRotate = onToggleRotate,
                 onGalleryClick = onGalleryClick,
                 isShutterSoundEnabled = isShutterSoundEnabled,
                 onStopTimelapse = viewModel::stopTimelapse,
@@ -1358,6 +1473,8 @@ private fun FullscreenCameraLayout(
                 onCycleLiveViewQuality = onCycleLiveViewQuality,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
+                    // 양방향 가로를 허용하면서 노치·펀치홀이 반대편으로도 오게 됐다.
+                    .displayCutoutPadding()
                     .padding(end = Spacing.md, top = Spacing.xs, bottom = Spacing.xs)
             )
 
@@ -1369,12 +1486,14 @@ private fun FullscreenCameraLayout(
                 onModeSelected = viewModel::setShootingMode,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
+                    .displayCutoutPadding()
                     .padding(bottom = Padding.lg, end = 112.dp)
             )
         } else if (uiState.capturedPhotos.isNotEmpty()) {
             Row(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
+                    .displayCutoutPadding()
                     .padding(Padding.lg),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
@@ -1383,7 +1502,7 @@ private fun FullscreenCameraLayout(
                     shape = CircleShape
                 ) {
                     IconButton(
-                        onClick = { isRotated = !isRotated },
+                        onClick = onToggleRotate,
                         modifier = Modifier
                             .size(TouchTarget.xl)
                             .background(Surface2, CircleShape)
@@ -1442,7 +1561,7 @@ private fun FullscreenCameraLayout(
 /**
  * 전체화면 우측 통합 컨트롤 도크 -- state+callback 패턴.
  *
- * 모든 컨트롤을 하나의 세로 Column(단일 열)에 그룹·구분선으로 담는다. 단일 Column이라 요소가
+ * 모든 컨트롤을 하나의 세로 Column(단일 열)에 그룹 간격 리듬으로 담는다. 단일 Column이라 요소가
  * 서로 겹치는 것이 구조적으로 불가능하고, 컴팩트 사이즈로 짧은 가로 화면(≈360dp)에도 클리핑 없이
  * 들어간다(합계 ≈339dp). 각 버튼은 자체 반투명 원형 배경으로 패널 없이도 또렷하다.
  * 그룹: [종료] · [뷰 토글: 그리드/히스토그램/포커스피킹] · [캡처: 갤러리/셔터/AF] · [보조: 중지/회전].
@@ -1471,9 +1590,12 @@ private fun FullscreenControlPanel(
     onCycleLiveViewQuality: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    // 그룹 구분은 선이 아니라 간격 리듬으로 한다. 도크는 단일 surface tier 위에 떠 있어
+    // 구분선 양쪽 tier 가 동일하므로 선이 정보를 만들지 못한다.
+    // 그룹 간 Spacing.md(12dp) : 그룹 내부 Spacing.xs(4dp) = 3:1.
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // 1) 종료 — 유일한 빨강
@@ -1483,10 +1605,8 @@ private fun FullscreenControlPanel(
             onClick = onExitFullscreen,
             background = ErrorV2.copy(alpha = 0.85f),
             size = TouchTarget.lg,
-            iconSize = 24.dp
+            iconSize = IconSize.lg
         )
-
-        DockDivider()
 
         // 2) 뷰 토글 (가로 미니행) — 그리드 / 히스토그램 / 포커스 피킹
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
@@ -1497,7 +1617,7 @@ private fun FullscreenControlPanel(
                 background = Surface2.copy(alpha = if (isGridEnabled) 0.9f else 0.7f),
                 tint = if (isGridEnabled) MaterialTheme.colorScheme.primary else TextPrimaryV2,
                 size = TouchTarget.min,
-                iconSize = 20.dp
+                iconSize = IconSize.md
             )
             DockCircleButton(
                 icon = Icons.Default.BarChart,
@@ -1506,7 +1626,7 @@ private fun FullscreenControlPanel(
                 background = Surface2.copy(alpha = if (isHistogramEnabled) 0.9f else 0.7f),
                 tint = if (isHistogramEnabled) MaterialTheme.colorScheme.primary else TextPrimaryV2,
                 size = TouchTarget.min,
-                iconSize = 20.dp
+                iconSize = IconSize.md
             )
             DockCircleButton(
                 icon = Icons.Default.CenterFocusWeak,
@@ -1515,11 +1635,9 @@ private fun FullscreenControlPanel(
                 background = Surface2.copy(alpha = if (isFocusPeakingEnabled) 0.9f else 0.7f),
                 tint = if (isFocusPeakingEnabled) MaterialTheme.colorScheme.primary else TextPrimaryV2,
                 size = TouchTarget.min,
-                iconSize = 20.dp
+                iconSize = IconSize.md
             )
         }
-
-        DockDivider()
 
         // 2-1) 화질 순환 (단독 행) — 탭 시 SPEED→BALANCED→QUALITY 순환. 현재 단계 아이콘 + accent tint.
         // 가로 폭 압박을 피하려 뷰 토글행에 합치지 않고 단독 버튼으로 둔다(단일 Column 겹침 불가).
@@ -1533,10 +1651,8 @@ private fun FullscreenControlPanel(
             background = Surface2.copy(alpha = 0.8f),
             tint = MaterialTheme.colorScheme.primary,
             size = TouchTarget.min,
-            iconSize = 20.dp
+            iconSize = IconSize.md
         )
-
-        DockDivider()
 
         // 3) 캡처 (컴팩트) — 갤러리 / 셔터 / AF
         CaptureControls(
@@ -1550,13 +1666,15 @@ private fun FullscreenControlPanel(
             onGalleryClick = onGalleryClick,
             isShutterSoundEnabled = isShutterSoundEnabled,
             isTimelapseRunning = captureState.shootingMode == com.inik.camcon.domain.model.ShootingMode.TIMELAPSE && captureState.isCapturing,
-            onStopTimelapse = onStopTimelapse
+            onStopTimelapse = onStopTimelapse,
+            // 라이브뷰 중 앱 셔터는 노출하지 않는다(사용자 결정 2026-08-20). 이 도크는
+            // 라이브뷰 활성 시에만 뜨므로 여기서 끄면 라이브뷰 구간 앱 셔터가 사라진다.
+            // 촬영 로직·ViewModel 경로는 그대로 보존 — 추후 되살릴 때 이 한 줄만 되돌리면 된다.
+            showShutter = false
         )
 
-        DockDivider()
-
         // 4) 보조 (가로 미니행) — 라이브뷰 중지(중립색) / 180° 회전
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
             DockCircleButton(
                 icon = Icons.Default.Stop,
                 contentDescription = stringResource(R.string.cd_stop_live_view),
@@ -1564,7 +1682,7 @@ private fun FullscreenControlPanel(
                 background = Surface2.copy(alpha = 0.85f),
                 enabled = isConnected,
                 size = TouchTarget.min,
-                iconSize = 22.dp
+                iconSize = IconSize.md
             )
             DockCircleButton(
                 icon = Icons.AutoMirrored.Filled.RotateRight,
@@ -1574,7 +1692,7 @@ private fun FullscreenControlPanel(
                 background = Surface2.copy(alpha = 0.85f),
                 tint = if (onRotate != null) TextPrimaryV2 else TextSecondaryV2,
                 size = TouchTarget.min,
-                iconSize = 22.dp
+                iconSize = IconSize.md
             )
         }
     }
@@ -1592,7 +1710,7 @@ private fun DockCircleButton(
     modifier: Modifier = Modifier,
     tint: Color = TextPrimaryV2,
     size: Dp = TouchTarget.lg,
-    iconSize: Dp = 24.dp,
+    iconSize: Dp = IconSize.lg,
     enabled: Boolean = true
 ) {
     Surface(
@@ -1613,17 +1731,6 @@ private fun DockCircleButton(
             )
         }
     }
-}
-
-/** 도크 그룹 사이의 얇은 구분선. */
-@Composable
-private fun DockDivider() {
-    Box(
-        modifier = Modifier
-            .width(24.dp)
-            .height(1.dp)
-            .background(TextPrimaryV2.copy(alpha = 0.15f))
-    )
 }
 
 /**
@@ -1760,10 +1867,11 @@ private fun RecentCaptureItem(
                     shape = RoundedCornerShape(Radius.sm),
                     modifier = Modifier.align(Alignment.BottomEnd)
                 ) {
+                    // 변동 수치(파일 용량)이므로 탭형 모노 — 자릿수가 바뀌어도 배지 폭이 흔들리지 않는다.
                     Text(
                         text = sizeText,
                         color = TextPrimaryV2,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MonoMicro,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                     )
                 }
@@ -1781,7 +1889,8 @@ private fun AnimatedPhotoSwitcher(
     modifier: Modifier = Modifier,
     emptyTextColor: Color = TextSecondaryV2,
     isRotated: Boolean = false,
-    onDoubleClick: (() -> Unit)? = null
+    onDoubleClick: (() -> Unit)? = null,
+    onAspectResolved: (Float) -> Unit = {}
 ) {
     // capturedPhotos 는 LRU 1000장 캡이 있어 size 가 1000에서 고정되면 remember(size) 가 최신 사진을
     // 영영 갱신하지 못한다(동결 회귀). lastOrNull() 은 O(1) 이므로 remember 없이 매 recomposition 직접 읽는다.
@@ -1825,6 +1934,15 @@ private fun AnimatedPhotoSwitcher(
                         }
                         .build(),
                     contentDescription = stringResource(R.string.camera_control_photo),
+                    // painter.intrinsicSize 는 쓰면 안 된다. crossfade(200) 동안 CrossfadePainter 가
+                    // 이전/새 이미지의 축별 max 를 돌려줘 200ms 간 정사각형에 가까운 허구 값이 나온다.
+                    // result.drawable 은 JPG EXIF 자동회전과 RawExifRotationTransformation(RAW) 이
+                    // 모두 적용된 '실제로 그려질' 비트맵이라 그대로 표시 비율이다.
+                    onSuccess = { state ->
+                        val w = state.result.drawable.intrinsicWidth
+                        val h = state.result.drawable.intrinsicHeight
+                        if (w > 0 && h > 0) onAspectResolved(w.toFloat() / h.toFloat())
+                    },
                     modifier = Modifier
                         .fillMaxSize()
                         .then(if (isRotated) Modifier.rotate(180f) else Modifier)
@@ -1983,7 +2101,7 @@ private fun RawFileRestrictionNotification(
                 // 폭 상한 + 2줄 말줄임. 경고 성격은 아이콘·컬러바가 전달하므로 타이틀 중복 제거.
                 // 구독 업그레이드 유도는 추후 지원 — CTA 없이 안내만, 탭하면 조기 닫기.
                 ToastV2(
-                    message = "${restriction.fileName} — ${restriction.message}",
+                    message = "${restriction.fileName}: ${restriction.message}",
                     kind = StatusKind.Error,
                     leadingIcon = Icons.Outlined.WarningAmber,
                     maxLines = 2,
@@ -2082,12 +2200,12 @@ private fun CameraSettingsSheetPreview() {
     CamConTheme() {
         CameraSettingsSheet(
             settings = CameraSettings(
-                iso = "400",
-                shutterSpeed = "1/125",
-                aperture = "f/2.8",
-                whiteBalance = "Auto",
-                focusMode = "Auto",
-                exposureCompensation = "0"
+                iso = "640",
+                shutterSpeed = "1/160",
+                aperture = "f/3.5",
+                whiteBalance = "5600K",
+                focusMode = "AF-C",
+                exposureCompensation = "-1/3"
             ),
             onSettingChange = { _, _ -> },
             onClose = { }
@@ -2103,36 +2221,36 @@ private fun RecentCapturesRowPreview() {
             photos = listOf(
                 CapturedPhoto(
                     id = "1",
-                    filePath = "/path/to/test1.jpg",
-                    thumbnailPath = "/path/to/thumb1.jpg",
+                    filePath = "/storage/emulated/0/CamCon/DSC_4417.NEF",
+                    thumbnailPath = "/storage/emulated/0/CamCon/.thumb/DSC_4417.jpg",
                     captureTime = System.currentTimeMillis(),
-                    cameraModel = "Canon EOS R5",
+                    cameraModel = "NIKON Z 8",
                     settings = null,
-                    size = 1024 * 1024,
-                    width = 1920,
-                    height = 1080
+                    size = 51_384_912L,
+                    width = 8256,
+                    height = 5504
                 ),
                 CapturedPhoto(
                     id = "2",
-                    filePath = "/path/to/test2.jpg",
-                    thumbnailPath = "/path/to/thumb2.jpg",
+                    filePath = "/storage/emulated/0/CamCon/DSC_4418.NEF",
+                    thumbnailPath = "/storage/emulated/0/CamCon/.thumb/DSC_4418.jpg",
                     captureTime = System.currentTimeMillis(),
-                    cameraModel = "Canon EOS R5",
+                    cameraModel = "NIKON Z 8",
                     settings = null,
-                    size = 1024 * 1024,
-                    width = 1920,
-                    height = 1080
+                    size = 48_902_144L,
+                    width = 5504,
+                    height = 8256
                 ),
                 CapturedPhoto(
                     id = "3",
-                    filePath = "/path/to/test3.jpg",
-                    thumbnailPath = "/path/to/thumb3.jpg",
+                    filePath = "/storage/emulated/0/CamCon/DSC_4421.JPG",
+                    thumbnailPath = "/storage/emulated/0/CamCon/.thumb/DSC_4421.jpg",
                     captureTime = System.currentTimeMillis(),
-                    cameraModel = "Canon EOS R5",
+                    cameraModel = "NIKON Z 8",
                     settings = null,
-                    size = 1024 * 1024,
-                    width = 1920,
-                    height = 1080
+                    size = 9_137_664L,
+                    width = 8256,
+                    height = 5504
                 )
             ),
             modifier = Modifier.padding(Padding.base)

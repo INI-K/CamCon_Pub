@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -83,6 +84,7 @@ import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.Body
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.HeadingL
 import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.Radius
@@ -170,7 +172,8 @@ fun CameraConnectionOptimizationDialog(
         icon = { androidx.compose.material3.Icon(Icons.Default.Settings, contentDescription = null) },
         title = {
             androidx.compose.material3.Text(
-                stringResource(R.string.camera_connection_optimization_title)
+                text = stringResource(R.string.camera_connection_optimization_title),
+                style = HeadingL
             )
         },
         text = {
@@ -215,7 +218,8 @@ fun PermissionSettingsDialog(
         icon = { Icon(Icons.Default.Settings, contentDescription = null) },
         title = {
             Text(
-                stringResource(R.string.dialog_permission_reprompt_title)
+                text = stringResource(R.string.dialog_permission_reprompt_title),
+                style = HeadingL
             )
         },
         text = {
@@ -333,7 +337,12 @@ fun MainScreen(
                     }
                 },
                 icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                title = { Text(stringResource(R.string.dialog_restart_required_title)) },
+                title = {
+                    Text(
+                        text = stringResource(R.string.dialog_restart_required_title),
+                        style = HeadingL
+                    )
+                },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                         if (isRestarting) {
@@ -354,13 +363,16 @@ fun MainScreen(
                         }
                     }
                 },
+                // 액션 3개를 한 Row에 넣으면 독일어 등 긴 라벨에서 다이얼로그 폭을 넘겨 잘린다.
+                // 세로 스택 + 중요도 순서(재시작 → 종료 → 나중에)로 내리고, 마지막 항목만
+                // 폭을 끊어 3단 균일 블록이 되지 않게 한다.
                 confirmButton = {
                     if (!isRestarting) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                            SecondaryButton(
-                                text = stringResource(R.string.dialog_later),
-                                onClick = { showRestartDialog = false }
-                            )
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                            horizontalAlignment = Alignment.End
+                        ) {
                             PrimaryButton(
                                 text = stringResource(R.string.dialog_restart_now),
                                 onClick = {
@@ -370,7 +382,8 @@ fun MainScreen(
                                     activity?.let { act ->
                                         MainActivity.restartAppAfterCameraCleanup(act)
                                     }
-                                }
+                                },
+                                modifier = Modifier.fillMaxWidth()
                             )
                             SecondaryButton(
                                 text = stringResource(R.string.dialog_restart_quit),
@@ -381,7 +394,12 @@ fun MainScreen(
                                     activity?.let { act ->
                                         MainActivity.systemRestartApp(act)
                                     }
-                                }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            SecondaryButton(
+                                text = stringResource(R.string.dialog_later),
+                                onClick = { showRestartDialog = false }
                             )
                         }
                     }
@@ -402,7 +420,8 @@ fun MainScreen(
                 },
                 title = {
                     Text(
-                        stringResource(R.string.dialog_usb_disconnected_title)
+                        text = stringResource(R.string.dialog_usb_disconnected_title),
+                        style = HeadingL
                     )
                 },
                 text = {
@@ -443,7 +462,8 @@ fun MainScreen(
                 },
                 title = {
                     Text(
-                        stringResource(R.string.dialog_camera_check_title)
+                        text = stringResource(R.string.dialog_camera_check_title),
+                        style = HeadingL
                     )
                 },
                 text = {
@@ -511,59 +531,63 @@ fun MainScreen(
                     val currentDestination = navBackStackEntry?.destination
 
                     // CINE 정합: Surface0 컨테이너 + 상단 헤어라인, 활성 탭 상단 2dp 앰버 인디케이터.
-                    HorizontalDivider(color = DividerLine, thickness = StrokeWidth.hairline)
-                    NavigationBar(
-                        containerColor = Surface0,
-                        contentColor = TextTertiary,
-                        tonalElevation = 0.dp,
-                    ) {
-                        items.forEach { screen ->
-                            val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
-                            val showLockBadge =
-                                screen == BottomNavItem.PhotoPreview && photoPreviewAccess == false
-                            NavigationBarItem(
-                                icon = {
-                                    if (showLockBadge) {
-                                        BadgedBox(
-                                            badge = {
-                                                Badge {
-                                                    Icon(
-                                                        Icons.Default.Lock,
-                                                        contentDescription = stringResource(R.string.photo_preview_locked_tab_badge_cd),
-                                                        modifier = Modifier.size(12.dp)
-                                                    )
+                    // Scaffold는 bottomBar 자식들을 같은 y에 배치하므로, 헤어라인을 NavigationBar와
+                    // 형제로 두면 불투명 바에 가려 렌더되지 않는다. Column으로 실제로 위에 쌓는다.
+                    Column {
+                        HorizontalDivider(color = DividerLine, thickness = StrokeWidth.hairline)
+                        NavigationBar(
+                            containerColor = Surface0,
+                            contentColor = TextTertiary,
+                            tonalElevation = 0.dp,
+                        ) {
+                            items.forEach { screen ->
+                                val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                                val showLockBadge =
+                                    screen == BottomNavItem.PhotoPreview && photoPreviewAccess == false
+                                NavigationBarItem(
+                                    icon = {
+                                        if (showLockBadge) {
+                                            BadgedBox(
+                                                badge = {
+                                                    Badge {
+                                                        Icon(
+                                                            Icons.Default.Lock,
+                                                            contentDescription = stringResource(R.string.photo_preview_locked_tab_badge_cd),
+                                                            modifier = Modifier.size(IconSize.xs)
+                                                        )
+                                                    }
                                                 }
+                                            ) {
+                                                NavBarIcon(
+                                                    icon = screen.icon,
+                                                    contentDescription = stringResource(screen.titleRes),
+                                                    selected = selected
+                                                )
                                             }
-                                        ) {
+                                        } else {
                                             NavBarIcon(
                                                 icon = screen.icon,
                                                 contentDescription = stringResource(screen.titleRes),
                                                 selected = selected
                                             )
                                         }
-                                    } else {
-                                        NavBarIcon(
-                                            icon = screen.icon,
-                                            contentDescription = stringResource(screen.titleRes),
-                                            selected = selected
-                                        )
-                                    }
-                                },
-                                label = {
-                                    Text(stringResource(screen.titleRes))
-                                },
-                                selected = selected,
-                                onClick = { onTabClick(screen) },
-                                alwaysShowLabel = true,
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Accent,
-                                    selectedTextColor = Accent,
-                                    unselectedIconColor = TextTertiary,
-                                    unselectedTextColor = TextTertiary,
-                                    // 상단 앰버 인디케이터로 활성 표현 — 기본 pill 인디케이터는 제거.
-                                    indicatorColor = Color.Transparent
+                                    },
+                                    label = {
+                                        Text(stringResource(screen.titleRes))
+                                    },
+                                    selected = selected,
+                                    onClick = { onTabClick(screen) },
+                                    alwaysShowLabel = true,
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = Accent,
+                                        selectedTextColor = Accent,
+                                        unselectedIconColor = TextTertiary,
+                                        unselectedTextColor = TextTertiary,
+                                        // 상단 앰버 인디케이터로 활성 표현 — 기본 pill 인디케이터는 제거.
+                                        indicatorColor = Color.Transparent
+                                    )
                                 )
-                            )
+                            }
                         }
                     }
                 }
@@ -657,7 +681,7 @@ fun MainScreen(
                                                     Icon(
                                                         Icons.Default.Lock,
                                                         contentDescription = stringResource(R.string.photo_preview_locked_tab_badge_cd),
-                                                        modifier = Modifier.size(12.dp)
+                                                        modifier = Modifier.size(IconSize.xs)
                                                     )
                                                 }
                                             }
@@ -712,7 +736,8 @@ fun MainScreen(
                 icon = { Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 title = {
                     Text(
-                        stringResource(R.string.dialog_wifi_active_title)
+                        text = stringResource(R.string.dialog_wifi_active_title),
+                        style = HeadingL
                     )
                 },
                 text = {
@@ -794,7 +819,8 @@ fun MainScreen(
                 },
                 title = {
                     Text(
-                        stringResource(R.string.dialog_wifi_disconnected_title)
+                        text = stringResource(R.string.dialog_wifi_disconnected_title),
+                        style = HeadingL
                     )
                 },
                 text = {

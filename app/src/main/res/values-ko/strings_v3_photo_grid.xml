@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- MicroLabel(11sp tracking 1.4) 계측기 라벨 — 한글 미사용, 대문자 라틴 유지 -->
+    <string name="photo_grid_v3_eyebrow">CAMERA ROLL</string>
+    <string name="photo_grid_v3_photos_unit">PHOTOS</string>
+    <string name="photo_grid_v3_selected_unit">SELECTED</string>
+    <string name="photo_grid_v3_page_label">PAGE</string>
+
+    <string name="photo_grid_v3_downloading_label">다운로드 중</string>
+</resources>

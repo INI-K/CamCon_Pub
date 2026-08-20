@@ -41,7 +41,7 @@
     <string name="pipeline_film_sim">FILM SIM</string>
     <string name="pipeline_color_transfer">色転送</string>
     <string name="pipeline_off">OFF</string>
-    <string name="pipeline_none">—</string>
+    <string name="pipeline_none">OFF</string>
     <string name="pipeline_recent_waiting">待機中</string>
     <string name="pipeline_exposure_mode">MODE</string>
     <string name="cd_toggle_film_sim">フィルムシミュレーションのオン/オフ</string>
@@ -199,6 +199,8 @@
 
     <!-- 빈 상태 -->
     <string name="no_photos">写真がありません</string>
+    <string name="preview_card_browse_unsupported_title">カード内の閲覧非対応</string>
+    <string name="preview_card_browse_unsupported_desc">このカメラはリモート制御中のメモリーカードへのアクセスを許可していません。\n撮影した写真は自動で受信され、ギャラリーに保存されます。\nカード内の写真を見るには、カメラのUSB接続設定をMTPに変更してUSBで接続してください（リモート撮影は使用できません）。</string>
     <string name="connect_camera_and_capture">USB経由でカメラを接続し\n写真を撮影してください</string>
     <string name="check_camera_connection">• カメラが接続されているか確認してください\n• 下にスワイプして更新</string>
     <string name="image_load_failed">画像を読み込めません</string>
@@ -346,7 +348,7 @@
     <string name="ptpip_check_scan_conditions">スキャン条件を確認してください</string>
     <string name="ptpip_shutter_listen_start">物理シャッターのワイヤレス受信を開始</string>
     <string name="ptpip_shutter_listen_stop">ワイヤレス受信を停止</string>
-    <string name="ptpip_no_camera_search_first">カメラがありません — まずSTAモードでカメラを検索してください</string>
+    <string name="ptpip_no_camera_search_first">カメラがありません - まずSTAモードでカメラを検索してください</string>
 
     <!-- i18n 패리티 보강: 오픈소스 라이선스 + 라이브뷰 (2026-07-13, backfill 미포함 잔여 9키) -->
     <string name="camera_preview_live_view">ライブビュー</string>
@@ -358,7 +360,17 @@
     <string name="gradle_dependencies_desc">タップしてすべてのGradle依存関係のライセンスを表示</string>
     <string name="license_version">バージョン:</string>
     <string name="license_type">ライセンス:</string>
+    <!-- LGPL 수정본 소스 서면 제공 오퍼 + 상표 면책 -->
+    <string name="licenses_modified_badge">CamCon による改変版</string>
+    <string name="licenses_lgpl_offer_title">改変した LGPL ソースの提供</string>
+    <string name="licenses_lgpl_offer_body">CamCon には、LGPL-2.1-or-later で提供される libgphoto2 および libgphoto2_port を改変してビルドしたバイナリが含まれています。ライセンスの定めに従い、改変版に対応する完全なソースコードをご請求いただいた方に提供します。提供期間は、このバージョンを配布した日から3年間です。ご請求の際はアプリのバージョンをお知らせください。</string>
+    <string name="licenses_trademark_title">商標について</string>
+    <string name="licenses_trademark_body">フィルムシミュレーションに表示されるフィルム名およびカメラのブランド名は、各商標権者の財産です。CamCon はこれらの権利者と提携・後援・推奨のいずれの関係もありません。名称は、各プリセットが再現しようとする色の特性を説明する目的でのみ使用しています。</string>
+    <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->
+    <string name="licenses_contact_click_label">メールで問い合わせる</string>
+    <string name="contact_email_copied">メールアプリが見つからないため、アドレスをクリップボードにコピーしました: %1$s</string>
     <string name="photo_capture_failed">写真の撮影/受信に失敗しました (エラー %1$d)</string>
+    <string name="photo_transfer_rejected_by_camera">カメラがこの写真の転送を拒否しました。カメラ側で再送するか、再接続してください。</string>
     <string name="photo_delete_camera_failed">カメラから写真を削除できませんでした</string>
     <string name="notif_channel_status_name">カメラの状態</string>
     <string name="notif_channel_status_desc">カメラの接続とファイル受信の状態を表示します</string>
@@ -367,8 +379,8 @@
     <string name="connection_status_sta_connected">STAモード接続済み (%1$s)</string>
     <string name="connection_status_connecting">カメラに接続中…</string>
     <string name="connection_status_error">カメラ接続エラー</string>
-    <string name="connection_status_camera_ap">カメラAP接続済み — カメラ検索可能</string>
-    <string name="connection_status_wifi">Wi-Fi接続済み — カメラ検索可能</string>
+    <string name="connection_status_camera_ap">カメラAP接続済み - カメラ検索可能</string>
+    <string name="connection_status_wifi">Wi-Fi接続済み - カメラ検索可能</string>
     <string name="connection_status_disconnected">未接続</string>
     <string name="usb_init_connecting_camera">USBカメラに接続中…</string>
     <string name="usb_init_requesting_permission">USB権限を要求中…</string>

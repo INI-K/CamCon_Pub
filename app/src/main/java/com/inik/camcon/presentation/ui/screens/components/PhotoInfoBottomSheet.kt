@@ -3,7 +3,6 @@ package com.inik.camcon.presentation.ui.screens.components
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
@@ -31,12 +29,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
-import com.inik.camcon.presentation.theme.HeadingL
+import com.inik.camcon.presentation.theme.BodySmall
+import com.inik.camcon.presentation.theme.HeadingM
+import com.inik.camcon.presentation.theme.HeadingS
 import com.inik.camcon.presentation.theme.IconSize
-import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.MonoHero
+import com.inik.camcon.presentation.theme.MonoNumeric
+import com.inik.camcon.presentation.theme.MonoReadout
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.viewmodel.PhotoPreviewViewModel
 import com.inik.camcon.utils.LogMask
@@ -80,19 +81,19 @@ fun PhotoInfoBottomSheetContent(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = Spacing.lg)
-            .padding(bottom = 40.dp)
+            .padding(horizontal = Spacing.base)
+            .padding(bottom = Spacing.xl)
     ) {
-        PhotoInfoBottomSheetHandle()
-
         PhotoInfoBottomSheetHeader()
+
+        PhotoInfoExposureHero(exifInfo = exifInfo.value, isLoading = isLoading.value)
 
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(bottom = Spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(Spacing.lg)
+                .padding(bottom = Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             PhotoInfoDateRow(photo = photo, exifInfo = exifInfo.value, isLoading = isLoading.value)
 
@@ -103,39 +104,76 @@ fun PhotoInfoBottomSheetContent(
     }
 }
 
-@Composable
-private fun PhotoInfoBottomSheetHandle(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = Spacing.md),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(width = 40.dp, height = Spacing.xs)
-                .background(
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-                    RoundedCornerShape(Radius.sm)
-                )
-        )
-    }
-}
-
+/**
+ * 시트 제목 — 아래 노출 Hero 의 eyebrow 로 강등한다(20sp → 14sp).
+ * 한글 문자열이라 트래킹 1.4 의 MicroLabel 대신 HeadingS 를 쓴다.
+ */
 @Composable
 private fun PhotoInfoBottomSheetHeader(modifier: Modifier = Modifier) {
+    Text(
+        text = stringResource(R.string.fullscreen_viewer_detail_info),
+        style = HeadingS,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = Spacing.xs)
+    )
+}
+
+/**
+ * 시트 Hero — 이 화면의 존재 이유("이 컷이 어떤 노출로 찍혔나")를 주 판독값으로 세운다.
+ * 주값(셔터 우선)은 MonoHero(38sp), 나머지는 MonoReadout(16sp)라 본문 14sp 대비 2.7배.
+ * 노출 정보가 없거나 로딩 중이면 자리를 비워 더미 수치를 만들지 않는다.
+ */
+@Composable
+private fun PhotoInfoExposureHero(
+    exifInfo: String?,
+    isLoading: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val exifJson = exifInfo.orEmpty()
+    if (isLoading || exifJson.isEmpty() || exifJson == "{}") return
+
+    val readouts = remember(exifJson) {
+        runCatching {
+            val entries = parseExifInfo(exifJson)
+            listOfNotNull(
+                entries["exposure_time"]?.takeIf { it.isNotBlank() }
+                    ?.let { formatShutterSpeed(it) },
+                entries["f_number"]?.takeIf { it.isNotBlank() }?.let { formatAperture(it) },
+                entries["iso"]?.takeIf { it.isNotBlank() }?.let { "ISO $it" }
+            )
+        }.getOrElse { emptyList() }
+    }
+
+    if (readouts.isEmpty()) return
+
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(bottom = Spacing.lg),
-        horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.CenterVertically
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        verticalAlignment = Alignment.Bottom
     ) {
         Text(
-            text = stringResource(R.string.fullscreen_viewer_detail_info),
-            style = HeadingL,
-            color = MaterialTheme.colorScheme.onSurface
+            text = readouts.first(),
+            style = MonoHero,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1
         )
+
+        if (readouts.size > 1) {
+            Column(modifier = Modifier.padding(bottom = Spacing.sm)) {
+                readouts.drop(1).forEach { readout ->
+                    Text(
+                        text = readout,
+                        style = MonoReadout,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -196,34 +234,47 @@ private fun PhotoInfoFileRow(
             Column {
                 Text(
                     text = photo.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = HeadingM,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(Spacing.xs))
 
-                val fileInfo = buildString {
-                    append("${String.format("%.2f", photo.size / 1024.0 / 1024.0)}MB")
-
-                    if (!isLoading && !exifInfo.isNullOrEmpty() && exifInfo != "{}") {
-                        try {
-                            val exifEntries = parseExifInfo(exifInfo)
-                            val width = exifEntries["width"]
-                            val height = exifEntries["height"]
-                            if (width != null && height != null) {
-                                append("    ${width}x${height}")
-                            }
-                        } catch (e: Exception) {
-                            Log.d("PhotoInfoFileRow", "Failed to parse EXIF dimensions", e)
-                        }
+                // 용량과 해상도를 한 문자열로 붙이면 사진을 넘길 때마다 두 수치의 x 위치가 흔들린다.
+                // 각각 독립 모노(tnum) 슬롯으로 분리해 자릿수가 바뀌어도 자리가 고정되게 한다.
+                val dimensions = if (!isLoading && !exifInfo.isNullOrEmpty() && exifInfo != "{}") {
+                    try {
+                        val exifEntries = parseExifInfo(exifInfo)
+                        val width = exifEntries["width"]
+                        val height = exifEntries["height"]
+                        if (width != null && height != null) "$width × $height" else null
+                    } catch (e: Exception) {
+                        Log.d("PhotoInfoFileRow", "Failed to parse EXIF dimensions", e)
+                        null
                     }
+                } else {
+                    null
                 }
 
-                Text(
-                    text = fileInfo,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                    Text(
+                        text = String.format(
+                            Locale.getDefault(),
+                            "%.1f MB",
+                            photo.size / 1024.0 / 1024.0
+                        ),
+                        style = MonoNumeric,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    if (dimensions != null) {
+                        Text(
+                            text = dimensions,
+                            style = MonoNumeric,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
 
                 val internalStorageLabel = stringResource(R.string.gallery_v2_internal_storage)
                 val folderPath = photo.path.substringBeforeLast("/")
@@ -231,7 +282,7 @@ private fun PhotoInfoFileRow(
 
                 Text(
                     text = folderPath,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = BodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -332,7 +383,11 @@ fun ExifEntriesList(
     ) {
         val cameraModel = exifEntries["camera_model"]
         if (!cameraModel.isNullOrBlank()) {
-            ExifField(stringResource(R.string.gallery_v2_exif_camera), cameraModel)
+            ExifField(
+                stringResource(R.string.gallery_v2_exif_camera),
+                cameraModel,
+                isNumeric = false
+            )
         }
 
         val iso = exifEntries["iso"]
@@ -365,13 +420,18 @@ fun ExifEntriesList(
         if (!whiteBalance.isNullOrBlank()) {
             ExifField(
                 stringResource(R.string.gallery_v2_exif_white_balance),
-                formatWhiteBalanceLabel(whiteBalance)
+                formatWhiteBalanceLabel(whiteBalance),
+                isNumeric = false
             )
         }
 
         val flash = exifEntries["flash"]
         if (!flash.isNullOrBlank()) {
-            ExifField(stringResource(R.string.gallery_v2_exif_flash), formatFlashLabel(flash))
+            ExifField(
+                stringResource(R.string.gallery_v2_exif_flash),
+                formatFlashLabel(flash),
+                isNumeric = false
+            )
         }
 
         val dateTimeOriginal = exifEntries["date_time_original"]

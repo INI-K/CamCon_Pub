@@ -3,11 +3,11 @@ package com.inik.camcon.presentation.ui.screens.components
 import android.graphics.Bitmap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,7 +21,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Body
+import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.theme.Surface1
+import com.inik.camcon.presentation.theme.TextTertiary
 
 /**
  * 편집 화면 대형 프리뷰(설계 §3.3).
@@ -45,17 +50,18 @@ fun FilmEditPreview(
     modifier: Modifier = Modifier
 ) {
     if (original == null || original.isRecycled) {
+        // 깊이는 surface tier + 헤어라인으로만 표현한다(onSurface 반투명 워시 금지).
+        val placeholderShape = RoundedCornerShape(Radius.md)
         Box(
-            modifier = modifier.background(
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                RoundedCornerShape(Radius.md)
-            ),
+            modifier = modifier
+                .background(Surface1, placeholderShape)
+                .border(StrokeWidth.hairline, DividerLine, placeholderShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = stringResource(R.string.fs_no_target),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                style = Body,
+                color = TextTertiary
             )
         }
         return

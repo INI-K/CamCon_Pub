@@ -21,15 +21,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.presentation.theme.Body
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.HeadingM
+import com.inik.camcon.presentation.theme.HeadingS
 import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.MonoNumeric
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
@@ -83,12 +87,19 @@ fun WifiScanResultsCard(
                 Spacer(modifier = Modifier.width(Spacing.sm))
                 Text(
                     text = if (isStaMode) {
-                        stringResource(R.string.wifi_scan_nearby_wifi, ssids.size)
+                        stringResource(R.string.v3_ptpip_scan_nearby_wifi_label)
                     } else {
-                        stringResource(R.string.wifi_scan_nearby_camera_wifi, ssids.size)
+                        stringResource(R.string.v3_ptpip_scan_nearby_camera_wifi_label)
                     },
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    style = HeadingM,
+                    color = TextPrimaryV2,
+                    modifier = Modifier.weight(1f)
+                )
+                // 스캔 개수는 변동 수치 → 라벨과 분리해 탭형 모노로 자릿수를 고정한다.
+                Text(
+                    text = "${ssids.size}",
+                    style = MonoNumeric,
+                    color = TextSecondaryV2
                 )
             }
 
@@ -136,8 +147,8 @@ fun WifiScanResultsCard(
                             ) {
                                 Text(
                                     text = ssid,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
+                                    style = HeadingS,
+                                    color = TextPrimaryV2
                                 )
                                 val isSaved = savedSsids.contains(ssid)
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -162,7 +173,7 @@ fun WifiScanResultsCard(
                                             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                                             modifier = Modifier.size(IconSize.xs)
                                         )
-                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Spacer(modifier = Modifier.width(Spacing.xs))
                                         Text(
                                             text = stringResource(R.string.wifi_scan_saved),
                                             style = MaterialTheme.typography.labelSmall,
@@ -209,10 +220,11 @@ fun WifiScanResultsCard(
                             .padding(vertical = Spacing.xs)
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
+                            // 카메라 AP는 SemiBold, 일반 네트워크는 Regular — 같은 14sp에서 무게로 갈린다.
                             Text(
                                 text = ssid,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                style = Body,
+                                color = TextSecondaryV2
                             )
                             if (isSaved) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -220,9 +232,9 @@ fun WifiScanResultsCard(
                                         imageVector = Icons.Filled.VpnKey,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                        modifier = Modifier.size(10.dp)
+                                        modifier = Modifier.size(IconSize.xs)
                                     )
-                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Spacer(modifier = Modifier.width(Spacing.xs))
                                     Text(
                                         text = stringResource(R.string.wifi_scan_saved),
                                         style = MaterialTheme.typography.labelSmall,
@@ -247,11 +259,13 @@ fun WifiScanResultsCard(
 @Composable
 private fun WifiScanResultsCardApPreview() {
     CamConTheme() {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
+            // 실제 카메라 AP가 뿌리는 형식(모델 약칭 + hex 시리얼)으로 둔다.
             WifiScanResultsCard(
-                ssids = listOf("NIKON_Z6III_12345", "CANON_EOS_R5", "MyHomeWifi_5G", "iPhone"),
+                ssids = listOf("NIKON_Z8-A47C1E", "CANON_EOSR5_3f9a21", "KT_GiGA_5G_A2F1", "iPhone_15Pro_hs"),
                 onConnectToWifi = {},
-                isStaMode = false
+                isStaMode = false,
+                savedSsids = setOf("KT_GiGA_5G_A2F1")
             )
         }
     }
@@ -261,9 +275,9 @@ private fun WifiScanResultsCardApPreview() {
 @Composable
 private fun WifiScanResultsCardStaPreview() {
     CamConTheme() {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Spacing.base)) {
             WifiScanResultsCard(
-                ssids = listOf("CameraNetwork_SONY", "HomeRouter_2G"),
+                ssids = listOf("DIRECT-a7-SONY_ILCE7M4", "iptime_5G_7c2b"),
                 onConnectToWifi = {},
                 isStaMode = true
             )

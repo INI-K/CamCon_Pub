@@ -2,6 +2,7 @@ package com.inik.camcon.presentation.viewmodel.photo
 
 import android.content.Context
 import android.util.Log
+import androidx.annotation.VisibleForTesting
 import com.inik.camcon.BuildConfig
 import com.inik.camcon.R
 import com.inik.camcon.di.ApplicationScope
@@ -53,6 +54,31 @@ class PhotoListManager @Inject constructor(
     private val _allPhotos = MutableStateFlow<List<CameraPhoto>>(emptyList())
     val allPhotos: StateFlow<List<CameraPhoto>> = _allPhotos.asStateFlow()
 
+    /**
+     * 기존 목록에 다음 페이지를 이어붙이되 경로 기준 중복을 제거한다.
+     *
+     * 네이티브 페이징은 "역순 수집"(최신 우선)이라 페이지 사이에 새 사진이 들어오면
+     * 창이 밀려 같은 파일이 두 페이지에 걸쳐 나온다(Z8 실측 2026-08-19 16:56:
+     * KAY_3030.JPG 중복). 목록 화면은 `key = { photo -> photo.path }`(PhotoPreviewScreen)
+     * 로 그리므로 중복이 그대로 흘러가면 Compose 가 IllegalArgumentException 으로
+     * **앱을 죽인다**. 누적 지점은 여기 한 곳으로 모아 방어한다.
+     */
+    @VisibleForTesting
+    internal fun appendDistinct(
+        current: List<CameraPhoto>,
+        incoming: List<CameraPhoto>
+    ): List<CameraPhoto> {
+        if (incoming.isEmpty()) return current
+        val seen = HashSet<String>(current.size + incoming.size)
+        current.forEach { seen.add(it.path) }
+        val fresh = incoming.filter { seen.add(it.path) }
+        val dropped = incoming.size - fresh.size
+        if (dropped > 0) {
+            Log.d(TAG, "페이지 누적 중복 제거: ${dropped}개 (수신 ${incoming.size}개)")
+        }
+        return if (fresh.isEmpty()) current else current + fresh
+    }
+
     // 필터링된 사진 목록
     private val _filteredPhotos = MutableStateFlow<List<CameraPhoto>>(emptyList())
     val filteredPhotos: StateFlow<List<CameraPhoto>> = _filteredPhotos.asStateFlow()
@@ -74,6 +100,12 @@ class PhotoListManager @Inject constructor(
 
     private val _hasNextPage = MutableStateFlow(false)
     val hasNextPage: StateFlow<Boolean> = _hasNextPage.asStateFlow()
+
+    // 카드 탐색 미지원 세션(Sony PC리모트: 원격 중 카드 접근 불가 — 펌웨어 설계).
+    // true면 미리보기 탭이 일반 빈 상태 대신 전용 안내(무선 불가·USB+MTP 경로)를 그린다.
+    // 매 로드 시도 시작에 리셋 → 미지원 판정 시 다시 세팅 (재연결/기종 교체 자동 반영).
+    private val _isStorageUnsupported = MutableStateFlow(false)
+    val isStorageUnsupported: StateFlow<Boolean> = _isStorageUnsupported.asStateFlow()
 
     // 필터 상태
     private val _currentFilter = MutableStateFlow(FileTypeFilter.JPG)
@@ -121,6 +153,7 @@ class PhotoListManager @Inject constructor(
             try {
                 _currentPage.value = 0
                 _allPhotos.value = emptyList()
+                _isStorageUnsupported.value = false
 
                 Log.d(TAG, "현재 카메라 연결 상태: $isConnected")
 
@@ -148,7 +181,8 @@ class PhotoListManager @Inject constructor(
                         }
 
                         Log.d(TAG, "사진 목록 불러오기 성공: ${paginatedPhotos.photos.size}개")
-                        _allPhotos.value = paginatedPhotos.photos
+                        // 첫 페이지도 경로 유일성을 보장한다(그리드 key 계약 — appendDistinct 주석 참조).
+                        _allPhotos.value = paginatedPhotos.photos.distinctBy { it.path }
                         updateFilteredPhotos(currentTier)
 
                         _currentPage.value = paginatedPhotos.currentPage
@@ -157,6 +191,15 @@ class PhotoListManager @Inject constructor(
                     },
                     onFailure = { exception ->
                         if (isManagerActive) {
+                            // 저장소 미노출(Sony PC리모트: 원격 중 카드 접근 불가) — 재시도
+                            // 무의미. 토스트 대신 전용 안내 상태(isStorageUnsupported)로 표시
+                            // (팝업/토스트는 놓치기 쉬워 사용자 결정 2026-08-18: 상시 안내 채택).
+                            if (exception is UnsupportedOperationException) {
+                                Log.i(TAG, "카드 탐색 미지원 세션 — 전용 안내 상태로 처리")
+                                _hasNextPage.value = false
+                                _isStorageUnsupported.value = true
+                                return@fold
+                            }
                             Log.e(TAG, "사진 목록 불러오기 실패", exception)
                             val errorMessage =
                                 errorHandlingManager.handleFileError(exception, "사진 목록 로딩")
@@ -214,7 +257,7 @@ class PhotoListManager @Inject constructor(
 
                         Log.d(TAG, "loadNextPage 성공: ${paginatedPhotos.photos.size}개 추가")
                         val currentPhotos = _allPhotos.value
-                        val newPhotos = currentPhotos + paginatedPhotos.photos
+                        val newPhotos = appendDistinct(currentPhotos, paginatedPhotos.photos)
 
                         _allPhotos.value = newPhotos
                         updateFilteredPhotos(currentTier)
@@ -225,6 +268,13 @@ class PhotoListManager @Inject constructor(
                     },
                     onFailure = { exception ->
                         if (isManagerActive) {
+                            // 저장소 미노출 세션(위 loadInitialPhotos와 동일) — 조용히 종료.
+                            if (exception is UnsupportedOperationException) {
+                                Log.i(TAG, "카드 탐색 미지원 세션 — 추가 페이지 없음 처리")
+                                _hasNextPage.value = false
+                                _isStorageUnsupported.value = true
+                                return@fold
+                            }
                             Log.e(TAG, "loadNextPage 실패", exception)
                             val errorMessage =
                                 errorHandlingManager.handleFileError(exception, "추가 사진 로딩")
@@ -376,7 +426,7 @@ class PhotoListManager @Inject constructor(
                 getCameraPhotosPagedUseCase(page = nextPage, pageSize = PREFETCH_PAGE_SIZE).fold(
                     onSuccess = { paginatedPhotos ->
                         val currentPhotos = _allPhotos.value
-                        val newPhotos = currentPhotos + paginatedPhotos.photos
+                        val newPhotos = appendDistinct(currentPhotos, paginatedPhotos.photos)
 
                         _allPhotos.value = newPhotos
                         updateFilteredPhotos(currentTier)

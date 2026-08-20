@@ -59,6 +59,7 @@ import com.inik.camcon.presentation.ui.screens.settings.AdminSection
 import com.inik.camcon.presentation.ui.screens.settings.AdvisoryToastHost
 import com.inik.camcon.presentation.ui.screens.settings.AppSection
 import com.inik.camcon.presentation.ui.screens.settings.CameraControlSection
+import com.inik.camcon.presentation.ui.screens.settings.CameraStatusHero
 import com.inik.camcon.presentation.ui.screens.settings.ColorTransferSection
 import com.inik.camcon.presentation.ui.screens.settings.ConnectedCameraSection
 import com.inik.camcon.presentation.ui.screens.settings.DeleteAccountDialog
@@ -224,6 +225,7 @@ fun SettingsScreen(
     val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsStateWithLifecycle()
     val liveViewQuality by appSettingsViewModel.liveViewQuality.collectAsStateWithLifecycle()
     val isAdminTier by appSettingsViewModel.isAdminTier.collectAsStateWithLifecycle()
+    val isLiveViewAllowed by appSettingsViewModel.isLiveViewAllowed.collectAsStateWithLifecycle()
     val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsStateWithLifecycle()
     val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsStateWithLifecycle()
 
@@ -379,12 +381,23 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // 카메라 제어 설정 — 개발 빌드 또는 ADMIN 티어에 노출.
-            // (빌드 타입만으로 게이트하면 릴리즈에서 관리자에게도 안 보인다)
-            if (BuildConfig.SHOW_DEVELOPER_FEATURES || isAdminTier) {
+            // Hero — "지금 무엇이 붙어 있는가". 이 화면의 유일한 34sp 슬롯이며
+            // 연결 종류·모델명은 여기서만 말한다(하단 섹션은 기능 제한 고지만 담당).
+            CameraStatusHero(
+                isUsbConnected = isUsbConnected,
+                isPtpipConnected = isPtpipConnected,
+                connectedCameraModel = cameraUiState.connectedCameraModel,
+                connectedCameraManufacturer = cameraUiState.connectedCameraManufacturer
+            )
+
+            // 카메라 제어 설정 — 허용 티어(PRO 이상) 또는 개발 빌드에 노출.
+            // 라이브뷰가 이 섹션 안에 있으므로 ADMIN 으로 묶어 두면 구독자가 라이브뷰를
+            // 켤 방법이 없다(2026-08-20 실측: 추천인 등록 후에도 토글이 안 보였다).
+            // 빌드 타입만으로 게이트하면 릴리즈에서 관리자에게도 안 보이므로 OR 로 유지한다.
+            if (BuildConfig.SHOW_DEVELOPER_FEATURES || isLiveViewAllowed) {
                 CameraControlSection(
                     isCameraControlsEnabled = isCameraControlsEnabled,
-                    isAdminTier = isAdminTier,
+                    isLiveViewAllowed = isLiveViewAllowed,
                     isLiveViewEnabled = isLiveViewEnabled,
                     liveViewQuality = liveViewQuality,
                     isAutoStartEventListener = isAutoStartEventListener,
@@ -469,15 +482,12 @@ fun SettingsScreen(
             RawDownloadSection(
                 isRawDownloadAllowed = isRawDownloadAllowed,
                 isRawFileDownloadEnabled = isRawFileDownloadEnabled,
-                onRawDownloadChange = { appSettingsViewModel.setRawFileDownloadEnabled(it) }
+                onRawDownloadChange = { appSettingsViewModel.setRawFileDownloadEnabled(it) },
+                onUpgradeClick = { SubscriptionActivity.start(context) }
             )
 
-            // 연결된 카메라 정보
+            // 연결된 카메라 기능 제한 고지 — 연결 종류·모델명은 상단 Hero 가 소유한다.
             ConnectedCameraSection(
-                isUsbConnected = isUsbConnected,
-                isPtpipConnected = isPtpipConnected,
-                connectedCameraModel = cameraUiState.connectedCameraModel,
-                connectedCameraManufacturer = cameraUiState.connectedCameraManufacturer,
                 cameraFunctionLimitation = cameraUiState.cameraFunctionLimitation
             )
 
@@ -486,7 +496,8 @@ fun SettingsScreen(
                 user = authUiState.currentUser,
                 subscriptionTier = subscriptionTier,
                 isLoggingOut = authUiState.isLoading,
-                onProfileClick = { },
+                // 프로필 상세 화면이 없으므로 정적 행으로 둔다(빈 ripple·chevron 제거).
+                onProfileClick = null,
                 onSubscriptionClick = { SubscriptionActivity.start(context) },
                 onReferralRedeemClick = {
                     referralRedeemInput = ""

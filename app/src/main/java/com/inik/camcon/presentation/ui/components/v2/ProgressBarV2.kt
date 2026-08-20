@@ -3,19 +3,15 @@ package com.inik.camcon.presentation.ui.components.v2
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -23,6 +19,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
@@ -72,10 +69,15 @@ fun ProgressBarV2(
     }
 }
 
+/** 인디케이터가 차지하는 트랙 폭 비율. */
+private const val BAR_FRACTION = 0.3f
+
 @Composable
 private fun IndeterminateFill(color: Color) {
     val transition = rememberInfiniteTransition(label = "progressIndeterminate")
-    val translate by transition.animateFloat(
+    // `by` 위임 대신 State 로 받는다. 값을 graphicsLayer 람다 안에서 읽어야
+    // Composition 이 아니라 Layer 단계에서만 무효화된다(표시되는 내내 60fps 재구성 방지).
+    val translate = transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -85,21 +87,20 @@ private fun IndeterminateFill(color: Color) {
         label = "translate"
     )
 
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
-        val totalWidth = maxWidth
-        val barWidth = totalWidth * 0.3f
-        // 시작 위치: -barWidth → totalWidth
-        val travel = totalWidth + barWidth
-        val xOffset = (-barWidth) + travel * translate
-
-        Box(
-            modifier = Modifier
-                .offset(x = xOffset)
-                .width(barWidth)
-                .fillMaxHeight()
-                .background(color)
-        )
-    }
+    // BoxWithConstraints 를 쓰지 않는다 — 자식의 '구성'이 측정값에 의존하지 않으므로
+    // 서브컴포지션 기계장치가 통째로 낭비였다. 폭은 비율로, 이동은 레이어 변환으로 처리한다.
+    // 부모(ProgressBarV2 트랙)가 clip 하므로 트랙 밖으로 삐져나가지 않는다.
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(BAR_FRACTION)
+            .fillMaxHeight()
+            .graphicsLayer {
+                // size 는 이 막대 자신의 픽셀 크기다. 부모 폭 = size.width / BAR_FRACTION.
+                val parentWidth = size.width / BAR_FRACTION
+                translationX = -size.width + (parentWidth + size.width) * translate.value
+            }
+            .background(color)
+    )
 }
 
 @Preview(name = "ProgressBarV2 – Determinate", showBackground = true, backgroundColor = 0xFF1A1A1A)

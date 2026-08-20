@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title data-i18n="meta.title">CamCon — 촬영과 동시에 필름룩 사진을 폰으로</title>
+  <title data-i18n="meta.title">CamCon | 촬영과 동시에 필름룩 사진을 폰으로</title>
   <meta name="description" data-i18n-attr="content" data-i18n="meta.desc" content="CamCon은 DSLR·미러리스 카메라를 안드로이드에 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보는 시네마 카메라 컨트롤러입니다.">
   <meta name="theme-color" content="#0A0A0C">
 
@@ -11,28 +11,43 @@
   <meta property="og:locale" content="ko_KR">
   <meta property="og:site_name" content="CamCon">
   <meta property="og:url" content="https://camcon.inik.kr/">
-  <meta property="og:title" content="CamCon — 셔터를 누르면, 필름룩 사진이 폰에 도착합니다">
+  <meta property="og:title" content="CamCon | 셔터를 누르면, 필름룩 사진이 폰에 도착합니다">
   <meta property="og:description" content="카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
-  <meta property="og:image" content="https://camcon.inik.kr/assets/img/og-card.png?v=4">
+  <meta property="og:image" content="https://camcon.inik.kr/assets/img/og-card.png?v=5">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:type" content="image/png">
-  <meta property="og:image:alt" content="CamCon — Cinema Camera Controller">
+  <meta property="og:image:alt" content="CamCon Cinema Camera Controller">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="CamCon — 셔터를 누르면, 필름룩 사진이 폰에 도착합니다">
+  <meta name="twitter:title" content="CamCon | 셔터를 누르면, 필름룩 사진이 폰에 도착합니다">
   <meta name="twitter:description" content="카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.">
-  <meta name="twitter:image" content="https://camcon.inik.kr/assets/img/og-card.png?v=4">
+  <meta name="twitter:image" content="https://camcon.inik.kr/assets/img/og-card.png?v=5">
 
   <link rel="canonical" href="https://camcon.inik.kr/">
+  <!-- 언어별 URL. 이 9줄은 8개 페이지 전부에 동일하게 들어가야 한다(상호 return-link 대칭).
+       루트(/)가 한국어이므로 /ko/ 는 만들지 않는다. tools/build_i18n_pages.py 가 나머지 7개를 생성한다. -->
+  <link rel="alternate" hreflang="ko" href="https://camcon.inik.kr/">
+  <link rel="alternate" hreflang="en" href="https://camcon.inik.kr/en/">
+  <link rel="alternate" hreflang="ja" href="https://camcon.inik.kr/ja/">
+  <link rel="alternate" hreflang="zh" href="https://camcon.inik.kr/zh/">
+  <link rel="alternate" hreflang="de" href="https://camcon.inik.kr/de/">
+  <link rel="alternate" hreflang="es" href="https://camcon.inik.kr/es/">
+  <link rel="alternate" hreflang="fr" href="https://camcon.inik.kr/fr/">
+  <link rel="alternate" hreflang="it" href="https://camcon.inik.kr/it/">
+  <link rel="alternate" hreflang="x-default" href="https://camcon.inik.kr/en/">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 
+  <!-- 디스플레이 세리프 요청 삭제: CSS 참조 0건인데 opsz 9..144 · wght 500..800 2축 가변폰트 전체를 렌더 블로킹으로 받고 있었다.
+       JetBrains Mono 는 마이크로 라벨 전용이므로 비블로킹(media=print → onload)으로 내리고,
+       본문 폰트(Pretendard)와 자체 스타일시트만 블로킹으로 남긴다. -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..800&family=JetBrains+Mono:wght@400;500;600&display=swap">
-  <link rel="stylesheet" href="assets/css/style.css?v=20260710c">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260818b">
+  <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"></noscript>
 
   <script type="application/ld+json">
   {
@@ -43,7 +58,7 @@
     "applicationCategory": "MultimediaApplication",
     "description": "DSLR·미러리스 카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보는 시네마 카메라 컨트롤러",
     "url": "https://camcon.inik.kr/",
-    "image": "https://camcon.inik.kr/assets/img/og-card.png?v=4",
+    "image": "https://camcon.inik.kr/assets/img/og-card.png?v=5",
     "installUrl": "https://play.google.com/store/apps/details?id=com.inik.camcon",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "KRW" }
   }
@@ -52,6 +67,20 @@
 <body>
   <div class="grain" aria-hidden="true"></div>
   <a class="skip-link" href="#main" data-i18n="a11y.skip">본문 바로가기</a>
+
+  <!-- 언어 제안 배너. 자동 리다이렉트는 하지 않는다(Google 명시 비권고) — 원하는 언어가 현재 페이지와 다를 때
+       main.js 가 한 세션에 1회 노출한다. 표시/숨김의 단일 소스는 hidden 속성이다.
+       스타일은 인라인이되 display 만 style.css(#langSuggest:not([hidden]))에 있다 —
+       인라인 display 는 [hidden]{display:none} 을 이겨서 빈 배너가 항상 떠 버린다.
+       role="status"(+aria-live) 로 등장을 스크린리더에 통지한다. DOM 위치는 최상단 유지 —
+       position:fixed 라 시각 배치와 무관하고, 뒤로 옮기면 닫기 버튼이 페이지 전체 링크 뒤로 밀린다. -->
+  <div id="langSuggest" hidden role="status" aria-live="polite"
+       style="position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:70;align-items:center;gap:10px;max-width:calc(100vw - 24px);padding:9px 10px 9px 14px;border:1px solid var(--hair,#262C33);border-radius:999px;background:rgba(20,23,28,.94);box-shadow:0 8px 28px rgba(0,0,0,.45);font-size:14px;color:var(--ink-dim,#B6BCC6);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)">
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18"/></svg>
+    <a id="langSuggestLink" href="/en/" style="color:var(--amber,#E8A245);font-weight:600;text-decoration:none;white-space:nowrap"></a>
+    <button type="button" id="langSuggestClose" aria-label="언어 안내 닫기" data-i18n-attr="aria-label" data-i18n="a11y.bannerClose"
+            style="flex:none;width:26px;height:26px;border:0;border-radius:50%;background:transparent;color:var(--ink-mute,#8F95A0);font:inherit;font-size:15px;line-height:1;cursor:pointer">&times;</button>
+  </div>
 
   <!-- ══════════════ HEADER ══════════════ -->
   <header class="site-header" id="top">
@@ -65,7 +94,7 @@
         <span class="brand-name">Cam<b>Con</b></span>
       </a>
 
-      <nav class="nav" aria-label="주요 메뉴">
+      <nav class="nav" aria-label="주요 메뉴" data-i18n-attr="aria-label" data-i18n="a11y.navMain">
         <a href="#features" data-i18n="nav.features">기능</a>
         <a href="#films" data-i18n="nav.films">필름</a>
         <a href="#cameras" data-i18n="nav.cameras">지원 카메라</a>
@@ -77,7 +106,7 @@
       <div class="header-right">
         <div class="lang-select">
           <svg class="lang-globe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18"/></svg>
-          <select id="lang" aria-label="언어 선택 / Language">
+          <select id="lang" aria-label="언어 선택 / Language" data-i18n-attr="aria-label" data-i18n="a11y.langSelect">
             <option value="ko">한국어</option>
             <option value="en">English</option>
             <option value="ja">日本語</option>
@@ -93,7 +122,7 @@
         </button>
       </div>
     </div>
-    <nav class="mobile-nav" id="mobile-nav" aria-label="모바일 메뉴" hidden>
+    <nav class="mobile-nav" id="mobile-nav" aria-label="모바일 메뉴" data-i18n-attr="aria-label" data-i18n="a11y.navMobile" hidden>
       <a href="#features" data-i18n="nav.features">기능</a>
       <a href="#films" data-i18n="nav.films">필름</a>
       <a href="#cameras" data-i18n="nav.cameras">지원 카메라</a>
@@ -116,20 +145,16 @@
             <p class="hero-sub reveal" data-delay="2" data-i18n="hero.sub">카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.</p>
             <div class="hero-actions reveal" data-delay="3">
               <a class="play-badge-link" href="https://play.google.com/store/apps/details?id=com.inik.camcon" target="_blank" rel="noopener" aria-label="Google Play에서 다운로드" data-i18n-attr="aria-label" data-i18n="hero.cta">
-                <img class="play-badge" src="assets/img/play/badge-ko.png" alt="" width="646" height="250" data-i18n-attr="src" data-i18n="cta.badgeSrc">
+                <!-- 히어로 LCP 후보. src 는 cta.badgeSrc 로 런타임 교체되므로 preload 불가 → fetchpriority 만 부여한다. -->
+                <img class="play-badge" src="assets/img/play/badge-ko.png" alt="" width="646" height="250" fetchpriority="high" decoding="async" data-i18n-attr="src" data-i18n="cta.badgeSrc">
               </a>
               <a class="btn btn-ghost" href="#features" data-i18n="hero.explore">기능 살펴보기</a>
             </div>
-            <div class="hero-specs reveal" data-delay="3">
-              <div class="hero-spec"><div class="k">Film Looks</div><div class="v">296</div></div>
-              <div class="hero-spec"><div class="k">RAW</div><div class="v" data-i18n="hero.specRaw">원본 보존</div></div>
-              <div class="hero-spec"><div class="k">Tethering</div><div class="v">USB·Wi-Fi</div></div>
-            </div>
           </div>
 
+          <!-- TODO: 실제 앱 라이브뷰 스크린샷(840x1704) 확보 시 이 블록을 <img class="hero-shot"> 로 교체.
+               현재는 브랜드 마크의 조리개 모티프를 확대한 추상 그래픽만 둔다. -->
           <div class="hero-visual reveal" data-delay="2" aria-hidden="true">
-            <div class="hero-reticle"><span></span><span></span><span></span><span></span></div>
-            <div class="hero-rec">REC · TETHER</div>
             <div class="hero-lens">
               <svg class="hero-iris" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10.2" stroke="#6b5426" stroke-width="0.5"/>
@@ -150,64 +175,55 @@
       <!-- drifting film strip -->
       <div class="filmstrip" aria-hidden="true">
         <div class="filmstrip-track">
-          <!-- 8 unique × 4 sets; track loops by translateX(-25%) = exactly one set (gap-free at any viewport width) -->
-          <div class="frame"><img src="assets/film/free-portra400.webp" alt=""><span class="stock">PORTRA 400</span></div>
-          <div class="frame"><img src="assets/film/free-velvia50.webp" alt=""><span class="stock">VELVIA 50</span></div>
-          <div class="frame"><img src="assets/film/free-trix400.webp" alt=""><span class="stock">TRI-X 400</span></div>
-          <div class="frame"><img src="assets/film/free-classicchrome.webp" alt=""><span class="stock">CLASSIC CHROME</span></div>
-          <div class="frame"><img src="assets/film/free-px680.webp" alt=""><span class="stock">PX-680</span></div>
-          <div class="frame"><img src="assets/film/cat-slide.webp" alt=""><span class="stock">PROVIA 100</span></div>
-          <div class="frame"><img src="assets/film/cat-negnew.webp" alt=""><span class="stock">FUJI 400H</span></div>
-          <div class="frame"><img src="assets/film/cat-colorneg.webp" alt=""><span class="stock">SUPERIA 200</span></div>
-          <div class="frame"><img src="assets/film/free-portra400.webp" alt=""><span class="stock">PORTRA 400</span></div>
-          <div class="frame"><img src="assets/film/free-velvia50.webp" alt=""><span class="stock">VELVIA 50</span></div>
-          <div class="frame"><img src="assets/film/free-trix400.webp" alt=""><span class="stock">TRI-X 400</span></div>
-          <div class="frame"><img src="assets/film/free-classicchrome.webp" alt=""><span class="stock">CLASSIC CHROME</span></div>
-          <div class="frame"><img src="assets/film/free-px680.webp" alt=""><span class="stock">PX-680</span></div>
-          <div class="frame"><img src="assets/film/cat-slide.webp" alt=""><span class="stock">PROVIA 100</span></div>
-          <div class="frame"><img src="assets/film/cat-negnew.webp" alt=""><span class="stock">FUJI 400H</span></div>
-          <div class="frame"><img src="assets/film/cat-colorneg.webp" alt=""><span class="stock">SUPERIA 200</span></div>
-          <div class="frame"><img src="assets/film/free-portra400.webp" alt=""><span class="stock">PORTRA 400</span></div>
-          <div class="frame"><img src="assets/film/free-velvia50.webp" alt=""><span class="stock">VELVIA 50</span></div>
-          <div class="frame"><img src="assets/film/free-trix400.webp" alt=""><span class="stock">TRI-X 400</span></div>
-          <div class="frame"><img src="assets/film/free-classicchrome.webp" alt=""><span class="stock">CLASSIC CHROME</span></div>
-          <div class="frame"><img src="assets/film/free-px680.webp" alt=""><span class="stock">PX-680</span></div>
-          <div class="frame"><img src="assets/film/cat-slide.webp" alt=""><span class="stock">PROVIA 100</span></div>
-          <div class="frame"><img src="assets/film/cat-negnew.webp" alt=""><span class="stock">FUJI 400H</span></div>
-          <div class="frame"><img src="assets/film/cat-colorneg.webp" alt=""><span class="stock">SUPERIA 200</span></div>
-          <div class="frame"><img src="assets/film/free-portra400.webp" alt=""><span class="stock">PORTRA 400</span></div>
-          <div class="frame"><img src="assets/film/free-velvia50.webp" alt=""><span class="stock">VELVIA 50</span></div>
-          <div class="frame"><img src="assets/film/free-trix400.webp" alt=""><span class="stock">TRI-X 400</span></div>
-          <div class="frame"><img src="assets/film/free-classicchrome.webp" alt=""><span class="stock">CLASSIC CHROME</span></div>
-          <div class="frame"><img src="assets/film/free-px680.webp" alt=""><span class="stock">PX-680</span></div>
-          <div class="frame"><img src="assets/film/cat-slide.webp" alt=""><span class="stock">PROVIA 100</span></div>
-          <div class="frame"><img src="assets/film/cat-negnew.webp" alt=""><span class="stock">FUJI 400H</span></div>
-          <div class="frame"><img src="assets/film/cat-colorneg.webp" alt=""><span class="stock">SUPERIA 200</span></div>
+          <!-- 8 unique × 4 sets; track loops by translateX(-25%) = exactly one set (gap-free at any viewport width).
+               소스는 150x96 렌더 전용 축소본(assets/film/strip/, 300x240) — 원본 760x608 은 선형 5배 과대 전송이었다.
+               2~4세트는 1세트와 동일 파일이라 lazy 로 두어도 추가 바이트가 없다. -->
+          <div class="frame"><img src="assets/film/strip/free-portra400.webp" alt="" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">PORTRA 400</span></div>
+          <div class="frame"><img src="assets/film/strip/free-velvia50.webp" alt="" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">VELVIA 50</span></div>
+          <div class="frame"><img src="assets/film/strip/free-trix400.webp" alt="" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">TRI-X 400</span></div>
+          <div class="frame"><img src="assets/film/strip/free-classicchrome.webp" alt="" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">CLASSIC CHROME</span></div>
+          <div class="frame"><img src="assets/film/strip/free-px680.webp" alt="" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">PX-680</span></div>
+          <div class="frame"><img src="assets/film/strip/cat-slide.webp" alt="" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">PROVIA 100</span></div>
+          <div class="frame"><img src="assets/film/strip/cat-negnew.webp" alt="" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">FUJI 400H</span></div>
+          <div class="frame"><img src="assets/film/strip/cat-colorneg.webp" alt="" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">SUPERIA 200</span></div>
+          <div class="frame"><img src="assets/film/strip/free-portra400.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">PORTRA 400</span></div>
+          <div class="frame"><img src="assets/film/strip/free-velvia50.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">VELVIA 50</span></div>
+          <div class="frame"><img src="assets/film/strip/free-trix400.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">TRI-X 400</span></div>
+          <div class="frame"><img src="assets/film/strip/free-classicchrome.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">CLASSIC CHROME</span></div>
+          <div class="frame"><img src="assets/film/strip/free-px680.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">PX-680</span></div>
+          <div class="frame"><img src="assets/film/strip/cat-slide.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">PROVIA 100</span></div>
+          <div class="frame"><img src="assets/film/strip/cat-negnew.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">FUJI 400H</span></div>
+          <div class="frame"><img src="assets/film/strip/cat-colorneg.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">SUPERIA 200</span></div>
+          <div class="frame"><img src="assets/film/strip/free-portra400.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">PORTRA 400</span></div>
+          <div class="frame"><img src="assets/film/strip/free-velvia50.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">VELVIA 50</span></div>
+          <div class="frame"><img src="assets/film/strip/free-trix400.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">TRI-X 400</span></div>
+          <div class="frame"><img src="assets/film/strip/free-classicchrome.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">CLASSIC CHROME</span></div>
+          <div class="frame"><img src="assets/film/strip/free-px680.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">PX-680</span></div>
+          <div class="frame"><img src="assets/film/strip/cat-slide.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">PROVIA 100</span></div>
+          <div class="frame"><img src="assets/film/strip/cat-negnew.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">FUJI 400H</span></div>
+          <div class="frame"><img src="assets/film/strip/cat-colorneg.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">SUPERIA 200</span></div>
+          <div class="frame"><img src="assets/film/strip/free-portra400.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">PORTRA 400</span></div>
+          <div class="frame"><img src="assets/film/strip/free-velvia50.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">VELVIA 50</span></div>
+          <div class="frame"><img src="assets/film/strip/free-trix400.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">TRI-X 400</span></div>
+          <div class="frame"><img src="assets/film/strip/free-classicchrome.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">CLASSIC CHROME</span></div>
+          <div class="frame"><img src="assets/film/strip/free-px680.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">PX-680</span></div>
+          <div class="frame"><img src="assets/film/strip/cat-slide.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">PROVIA 100</span></div>
+          <div class="frame"><img src="assets/film/strip/cat-negnew.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">FUJI 400H</span></div>
+          <div class="frame"><img src="assets/film/strip/cat-colorneg.webp" alt="" loading="lazy" width="150" height="96" decoding="async" fetchpriority="low"><span class="stock">SUPERIA 200</span></div>
         </div>
       </div>
     </section>
 
     <!-- ══════════════ FEATURES ══════════════ -->
-    <section class="section" id="features">
+    <section class="section is-tall" id="features">
       <div class="wrap">
         <header class="section-head reveal">
           <p class="eyebrow" data-i18n="features.eyebrow">Features</p>
           <h2 class="section-title" data-i18n="features.title">촬영부터 색보정까지, 한 번에 끝냅니다</h2>
         </header>
+        <!-- 벤토: 3|1 / 1|2|1 / 2|1|1. 행마다 형태가 다르고 플래그십(필름) 셀이 가장 크다 -->
         <div class="features-grid">
-          <article class="feat span-2 has-visual reveal">
-            <div>
-              <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8M12 20a8 8 0 0 1-8-8M12 20v-3M2 12a10 10 0 0 1 20 0"/><circle cx="12" cy="12" r="1.4"/></svg></div>
-              <h3 data-i18n="feat.wifi.t">Wi-Fi 무선 테더링</h3>
-              <p data-i18n="feat.wifi.d">PTP/IP로 케이블 없이 촬영한 사진을 즉시 수신합니다. 끊겨도 자동으로 재연결하고, 백그라운드에서도 계속 받아옵니다.</p>
-            </div>
-            <div class="feat-visual feat-flow" aria-hidden="true">
-              <div class="flow-node"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.2"/><path d="M7 5l1.5-2h7L17 5"/></svg><span>CAMERA</span></div>
-              <div class="flow-line"><span class="flow-dot"></span><span class="flow-dot d2"></span><span class="flow-dot d3"></span></div>
-              <div class="flow-node"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18.5h2"/></svg><span>PHONE</span></div>
-            </div>
-          </article>
-          <article class="feat span-2 has-visual reveal" data-delay="1">
+          <article class="feat span-3 has-visual reveal">
             <div>
               <div class="feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M7 4v5M7 20v-5"/></svg></div>
               <h3 data-i18n="feat.film.t">필름 시뮬레이션 296종</h3>
@@ -220,25 +236,32 @@
               <span class="t l">ORIGINAL</span><span class="t r">PORTRA 400</span>
             </div>
           </article>
-          <article class="feat reveal">
+          <article class="feat reveal" data-delay="1">
             <div class="feat-icon"><svg viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="12" rx="2"/><path d="M12 15v5M8 20h8M10 3v3M14 3v3"/></svg></div>
             <h3 data-i18n="feat.usb.t">USB OTG 유선 제어</h3>
             <p data-i18n="feat.usb.d">표준 PTP 기반의 안정적인 유선 연결. USB-C(OTG) 케이블을 꽂으면 카메라를 즉시 인식합니다.</p>
           </article>
-          <article class="feat reveal" data-delay="1">
+          <article class="feat reveal">
             <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M4 16V8l7-4 7 4v8M4 16l7 4 7-4M4 16l7-4 7 4M11 12v8"/></svg></div>
             <h3 data-i18n="feat.color.t">색감 전송</h3>
             <p data-i18n="feat.color.d">마음에 드는 레퍼런스 사진 한 장의 색감을 추출해, 내 사진에 그대로 입힙니다.</p>
           </article>
-          <article class="feat reveal" data-delay="2">
-            <div class="feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.2"/><path d="M7 5l1.5-2h7L17 5"/></svg></div>
-            <h3 data-i18n="feat.live.t">라이브뷰 원격 제어</h3>
-            <p data-i18n="feat.live.d">실시간 프리뷰를 보며 ISO·셔터·조리개·화이트밸런스를 조작합니다. 화질은 속도·균형·품질 3단계.</p>
+          <article class="feat span-2 has-visual reveal" data-delay="1">
+            <div>
+              <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8M12 20a8 8 0 0 1-8-8M12 20v-3M2 12a10 10 0 0 1 20 0"/><circle cx="12" cy="12" r="1.4"/></svg></div>
+              <h3 data-i18n="feat.wifi.t">Wi-Fi 무선 테더링</h3>
+              <p data-i18n="feat.wifi.d">PTP/IP로 케이블 없이 촬영한 사진을 즉시 수신합니다. 끊겨도 자동으로 재연결하고, 백그라운드에서도 계속 받아옵니다.</p>
+            </div>
+            <div class="feat-visual feat-flow" aria-hidden="true">
+              <div class="flow-node"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.2"/><path d="M7 5l1.5-2h7L17 5"/></svg><span>CAMERA</span></div>
+              <div class="flow-line"><span class="flow-dot"></span><span class="flow-dot d2"></span><span class="flow-dot d3"></span></div>
+              <div class="flow-node"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18.5h2"/></svg><span>PHONE</span></div>
+            </div>
           </article>
-          <article class="feat reveal" data-delay="3">
-            <div class="feat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></div>
-            <h3 data-i18n="feat.timelapse.t">타임랩스 · 원격 릴리즈</h3>
-            <p data-i18n="feat.timelapse.d">인터벌을 정해두면 무인으로 장시간 촬영. 원격 셔터로 손떨림 없이 릴리즈합니다.</p>
+          <article class="feat fill-md reveal" data-delay="2">
+            <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></div>
+            <h3 data-i18n="feat.auto.t">스마트 자동 연결</h3>
+            <p data-i18n="feat.auto.d">카메라 전원만 켜면 mDNS·SSDP 검색으로 자동 탐색하고 재연결합니다. 매번 설정할 필요가 없습니다.</p>
           </article>
           <article class="feat span-2 has-visual reveal">
             <div>
@@ -251,13 +274,15 @@
               <span class="chip-file amber"><b>JPG</b>&nbsp;· FILM LOOK</span>
             </div>
           </article>
-          <article class="feat span-2 has-visual reveal" data-delay="1">
-            <div>
-              <div class="feat-icon"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg></div>
-              <h3 data-i18n="feat.auto.t">스마트 자동 연결</h3>
-              <p data-i18n="feat.auto.d">카메라 전원만 켜면 mDNS·SSDP 검색으로 자동 탐색하고 재연결합니다. 매번 설정할 필요가 없습니다.</p>
-            </div>
-            <div class="feat-visual feat-scan" aria-hidden="true">mDNS · SSDP SCAN → AUTO RECONNECT</div>
+          <article class="feat reveal" data-delay="1">
+            <div class="feat-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.2"/><path d="M7 5l1.5-2h7L17 5"/></svg></div>
+            <h3 data-i18n="feat.live.t">라이브뷰 원격 제어</h3>
+            <p data-i18n="feat.live.d">실시간 프리뷰를 보며 ISO·셔터·조리개·화이트밸런스를 조작합니다. 화질은 속도·균형·품질 3단계.</p>
+          </article>
+          <article class="feat is-soon reveal" data-delay="2">
+            <div class="feat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></div>
+            <h3><span data-i18n="feat.timelapse.t">타임랩스</span> <span class="badge soon" data-i18n="feat.timelapse.badge">준비 중</span></h3>
+            <p data-i18n="feat.timelapse.d">인터벌을 정해 무인으로 장시간 촬영하는 기능을 준비하고 있습니다. 지금 촬영은 한 장씩 원격 셔터로 이뤄집니다.</p>
           </article>
         </div>
       </div>
@@ -267,7 +292,6 @@
     <section class="section section-alt" id="films">
       <div class="wrap">
         <header class="section-head center reveal">
-          <p class="eyebrow center" data-i18n="films.eyebrow">Film Library</p>
           <h2 class="section-title" data-i18n="films.title">9개 계열, <span class="accent">296종</span>의 필름 시뮬레이션</h2>
           <p class="section-lead" data-i18n="films.lead">흑백부터 인스턴트, 컬러 네거티브까지. 실제 필름의 톤 커브와 색을 3D LUT로 재현했습니다.</p>
         </header>
@@ -275,8 +299,8 @@
         <!-- before / after (실제 LUT 적용) -->
         <div class="ba reveal">
           <div class="ba-frame">
-            <img class="ba-img ba-after" id="baAfter" src="assets/film/ba-after-free-portra400.webp" alt="필름 적용 후" data-i18n-attr="alt" data-i18n="films.afterAlt" width="1280" height="854">
-            <div class="ba-before-wrap"><img class="ba-img ba-before" src="assets/film/ba-before-grid.webp" alt="원본" data-i18n-attr="alt" data-i18n="films.baBefore" width="1280" height="854"></div>
+            <img class="ba-img ba-after" id="baAfter" src="assets/film/ba-after-free-portra400.webp" alt="필름 적용 후" data-i18n-attr="alt" data-i18n="films.afterAlt" width="1280" height="854" loading="lazy" decoding="async">
+            <div class="ba-before-wrap"><img class="ba-img ba-before" src="assets/film/ba-before-grid.webp" alt="원본" data-i18n-attr="alt" data-i18n="films.baBefore" width="1280" height="854" loading="lazy" decoding="async"></div>
             <span class="ba-tag ba-tag-l" data-i18n="films.baBefore">원본</span>
             <span class="ba-tag ba-tag-r" id="baName" aria-live="polite">Kodak Portra 400</span>
             <div class="ba-divider" aria-hidden="true"><span class="ba-handle"></span></div>
@@ -286,55 +310,105 @@
         </div>
 
         <div class="films-free reveal">
-          <div class="films-free-label" data-i18n="films.freeLabel">Free Signature — 무료로 쓰는 시그니처 5종</div>
+          <div class="films-free-label" data-i18n="films.freeLabel">Free Signature: 무료로 쓰는 시그니처 5종</div>
           <div class="free-strip">
-            <div class="swatch free is-active" role="button" tabindex="0" aria-label="Kodak Portra 400" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-free-portra400.webp" data-name="Kodak Portra 400"><img class="shot" src="assets/film/free-portra400.webp" alt="Kodak Portra 400" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Kodak Portra 400</span></div></div>
-            <div class="swatch free" role="button" tabindex="0" aria-label="Fuji Velvia 50" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-free-velvia50.webp" data-name="Fuji Velvia 50"><img class="shot" src="assets/film/free-velvia50.webp" alt="Fuji Velvia 50" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Fuji Velvia 50</span></div></div>
-            <div class="swatch free" role="button" tabindex="0" aria-label="Kodak Tri-X 400" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-free-trix400.webp" data-name="Kodak Tri-X 400"><img class="shot" src="assets/film/free-trix400.webp" alt="Kodak Tri-X 400" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Kodak Tri-X 400</span></div></div>
-            <div class="swatch free" role="button" tabindex="0" aria-label="Classic Chrome" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-free-classicchrome.webp" data-name="Classic Chrome"><img class="shot" src="assets/film/free-classicchrome.webp" alt="Classic Chrome" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Classic Chrome</span></div></div>
-            <div class="swatch free" role="button" tabindex="0" aria-label="Polaroid PX-680" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-free-px680.webp" data-name="Polaroid PX-680"><img class="shot" src="assets/film/free-px680.webp" alt="Polaroid PX-680" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Polaroid PX-680</span></div></div>
+            <button type="button" class="swatch free is-active" aria-label="Kodak Portra 400" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-free-portra400.webp" data-name="Kodak Portra 400"><img class="shot" src="assets/film/free-portra400.webp" alt="Kodak Portra 400" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Kodak Portra 400</span></div></button>
+            <button type="button" class="swatch free" aria-label="Fuji Velvia 50" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-free-velvia50.webp" data-name="Fuji Velvia 50"><img class="shot" src="assets/film/free-velvia50.webp" alt="Fuji Velvia 50" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Fuji Velvia 50</span></div></button>
+            <button type="button" class="swatch free" aria-label="Kodak Tri-X 400" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-free-trix400.webp" data-name="Kodak Tri-X 400"><img class="shot" src="assets/film/free-trix400.webp" alt="Kodak Tri-X 400" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Kodak Tri-X 400</span></div></button>
+            <button type="button" class="swatch free" aria-label="Classic Chrome" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-free-classicchrome.webp" data-name="Classic Chrome"><img class="shot" src="assets/film/free-classicchrome.webp" alt="Classic Chrome" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Classic Chrome</span></div></button>
+            <button type="button" class="swatch free" aria-label="Polaroid PX-680" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-free-px680.webp" data-name="Polaroid PX-680"><img class="shot" src="assets/film/free-px680.webp" alt="Polaroid PX-680" loading="lazy" width="760" height="608"><span class="tag-free">FREE</span><div class="meta"><span class="name">Polaroid PX-680</span></div></button>
           </div>
         </div>
 
         <div class="films-grid">
-          <div class="swatch film-cat reveal" role="button" tabindex="0" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-cat-bw.webp" data-name="Ilford Delta 100"><img class="shot" src="assets/film/cat-bw.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.bw">흑백</span><span class="n">25</span></div></div>
-          <div class="swatch film-cat reveal" data-delay="1" role="button" tabindex="0" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-cat-slide.webp" data-name="Fuji Provia 100"><img class="shot" src="assets/film/cat-slide.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.slide">컬러 슬라이드</span><span class="n">26</span></div></div>
-          <div class="swatch film-cat reveal" data-delay="2" role="button" tabindex="0" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-cat-xtrans.webp" data-name="Fuji Astia"><img class="shot" src="assets/film/cat-xtrans.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.xtrans">후지 X-Trans III</span><span class="n">15</span></div></div>
-          <div class="swatch film-cat reveal" role="button" tabindex="0" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-cat-instc.webp" data-name="Polaroid PX-70"><img class="shot" src="assets/film/cat-instc.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.instantc">인스턴트 컨슈머</span><span class="n">54</span></div></div>
-          <div class="swatch film-cat reveal" data-delay="1" role="button" tabindex="0" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-cat-instp.webp" data-name="Fuji FP-100C"><img class="shot" src="assets/film/cat-instp.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.instantp">인스턴트 프로</span><span class="n">68</span></div></div>
-          <div class="swatch film-cat reveal" data-delay="2" role="button" tabindex="0" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-cat-colorneg.webp" data-name="Fuji Superia 200"><img class="shot" src="assets/film/cat-colorneg.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.colorneg">컬러 네거티브</span><span class="n">13</span></div></div>
-          <div class="swatch film-cat reveal" role="button" tabindex="0" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-cat-negnew.webp" data-name="Fuji Pro 400H"><img class="shot" src="assets/film/cat-negnew.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.negnew">네거티브 뉴</span><span class="n">39</span></div></div>
-          <div class="swatch film-cat reveal" data-delay="1" role="button" tabindex="0" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-cat-negold.webp" data-name="Kodak Portra 160 NC"><img class="shot" src="assets/film/cat-negold.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.negold">네거티브 올드</span><span class="n">44</span></div></div>
-          <div class="swatch film-cat reveal" data-delay="2" role="button" tabindex="0" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-cat-print.webp" data-name="Kodak 2383"><img class="shot" src="assets/film/cat-print.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.print">프린트</span><span class="n">12</span></div></div>
+          <button type="button" class="swatch film-cat reveal" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-cat-bw.webp" data-name="Ilford Delta 100"><img class="shot" src="assets/film/cat-bw.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.bw">흑백</span><span class="n">25</span></div></button>
+          <button type="button" class="swatch film-cat reveal" data-delay="1" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-cat-slide.webp" data-name="Fuji Provia 100"><img class="shot" src="assets/film/cat-slide.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.slide">컬러 슬라이드</span><span class="n">26</span></div></button>
+          <button type="button" class="swatch film-cat reveal" data-delay="2" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-cat-xtrans.webp" data-name="Fuji Astia"><img class="shot" src="assets/film/cat-xtrans.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.xtrans">후지 X-Trans III</span><span class="n">15</span></div></button>
+          <button type="button" class="swatch film-cat reveal" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-cat-instc.webp" data-name="Polaroid PX-70"><img class="shot" src="assets/film/cat-instc.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.instantc">인스턴트 컨슈머</span><span class="n">54</span></div></button>
+          <button type="button" class="swatch film-cat reveal" data-delay="1" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-cat-instp.webp" data-name="Fuji FP-100C"><img class="shot" src="assets/film/cat-instp.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.instantp">인스턴트 프로</span><span class="n">68</span></div></button>
+          <button type="button" class="swatch film-cat reveal" data-delay="2" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-cat-colorneg.webp" data-name="Fuji Superia 200"><img class="shot" src="assets/film/cat-colorneg.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.colorneg">컬러 네거티브</span><span class="n">13</span></div></button>
+          <button type="button" class="swatch film-cat reveal" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-cat-negnew.webp" data-name="Fuji Pro 400H"><img class="shot" src="assets/film/cat-negnew.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.negnew">네거티브 뉴</span><span class="n">39</span></div></button>
+          <button type="button" class="swatch film-cat reveal" data-delay="1" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-cat-negold.webp" data-name="Kodak Portra 160 NC"><img class="shot" src="assets/film/cat-negold.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.negold">네거티브 올드</span><span class="n">44</span></div></button>
+          <button type="button" class="swatch film-cat reveal" data-delay="2" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-cat-print.webp" data-name="Kodak 2383"><img class="shot" src="assets/film/cat-print.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.print">프린트</span><span class="n">12</span></div></button>
         </div>
-        <p class="films-note reveal" data-i18n="films.note">전체 296종은 <strong>PRO</strong>에서 열립니다.</p>
+        <p class="films-note reveal" data-i18n="films.note">필름은 촬영 직후 수신 파이프라인에서 입혀지고, RAW 원본은 건드리지 않습니다. <strong>PRO</strong>에서는 전체 카탈로그와 필름·색감 동시 적용이 열립니다.</p>
       </div>
     </section>
 
     <!-- ══════════════ FULL-BLEED SHOWCASE ══════════════ -->
-    <section class="showcase" aria-label="필름 시뮬레이션 예시">
-      <img class="showcase-img" src="assets/film/band-fjord.webp" alt="CamCon 필름 시뮬레이션이 적용된 사진 예시" loading="lazy" width="2000" height="858">
-      <span class="showcase-tag">SHOT ON CAMCON · <b>CLASSIC CHROME</b></span>
+    <section class="showcase" aria-label="필름 시뮬레이션 예시" data-i18n-attr="aria-label" data-i18n="a11y.showcase">
+      <img class="showcase-img" src="assets/film/band-fjord.webp" alt="CamCon 필름 시뮬레이션이 적용된 사진 예시" data-i18n-attr="alt" data-i18n="a11y.showcaseAlt" loading="lazy" decoding="async" width="2000" height="858">
+    </section>
+    <p class="showcase-cap" data-i18n="films.showcaseCap">적용 필름: Classic Chrome</p>
+
+    <!-- ══════════════ COLOR TRANSFER ══════════════ -->
+    <!-- 예시 이미지는 앱과 같은 MKL 연산으로 렌더한 것. 갱신: website/tools/render_color_transfer.py -->
+    <section class="section section-alt" id="color">
+      <div class="wrap">
+        <header class="section-head center reveal">
+          <h2 class="section-title" data-i18n="color.title">사진 한 장이 곧 <span class="accent">프리셋</span>이 됩니다</h2>
+          <p class="section-lead" data-i18n="color.lead">마음에 드는 사진에서 색 분포를 통계로 뽑아 내 사진에 옮깁니다. 카탈로그에 없는 색도 레퍼런스 한 장이면 따라갑니다.</p>
+        </header>
+
+        <!-- 비대칭 2열: 왼쪽은 색의 출처(레퍼런스), 오른쪽은 결론(결과). 균등 3열은 §9.C 금지. -->
+        <div class="ct reveal">
+          <aside class="ct-source">
+            <figure class="ct-ref">
+              <img id="ctRef" src="assets/color/ct-ref-fjord.webp" alt="색을 가져올 레퍼런스 사진" data-i18n-attr="alt" data-i18n="color.refAlt" width="640" height="426" loading="lazy" decoding="async">
+              <figcaption data-i18n="color.stepRef">레퍼런스</figcaption>
+            </figure>
+
+            <!-- 사진에서 실제로 추출한 대표색(render_color_transfer.py). 장식 도트가 아니라 값이다. -->
+            <p class="ct-palette-label" data-i18n="color.palette">옮겨오는 색</p>
+            <ul class="ct-palette" id="ctPalette"></ul>
+
+            <div class="ct-refs" role="group" aria-label="레퍼런스 사진 선택" data-i18n-attr="aria-label" data-i18n="color.refPick">
+              <button type="button" class="ct-swatch is-active" data-ref="fjord" aria-pressed="true"><img src="assets/color/ct-ref-fjord.webp" alt="" width="640" height="426" loading="lazy"><span data-i18n="color.refFjord">피오르</span></button>
+              <button type="button" class="ct-swatch" data-ref="forest" aria-pressed="false"><img src="assets/color/ct-ref-forest.webp" alt="" width="640" height="426" loading="lazy"><span data-i18n="color.refForest">숲</span></button>
+            </div>
+          </aside>
+
+          <div class="ct-result">
+            <div class="ba ct-ba">
+              <div class="ba-frame">
+                <img class="ba-img" id="ctResult" src="assets/color/ct-after-fjord-70.webp" alt="레퍼런스의 색을 옮긴 결과 사진" data-i18n-attr="alt" data-i18n="color.resultAlt" width="1280" height="854" loading="lazy" decoding="async">
+                <div class="ba-before-wrap"><img class="ba-img" src="assets/color/ct-target.webp" alt="색을 입히기 전 원본 사진" data-i18n-attr="alt" data-i18n="color.targetAlt" width="1280" height="854" loading="lazy" decoding="async"></div>
+                <span class="ba-tag ba-tag-l" data-i18n="color.stepTarget">원본</span>
+                <span class="ba-tag ba-tag-r" data-i18n="color.stepResult">결과</span>
+                <div class="ba-divider" aria-hidden="true"><span class="ba-handle"></span></div>
+                <input class="ba-range" type="range" min="0" max="100" value="50" aria-label="손잡이를 드래그해 적용 전후를 비교하세요." data-i18n-attr="aria-label" data-i18n="color.dragHint">
+              </div>
+            </div>
+
+            <label class="ct-intensity">
+              <span class="ct-intensity-label" data-i18n="color.intensity">강도</span>
+              <input type="range" id="ctIntensity" min="0" max="3" step="1" value="2" aria-describedby="ctIntensityOut">
+              <output id="ctIntensityOut" for="ctIntensity">70%</output>
+            </label>
+          </div>
+        </div>
+
+        <p class="films-note reveal" data-i18n="color.note">강도 0%는 원본 그대로, 100%는 레퍼런스의 색 분포에 완전히 맞춥니다. 필름과 마찬가지로 JPG 사본에만 적용되고 RAW 원본은 건드리지 않습니다. <strong>PRO</strong>에서는 필름과 색감을 함께 걸 수 있습니다.</p>
+      </div>
     </section>
 
     <!-- ══════════════ CAMERAS ══════════════ -->
-    <section class="section" id="cameras">
+    <section class="section is-tight" id="cameras">
       <div class="wrap">
         <header class="section-head reveal">
-          <p class="eyebrow" data-i18n="cameras.eyebrow">Supported Cameras</p>
           <h2 class="section-title" data-i18n="cameras.title">내 카메라, 쓸 수 있을까요?</h2>
           <p class="section-lead" data-i18n="cameras.lead">USB(PTP) 또는 Wi-Fi STA(공유기) 모드를 지원하는 카메라라면 사용할 수 있습니다.</p>
         </header>
 
-        <div class="cam-table">
-          <div class="cam-row reveal">
+        <div class="cam-table reveal">
+          <div class="cam-row">
             <div class="conn"><svg viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="12" rx="2"/><path d="M12 15v5M8 20h8"/></svg><b data-i18n="cameras.usbRow">USB 유선</b></div>
-            <p class="desc" data-i18n="cameras.usbDesc">USB-C(OTG) 케이블로 연결하는 PTP 호환 카메라. Nikon · Canon · Sony · Fujifilm · Panasonic · OM System(Olympus) · Pentax · Ricoh · Leica 등 주요 제조사를 지원합니다.</p>
+            <p class="desc" data-i18n="cameras.usbDesc">USB-C(OTG) 케이블로 연결하는 PTP 호환 카메라. Nikon, Canon, Sony, Fujifilm, Panasonic, OM System(Olympus), Pentax, Ricoh, Leica 등 주요 제조사를 지원합니다.</p>
             <div class="cam-badges"><span class="badge ok" data-i18n="cameras.badgeBroad">폭넓게 지원</span></div>
           </div>
-          <div class="cam-row reveal" data-delay="1">
+          <div class="cam-row">
             <div class="conn"><svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8M12 20a8 8 0 0 1-8-8M12 20v-3M2 12a10 10 0 0 1 20 0"/><circle cx="12" cy="12" r="1.4"/></svg><b data-i18n="cameras.wifiRow">Wi-Fi 무선</b></div>
-            <p class="desc" data-i18n="cameras.wifiDesc">무선(Wi-Fi) 연결은 현재 <strong>Nikon Z 시리즈에서 지원</strong>됩니다(Z6·Z8 실기 검증). <strong>Canon·Sony·Fujifilm 무선은 검증 진행 중</strong> — 지원 확대 예정입니다. 그 외 제조사는 USB 유선으로 바로 연결할 수 있습니다.</p>
+            <p class="desc" data-i18n="cameras.wifiDesc">무선(Wi-Fi) 연결은 현재 <strong>Nikon Z 시리즈에서 지원</strong>됩니다(Z6·Z8 실기 검증). <strong>Canon·Sony·Fujifilm 무선은 검증 진행 중</strong>이며, 지원 확대 예정입니다. 그 외 제조사는 USB 유선으로 바로 연결할 수 있습니다.</p>
             <div class="cam-badges"><span class="badge wifi" data-i18n="cameras.badgeNikon">Nikon 검증됨</span><span class="badge" data-i18n="cameras.badgeExpand">그 외 확대 중</span></div>
           </div>
         </div>
@@ -342,11 +416,18 @@
 
         <div class="cam-explorer reveal">
           <div class="cam-explorer-head">
-            <div class="count"><span class="num" id="camTotal">—</span><span class="lbl"><span data-i18n="cameras.modelsSuffix">+ 모델</span></span></div>
+            <!-- 2단 표기: 앞 숫자는 libgphoto2 드라이버 등재 수, 뒤는 실사용 확인 수(getVerifiedCameras 실측). 둘을 섞어 쓰지 않는다. -->
+            <div class="count"><span class="num" id="camTotal">…</span><span class="lbl"><span data-i18n="cameras.modelsSuffix">드라이버 등재 모델</span></span><span class="lbl" id="camVerified" hidden></span></div>
             <button class="cam-toggle" id="camToggle" aria-expanded="false" aria-controls="camExplorerBody"><span data-i18n="cameras.listToggle">전체 지원 모델 보기</span><span class="chev" aria-hidden="true"></span></button>
           </div>
           <div class="cam-body" id="camExplorerBody" hidden>
             <p class="cam-count" data-i18n="cameras.listNote" style="margin-bottom:16px;color:var(--ink-mute)">아래 목록은 PTP(USB) 호환 기종입니다. Wi-Fi 배지가 붙은 기종은 무선 연결을 지원합니다.</p>
+            <!-- 드라이버 카탈로그에 없지만 앱이 실제 연결 성공을 익명 보고한 기종(getVerifiedCameras 의 model 표시명). 0건이면 hidden 유지. -->
+            <div class="cam-unlisted" id="camUnlisted" hidden>
+              <p class="cam-unlisted-title" data-i18n="cameras.unlistedTitle">목록 외 실사용 확인</p>
+              <p class="cam-count" data-i18n="cameras.unlistedNote">드라이버 목록에는 없지만 CamCon 사용자가 실제 연결에 성공한 기종입니다.</p>
+              <ul class="cam-list cam-list--unlisted" id="camUnlistedList"></ul>
+            </div>
             <div class="cam-search-row">
               <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
               <input id="camSearch" type="search" autocomplete="off" data-i18n-attr="placeholder" data-i18n="cameras.searchPh" placeholder="제조사 또는 모델명 검색 (예: Nikon Z8)">
@@ -363,42 +444,41 @@
     </section>
 
     <!-- ══════════════ CONNECT ══════════════ -->
-    <section class="section section-alt" id="connect">
+    <section class="section section-alt is-tight" id="connect">
       <div class="wrap">
         <header class="section-head reveal">
-          <p class="eyebrow" data-i18n="connect.eyebrow">How to Connect</p>
           <h2 class="section-title" data-i18n="connect.title">두 가지 연결 방법</h2>
         </header>
 
         <div class="reveal">
-          <div class="tabs" role="tablist" aria-label="연결 방법">
+          <div class="tabs" role="tablist" aria-label="연결 방법" data-i18n-attr="aria-label" data-i18n="a11y.tablist">
             <button class="tab is-active" role="tab" id="tab-usb" aria-controls="panel-usb" aria-selected="true" tabindex="0" data-i18n="connect.tabUsb">USB OTG</button>
             <button class="tab" role="tab" id="tab-sta" aria-controls="panel-sta" aria-selected="false" tabindex="-1" data-i18n="connect.tabSta">Wi-Fi · 공유기(STA)</button>
           </div>
 
           <div class="tab-panel is-active" id="panel-usb" role="tabpanel" aria-labelledby="tab-usb">
-            <div class="steps">
-              <div class="step"><div class="num">01</div><p data-i18n="connect.usb1">USB-C(OTG) 케이블로 폰과 카메라를 연결합니다.</p></div>
-              <div class="step"><div class="num">02</div><p data-i18n="connect.usb2">앱에서 USB 연결 권한을 허용합니다.</p></div>
-              <div class="step"><div class="num">03</div><p data-i18n="connect.usb3">자동 인식·연결이 완료되면 바로 촬영을 시작합니다.</p></div>
-            </div>
-            <div class="perm-note" data-i18n="connect.usbPerm">필요 권한 — USB 장치 접근 권한(연결 시 1회 허용)</div>
+            <ol class="steps">
+              <li class="step"><div class="lbl" data-i18n="connect.usb1Label">케이블 연결</div><p data-i18n="connect.usb1">USB-C(OTG) 케이블로 폰과 카메라를 연결합니다.</p></li>
+              <li class="step"><div class="lbl" data-i18n="connect.usb2Label">권한 허용</div><p data-i18n="connect.usb2">앱에서 USB 연결 권한을 허용합니다.</p></li>
+              <li class="step"><div class="lbl" data-i18n="connect.usb3Label">촬영 시작</div><p data-i18n="connect.usb3">자동 인식·연결이 완료되면 바로 촬영을 시작합니다.</p></li>
+            </ol>
+            <div class="perm-note" data-i18n="connect.usbPerm">필요 권한: USB 장치 접근 권한(연결 시 1회 허용)</div>
           </div>
 
           <div class="tab-panel" id="panel-sta" role="tabpanel" aria-labelledby="tab-sta" hidden>
-            <div class="steps">
-              <div class="step"><div class="num">01</div><p data-i18n="connect.sta1">카메라와 폰을 같은 공유기에 연결합니다.</p></div>
-              <div class="step"><div class="num">02</div><p data-i18n="connect.sta2">앱에서 카메라를 검색해 선택합니다.</p></div>
-              <div class="step"><div class="num">03</div><p data-i18n="connect.sta3">첫 연결 시 <strong>카메라 본체에서 "연결 허용"을 승인</strong>합니다. 이후에는 자동으로 재연결됩니다.</p></div>
-            </div>
-            <div class="perm-note" data-i18n="connect.staPerm">필요 권한 — 위치 권한(네트워크 검색용), 알림 권한(백그라운드 수신용)</div>
+            <ol class="steps">
+              <li class="step"><div class="lbl" data-i18n="connect.sta1Label">같은 네트워크</div><p data-i18n="connect.sta1">카메라와 폰을 같은 공유기에 연결합니다.</p></li>
+              <li class="step"><div class="lbl" data-i18n="connect.sta2Label">카메라 선택</div><p data-i18n="connect.sta2">앱에서 카메라를 검색해 선택합니다.</p></li>
+              <li class="step"><div class="lbl" data-i18n="connect.sta3Label">연결 승인</div><p data-i18n="connect.sta3">첫 연결 시 <strong>카메라 본체에서 "연결 허용"을 승인</strong>합니다. 이후에는 자동으로 재연결됩니다.</p></li>
+            </ol>
+            <div class="perm-note" data-i18n="connect.staPerm">필요 권한: 위치 권한(네트워크 검색용), 알림 권한(백그라운드 수신용)</div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- ══════════════ PRICING ══════════════ -->
-    <section class="section" id="pricing">
+    <section class="section is-tall" id="pricing">
       <div class="wrap">
         <header class="section-head center reveal">
           <p class="eyebrow center" data-i18n="pricing.eyebrow">Pricing</p>
@@ -434,48 +514,47 @@
     </section>
 
     <!-- ══════════════ FAQ ══════════════ -->
-    <section class="section section-alt" id="faq">
+    <section class="section section-alt is-tight" id="faq">
       <div class="wrap">
         <header class="section-head center reveal">
-          <p class="eyebrow center" data-i18n="faq.eyebrow">FAQ</p>
           <h2 class="section-title" data-i18n="faq.title">자주 묻는 질문</h2>
         </header>
         <div class="faq-list">
           <div class="acc reveal">
-            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q1">내 카메라가 지원되는지 어떻게 확인하나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
-            <div class="acc-panel"><p data-i18n="faq.a1">USB(PTP) 또는 Wi-Fi STA(공유기) 모드를 지원하는 카메라라면 사용할 수 있습니다. 연결 방식에 따른 기능 차이는 없습니다. 위 "전체 지원 모델 보기"에서 기종을 검색해 확인할 수 있습니다.</p></div>
+            <button class="acc-trigger" id="faq-t1" aria-expanded="false" aria-controls="faq-p1"><span data-i18n="faq.q1">내 카메라가 지원되는지 어떻게 확인하나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
+            <div class="acc-panel" id="faq-p1"><p data-i18n="faq.a1">USB(PTP) 또는 Wi-Fi STA(공유기) 모드를 지원하는 카메라라면 사용할 수 있습니다. 연결 방식에 따른 기능 차이는 없습니다. 위 "전체 지원 모델 보기"에서 기종을 검색해 확인할 수 있습니다.</p></div>
           </div>
           <div class="acc reveal">
-            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q2">RAW 파일이 훼손되지는 않나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
-            <div class="acc-panel"><p data-i18n="faq.a2">RAW 원본은 그대로 보존됩니다. 필름 시뮬레이션과 색감은 JPG 사본에만 적용되며, RAW(NEF 등) 파일에는 어떤 변형도 가하지 않습니다.</p></div>
+            <button class="acc-trigger" id="faq-t2" aria-expanded="false" aria-controls="faq-p2"><span data-i18n="faq.q2">RAW 파일이 훼손되지는 않나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
+            <div class="acc-panel" id="faq-p2"><p data-i18n="faq.a2">RAW 원본은 그대로 보존됩니다. 필름 시뮬레이션과 색감은 JPG 사본에만 적용되며, RAW(NEF 등) 파일에는 어떤 변형도 가하지 않습니다.</p></div>
           </div>
           <div class="acc reveal">
-            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q3">백그라운드에서도 사진이 계속 수신되나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
-            <div class="acc-panel"><p data-i18n="faq.a3">포그라운드 서비스로 동작하므로 다른 앱을 쓰는 동안에도 계속 수신합니다. 다만 앱을 완전히 종료하면 수신은 중단됩니다.</p></div>
+            <button class="acc-trigger" id="faq-t3" aria-expanded="false" aria-controls="faq-p3"><span data-i18n="faq.q3">백그라운드에서도 사진이 계속 수신되나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
+            <div class="acc-panel" id="faq-p3"><p data-i18n="faq.a3">포그라운드 서비스로 동작하므로 다른 앱을 쓰는 동안에도 계속 수신합니다. 다만 앱을 완전히 종료하면 수신은 중단됩니다.</p></div>
           </div>
           <div class="acc reveal">
-            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q4">어떤 안드로이드 버전이 필요한가요?</span><span class="acc-ico" aria-hidden="true"></span></button>
-            <div class="acc-panel"><p data-i18n="faq.a4">Android 10 이상, 64비트(arm64) 기기가 필요합니다.</p></div>
+            <button class="acc-trigger" id="faq-t4" aria-expanded="false" aria-controls="faq-p4"><span data-i18n="faq.q4">어떤 안드로이드 버전이 필요한가요?</span><span class="acc-ico" aria-hidden="true"></span></button>
+            <div class="acc-panel" id="faq-p4"><p data-i18n="faq.a4">Android 10 이상, 64비트(arm64) 기기가 필요합니다.</p></div>
           </div>
           <div class="acc reveal">
-            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q5">추천 코드는 어디서 입력하나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
-            <div class="acc-panel"><p data-i18n="faq.a5">로그인 화면 또는 설정 → 추천 코드 등록에서 입력할 수 있습니다.</p></div>
+            <button class="acc-trigger" id="faq-t5" aria-expanded="false" aria-controls="faq-p5"><span data-i18n="faq.q5">추천 코드는 어디서 입력하나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
+            <div class="acc-panel" id="faq-p5"><p data-i18n="faq.a5">로그인 화면 또는 설정 → 추천 코드 등록에서 입력할 수 있습니다.</p></div>
           </div>
           <div class="acc reveal">
-            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q6">Wi-Fi 연결이 안 돼요.</span><span class="acc-ico" aria-hidden="true"></span></button>
-            <div class="acc-panel"><p data-i18n="faq.a6">Nikon Z 시리즈는 첫 연결 시 카메라 본체 화면에서 "연결 허용"을 승인해야 합니다. 폰 핫스팟을 켜거나, 카메라와 폰이 같은 공유기(Wi-Fi)에 있어야 합니다. 그래도 안 되면 카메라의 Wi-Fi 기능을 껐다가 다시 켠 뒤 앱에서 다시 검색해 보세요.</p></div>
+            <button class="acc-trigger" id="faq-t6" aria-expanded="false" aria-controls="faq-p6"><span data-i18n="faq.q6">Wi-Fi 연결이 안 돼요.</span><span class="acc-ico" aria-hidden="true"></span></button>
+            <div class="acc-panel" id="faq-p6"><p data-i18n="faq.a6">Nikon Z 시리즈는 첫 연결 시 카메라 본체 화면에서 "연결 허용"을 승인해야 합니다. 폰 핫스팟을 켜거나, 카메라와 폰이 같은 공유기(Wi-Fi)에 있어야 합니다. 그래도 안 되면 카메라의 Wi-Fi 기능을 껐다가 다시 켠 뒤 앱에서 다시 검색해 보세요.</p></div>
           </div>
           <div class="acc reveal">
-            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q7">무료로 무엇을 할 수 있나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
-            <div class="acc-panel"><p data-i18n="faq.a7">카메라 연결(USB·Wi-Fi), 촬영과 사진 수신, 대표 필름 시그니처 5종은 무료입니다. 무료에서는 사진이 장축 2000px로 저장됩니다. PRO에서는 필름 시뮬레이션 296종 전체와 원본 해상도 저장, RAW 다운로드, 라이브뷰 고급 제어가 열립니다.</p></div>
+            <button class="acc-trigger" id="faq-t7" aria-expanded="false" aria-controls="faq-p7"><span data-i18n="faq.q7">무료로 무엇을 할 수 있나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
+            <div class="acc-panel" id="faq-p7"><p data-i18n="faq.a7">카메라 연결(USB·Wi-Fi), 촬영과 사진 수신, 대표 필름 시그니처 5종은 무료입니다. 무료에서는 사진이 장축 2000px로 저장됩니다. PRO에서는 필름 시뮬레이션 296종 전체와 원본 해상도 저장, RAW 다운로드, 라이브뷰 고급 제어가 열립니다.</p></div>
           </div>
           <div class="acc reveal">
-            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q8">카메라 셔터로 찍어도 폰에 전송되나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
-            <div class="acc-panel"><p data-i18n="faq.a8">네. 지원 카메라에서는 앱 원격 촬영뿐 아니라 카메라 바디 셔터로 찍은 사진도 자동으로 폰에 전송됩니다. 라이브뷰를 켠 상태에서도 동작합니다.</p></div>
+            <button class="acc-trigger" id="faq-t8" aria-expanded="false" aria-controls="faq-p8"><span data-i18n="faq.q8">카메라 셔터로 찍어도 폰에 전송되나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
+            <div class="acc-panel" id="faq-p8"><p data-i18n="faq.a8">네. 지원 카메라에서는 앱 원격 촬영뿐 아니라 카메라 바디 셔터로 찍은 사진도 자동으로 폰에 전송됩니다. 라이브뷰를 켠 상태에서도 동작합니다.</p></div>
           </div>
           <div class="acc reveal">
-            <button class="acc-trigger" aria-expanded="false"><span data-i18n="faq.q9">아이폰(iOS)도 지원하나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
-            <div class="acc-panel"><p data-i18n="faq.a9">현재 Android 전용입니다(Android 10 이상, 64비트 arm64 기기). iOS 버전은 제공하지 않습니다.</p></div>
+            <button class="acc-trigger" id="faq-t9" aria-expanded="false" aria-controls="faq-p9"><span data-i18n="faq.q9">아이폰(iOS)도 지원하나요?</span><span class="acc-ico" aria-hidden="true"></span></button>
+            <div class="acc-panel" id="faq-p9"><p data-i18n="faq.a9">현재 Android 전용입니다(Android 10 이상, 64비트 arm64 기기). iOS 버전은 제공하지 않습니다.</p></div>
           </div>
         </div>
       </div>
@@ -507,7 +586,7 @@
           </svg>
           <span class="brand-name">Cam<b>Con</b></span>
         </a>
-        <nav class="footer-nav" aria-label="푸터 메뉴">
+        <nav class="footer-nav" aria-label="푸터 메뉴" data-i18n-attr="aria-label" data-i18n="a11y.navFooter">
           <a href="#features" data-i18n="nav.features">기능</a>
           <a href="#films" data-i18n="nav.films">필름</a>
           <a href="#cameras" data-i18n="nav.cameras">지원 카메라</a>
@@ -516,15 +595,30 @@
           <a href="#faq" data-i18n="nav.faq">FAQ</a>
           <a href="/privacy.html" data-i18n="footer.privacy">개인정보처리방침</a>
           <a href="/terms.html" data-i18n="footer.terms">이용약관</a>
+          <!-- 홈페이지 ↔ 저장소 ↔ Play 를 서로 잇는 삼각측량. 어느 한 곳만 보고도
+               나머지 둘로 건너갈 수 있어야 "같은 사람이 만든 것"이 확인된다. -->
+          <a href="https://github.com/INI-K/CamCon_Pub" target="_blank" rel="noopener" data-i18n="footer.source">소스 코드</a>
           <a href="mailto:ppp5544@gmail.com" data-i18n="footer.contact">문의</a>
         </nav>
       </div>
       <div class="footer-bottom">
+        <!-- 정적 언어 링크. 헤더 select 는 JS 로 이동하므로 JS 를 끈 사용자의 유일한 전환 수단이고,
+             동시에 크롤러가 7개 언어 페이지에 도달하는 내부 링크 경로다. -->
+        <nav class="footer-nav" aria-label="언어 선택 / Language" data-i18n-attr="aria-label" data-i18n="a11y.langSelect" style="margin:0 0 14px -12px">
+          <a href="/" lang="ko" hreflang="ko">한국어</a>
+          <a href="/en/" lang="en" hreflang="en">English</a>
+          <a href="/ja/" lang="ja" hreflang="ja">日本語</a>
+          <a href="/zh/" lang="zh" hreflang="zh">中文</a>
+          <a href="/de/" lang="de" hreflang="de">Deutsch</a>
+          <a href="/es/" lang="es" hreflang="es">Español</a>
+          <a href="/fr/" lang="fr" hreflang="fr">Français</a>
+          <a href="/it/" lang="it" hreflang="it">Italiano</a>
+        </nav>
         <p data-i18n="footer.rights">© 2026 CamCon. All rights reserved.</p>
       </div>
     </div>
   </footer>
 
-  <script src="assets/js/main.js?v=20260710b" defer></script>
+  <script src="assets/js/main.js?v=20260818b" defer></script>
 </body>
 </html>

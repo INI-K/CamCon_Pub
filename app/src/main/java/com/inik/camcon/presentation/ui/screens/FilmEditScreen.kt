@@ -2,10 +2,13 @@ package com.inik.camcon.presentation.ui.screens
 
 import android.graphics.Bitmap
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,8 +56,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -66,16 +69,22 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.FilmAdjustments
 import com.inik.camcon.domain.model.FilmLut
 import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.AccentEdge
+import com.inik.camcon.presentation.theme.Caption
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.HeadingL
 import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoHero
 import com.inik.camcon.presentation.theme.MonoMicro
+import com.inik.camcon.presentation.theme.MonoNumeric
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.Surface1
+import com.inik.camcon.presentation.theme.Surface2
 import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.ui.screens.components.FilmEditPreview
@@ -235,7 +244,7 @@ fun FilmEditScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(4f / 3f)
-                    .background(Color.Black)
+                    .background(Surface0)
             )
 
             Text(
@@ -263,6 +272,12 @@ fun FilmEditScreen(
                         .padding(horizontal = Spacing.base)
                 ) {
                     SectionHeader(stringResource(R.string.fs_section_film))
+                    // Hero 판독값 — 이 화면의 존재 이유인 "강도 %"를 화면 최대 타이포로 세운다.
+                    // MonoHero(38sp tnum)라 드래그 중 자릿수가 바뀌어도 좌우가 흔들리지 않는다.
+                    IntensityReadout(
+                        intensity = filmEdit.intensity,
+                        filmName = filmName
+                    )
                     IntensitySlider(
                         intensity = filmEdit.intensity,
                         onChange = viewModel::setIntensity
@@ -354,13 +369,49 @@ private fun SectionHeader(text: String) {
     )
 }
 
+/**
+ * 강도(%) Hero 리드아웃. 화면 최대 타이포 슬롯이며, 우측에 현재 필름명을 보조로 붙인다.
+ * 값은 [IntensitySlider] 행에서 중복 표기하지 않는다(한 화면 Hero 하나).
+ */
+@Composable
+private fun IntensityReadout(intensity: Float, filmName: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = Spacing.xs),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        Text(
+            text = (intensity * 100f).roundToInt().toString(),
+            style = MonoHero,
+            color = Accent
+        )
+        Text(
+            text = "%",
+            style = MonoNumeric,
+            color = TextTertiary,
+            modifier = Modifier.padding(start = 2.dp, bottom = Spacing.sm)
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            text = filmName,
+            style = Caption,
+            color = TextSecondaryV2,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = Spacing.sm, bottom = Spacing.sm)
+        )
+    }
+}
+
 @Composable
 private fun IntensitySlider(intensity: Float, onChange: (Float) -> Unit) {
     LabeledSlider(
         label = stringResource(R.string.fs_intensity_title),
         value = intensity,
         valueRange = 0f..1f,
-        valueText = "${(intensity * 100f).roundToInt()}%",
+        // 값은 위 Hero 리드아웃이 표시한다.
+        valueText = null,
         onChange = onChange
     )
 }
@@ -450,7 +501,7 @@ private fun LabeledSlider(
     label: String,
     value: Float,
     valueRange: ClosedFloatingPointRange<Float>,
-    valueText: String,
+    valueText: String?,
     onChange: (Float) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -464,12 +515,14 @@ private fun LabeledSlider(
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextPrimaryV2
             )
-            // 수치 = MonoReadout 계열(MonoMicro), 앰버.
-            Text(
-                text = valueText,
-                style = MonoMicro,
-                color = Accent
-            )
+            // 인라인 수치 = 탭형 숫자(MonoNumeric), 앰버. null 이면 Hero 리드아웃이 대신 표시한다.
+            if (valueText != null) {
+                Text(
+                    text = valueText,
+                    style = MonoNumeric,
+                    color = Accent
+                )
+            }
         }
         val sliderColors = SliderDefaults.colors(
             thumbColor = Accent,
@@ -548,23 +601,33 @@ private fun FilmStripCell(
         if (thumbnail == null) onEnter()
         onDispose { onLeave() }
     }
+    // 누름 상태는 ripple 대신 surface tier 승강(Surface1 → Surface2) + 1px 앰버 엣지로 표현한다.
+    // 잠긴(PRO) 셀은 감광해 사용 가능 항목과 한눈에 구분되게 한다(컨택트 시트 셀 스크림과 같은 어휘).
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(64.dp)
             .clip(RoundedCornerShape(Radius.sm))
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .alpha(if (isLocked && !isSelected) 0.55f else 1f)
     ) {
         Box(
             modifier = Modifier
                 .size(64.dp)
                 .clip(RoundedCornerShape(Radius.sm))
-                .background(Surface1)
+                .background(if (isPressed) Surface2 else Surface1)
                 .border(
-                    border = if (isSelected) {
-                        androidx.compose.foundation.BorderStroke(StrokeWidth.thick, Accent)
-                    } else {
-                        androidx.compose.foundation.BorderStroke(StrokeWidth.hairline, DividerLine)
+                    border = when {
+                        isSelected -> BorderStroke(StrokeWidth.thick, Accent)
+                        isPressed -> BorderStroke(StrokeWidth.thin, AccentEdge)
+                        else -> BorderStroke(StrokeWidth.hairline, DividerLine)
                     },
                     shape = RoundedCornerShape(Radius.sm)
                 )

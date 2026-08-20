@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Ajustes Hero (indicador de conexión) -->
+    <string name="settings_v3_hero_eyebrow">CÁMARA</string>
+    <string name="settings_v3_hero_camera_none">Sin cámara</string>
+
+    <!-- Almacenamiento del servidor — estado previo a la API de cuota -->
+    <string name="settings_v3_storage_pending">Esperando datos de uso</string>
+</resources>

@@ -3,6 +3,7 @@ package com.inik.camcon.presentation.ui
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.ReportDrawnWhen
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -17,7 +18,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,9 +52,10 @@ import com.inik.camcon.domain.usecase.camera.SetupNativeEnvironmentUseCase
 import com.inik.camcon.domain.usecase.camera.StartNativeLogUseCase
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.AccentEdge
-import com.inik.camcon.presentation.theme.BodySmall
+import com.inik.camcon.presentation.theme.BodyLarge
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DisplayL
+import com.inik.camcon.presentation.theme.Micro
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.Surface0
@@ -114,7 +115,10 @@ class SplashActivity : ComponentActivity() {
         UiText.Resource(R.string.splash_initializing)
     )
     private var isLibraryLoaded by mutableStateOf(false)
-    private var subscriptionTier: SubscriptionTier? = null
+
+    // 관찰 가능해야 한다. 일반 필드로 두면 ReportDrawnWhen 조건이 티어 도착 시 재평가되지 않고,
+    // SplashScreen 의 티어 표시도 갱신되지 않는다. 항상 Main 디스패처에서만 쓴다.
+    private var subscriptionTier by mutableStateOf<SubscriptionTier?>(null)
     private var hasNavigated = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -136,6 +140,11 @@ class SplashActivity : ComponentActivity() {
                 LaunchedEffect(Unit) {
                     appVersionViewModel.checkForUpdate()
                 }
+
+                // TTFD(time to full display) 기준점. 이게 없으면 StartupTimingMetric 의
+                // timeToFullDisplay 가 timeToInitialDisplay 로 붕괴해, libgphoto2 .so 로딩과
+                // 구독 티어 조회에 걸린 시간이 측정에서 통째로 빠진다(스타트업 수치가 거짓으로 좋아진다).
+                ReportDrawnWhen { isLibraryLoaded && subscriptionTier != null }
 
                 SplashScreen(
                     versionState = versionState,
@@ -189,11 +198,10 @@ class SplashActivity : ComponentActivity() {
                     return@launch
                 }
 
-                val pluginDir =
-                    applicationContext.getDir("gphoto2_plugins", MODE_PRIVATE).absolutePath
-                LogcatManager.d("SplashActivity", "플러그인 디렉토리 경로: ${LogMask.path(pluginDir)}")
-
-                val envSetupResult = setupNativeEnvironmentUseCase(pluginDir)
+                // 플러그인 경로는 UseCase 가 스스로 정한다. 예전엔 여기서 베이스 디렉터리를
+                // 넘겼는데, `.so` 는 버전 하위 디렉터리에만 있어서 CAMLIBS/IOLIBS 가 빈 곳을
+                // 가리켰다(앱 시작 직후 올바른 설정을 덮어씀 — 2026-08-20 실측).
+                val envSetupResult = setupNativeEnvironmentUseCase()
                 if (!envSetupResult) {
                     LogcatManager.e("SplashActivity", "❌ 환경변수 설정 실패")
                     withContext(Dispatchers.Main) {
@@ -433,29 +441,31 @@ fun SplashScreen(
 
             Spacer(modifier = Modifier.height(Spacing.md))
 
-            // 라이브러리 로딩 상태 — bodyMedium 정렬
+            // 주 상태 판독값 — 16sp 리드. 아래 종속 라벨(11sp)과 5sp 스케일 대비를 만든다.
             Text(
                 text = libraryLoadingStatus.resolve(),
-                style = MaterialTheme.typography.bodyMedium,
+                style = BodyLarge,
                 color = TextSecondaryV2,
                 textAlign = TextAlign.Center
             )
 
+            // 종속 라벨 — 주 판독값에 딸린 부가 상태. 간격도 xs로 좁혀 종속 관계를 드러낸다.
+            // MicroLabel(트래킹 1.4)이 아닌 Micro: 이 문자열들은 로케일에 따라 CJK가 들어온다.
             if (versionState.isLoading) {
-                Spacer(modifier = Modifier.height(Spacing.sm))
+                Spacer(modifier = Modifier.height(Spacing.xs))
                 Text(
                     text = stringResource(R.string.splash_version_check),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = Micro,
                     color = TextTertiary,
                     textAlign = TextAlign.Center
                 )
             }
 
             if (BuildConfig.DEBUG && subscriptionTier != null) {
-                Spacer(modifier = Modifier.height(Spacing.sm))
+                Spacer(modifier = Modifier.height(Spacing.xs))
                 Text(
                     text = stringResource(R.string.splash_subscription_tier, subscriptionTier.name),
-                    style = BodySmall,
+                    style = Micro,
                     color = TextTertiary,
                     textAlign = TextAlign.Center
                 )
@@ -525,10 +535,14 @@ fun SplashScreen(
 fun SplashScreenPreview() {
     CamConTheme() {
         SplashScreen(
-            versionState = AppVersionUiState(),
-            libraryLoadingStatus = UiText.Resource(R.string.splash_initializing),
-            isLibraryLoaded = false,
-            subscriptionTier = null,
+            // 실제 콜드 스타트 값 — libgphoto2 로드 1284ms, 버전 체크 진행 중, PRO 계정
+            versionState = AppVersionUiState(isLoading = true),
+            libraryLoadingStatus = UiText.Resource(
+                R.string.splash_library_ready,
+                listOf(1284)
+            ),
+            isLibraryLoaded = true,
+            subscriptionTier = SubscriptionTier.PRO,
             onUpdateApp = {},
             onDismissUpdateDialog = {},
             navigateToNext = {}

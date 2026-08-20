@@ -129,7 +129,7 @@
     <string name="ptpip_check_camera_wifi">2. Comprueba que el Wi-Fi de la cámara esté activado</string>
     <string name="ptpip_check_wifi">1. Comprueba la conexión Wi-Fi</string>
     <string name="ptpip_connect">Conectar</string>
-    <string name="ptpip_connected_ip">Conectado — %s</string>
+    <string name="ptpip_connected_ip">Conectado - %s</string>
     <string name="ptpip_connecting_status">Conectando…</string>
     <string name="ptpip_connecting_to_camera">Conectando con la cámara…</string>
     <string name="ptpip_connection_error">Error de conexión</string>
@@ -183,7 +183,7 @@
     <string name="sta_mode_auto_reconnect">Reconexión automática</string>
     <string name="sta_mode_auto_reconnect_off">Gestión manual de conexión</string>
     <string name="sta_mode_auto_reconnect_on">Reconexión automática al cambiar de red</string>
-    <string name="sta_mode_general_wifi">Red Wi-Fi general — búsqueda mDNS disponible</string>
+    <string name="sta_mode_general_wifi">Red Wi-Fi general - búsqueda mDNS disponible</string>
     <string name="sta_mode_mdns_description">Busca automáticamente cámaras en la misma red.</string>
     <string name="sta_mode_mdns_search">Búsqueda de cámaras mDNS</string>
     <string name="sta_mode_search_camera">Buscar cámara</string>

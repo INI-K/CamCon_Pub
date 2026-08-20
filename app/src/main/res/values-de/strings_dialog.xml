@@ -29,7 +29,7 @@
     <string name="dialog_reconnect">Erneut verbinden</string>
 
     <string name="dialog_permission_reprompt_title">Einige Berechtigungen sind deaktiviert</string>
-    <string name="dialog_permission_reprompt_body">CamCon benötigt diese Berechtigungen für die volle Funktion:\n• Fotos &amp; Medien — zum Speichern und Anzeigen aufgenommener Fotos\n• Benachrichtigungen — um dich zu benachrichtigen, wenn im Hintergrund Fotos eintreffen\n\nSie wurden abgelehnt. Bitte aktiviere sie in den Einstellungen.</string>
+    <string name="dialog_permission_reprompt_body">CamCon benötigt diese Berechtigungen für die volle Funktion:\n• Fotos &amp; Medien - zum Speichern und Anzeigen aufgenommener Fotos\n• Benachrichtigungen - um dich zu benachrichtigen, wenn im Hintergrund Fotos eintreffen\n\nSie wurden abgelehnt. Bitte aktiviere sie in den Einstellungen.</string>
     <string name="dialog_permission_reprompt_settings">Einstellungen öffnen</string>
 
     <string name="dialog_usb_disconnected_title">USB-Gerät getrennt</string>

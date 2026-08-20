@@ -27,6 +27,19 @@ enum class PtpipConnectionPhase {
 }
 
 /**
+ * PTP/IP 연결 실패 사유.
+ *
+ * 재시도 폴링 루프가 UI에 노출하는 구조적 실패 사유다. 특히 [PAIRING_PENDING] 은
+ * "카메라가 소켓을 즉시 닫아(End of stream/-7) 반복 거부하는 = 사용자가 아직 카메라 본체에서
+ * 연결(페어링)을 허용하지 않은" 상태를 뜻한다. 이 경우 재시도는 계속하되, 사용자에게
+ * "카메라에서 연결을 허용하세요" 안내를 띄워야 한다(누르면 다음 시도에서 성공).
+ */
+enum class PtpipConnectFailure {
+    /** 카메라 본체에서 연결(페어링) 승인 대기 중. 재시도는 유지. */
+    PAIRING_PENDING
+}
+
+/**
  * 니콘 카메라 연결 모드 (AP/STA/UNKNOWN)
  */
 enum class NikonConnectionMode {
@@ -73,7 +86,34 @@ data class VendorVerdict(
 }
 
 /**
+ * 카메라가 광고하는 Wi-Fi 연결 프로파일(니콘 실측 확정, Z8 2026-08-19).
+ *
+ * 니콘 바디의 네트워크 메뉴 [컴퓨터에 연결]에서 고른 연결 유형이 mDNS TXT 의 `apps` 필드로 나온다.
+ * 이 값이 **바디 조작 가능 여부를 결정**한다 — 앱이 보내는 명령과 무관하며, 우리가 바꿀 수 없다.
+ * (해당 벤더 명령으로는 잠금이 풀리지 않음을 실기로 확인했다.)
+ *
+ * - [CAMERA_CONTROL] (`$DSC`): 원격 촬영·라이브뷰용. 세션 동안 바디 UI 가 호스트로 넘어가
+ *   본체 재생(▶) 버튼이 먹지 않는다.
+ * - [IMAGE_TRANSFER] (`WT3T`): 무선 전송용. 바디를 그대로 쓸 수 있고, 촬영물 자동 수신도 동작한다.
+ * - [UNKNOWN]: mDNS 로 발견되지 않았거나(SSDP·캐시 IP·수동 입력) TXT 에 `apps` 가 없는 경우.
+ */
+enum class NikonConnectionProfile { CAMERA_CONTROL, IMAGE_TRANSFER, UNKNOWN }
+
+/**
  * PTPIP 카메라 정보
+ *
+ * ⚠️ 불변식 — [name]과 [displayName]의 역할을 절대 섞지 않는다:
+ * - [name] = **Nikon 게이트 입력 전용 원본 문자열**. mDNS 서비스명 원문(`Z_8_5003869`), 캐시/DataStore에
+ *   저장된 원본 이름, AP 경로의 기존 라벨을 그대로 담는다. UI 목적으로 가공/치환하면
+ *   `CameraVendorClassifier.isLikelyNikon`이 뒤집혀 STA 인증(0x****/0x****)·GUID 주입이 생략되고
+ *   첫 페어링이 InitFail 0x1로 파손된다. 표시용 문자열을 여기에 대입하는 것은 금지.
+ * - [displayName] = **표시 전용, nullable**. null이면 UI가 폴백 체인을 적용한다
+ *   (`displayName ?: name.takeIf { it.isNotBlank() } ?: getString(ptpip_candidate_unnamed_fmt, ip)`).
+ *
+ * 동일성/식별은 계속 [ipAddress] + [port]만 사용한다.
+ * [name]/[displayName]/[discoverySource]를 동등비교에 쓰는 코드를 신설하지 않는다.
+ *
+ * 신규 2 필드는 default 값을 가지므로 기존 positional 호출부(4-arg/6-arg)는 무변경 컴파일된다.
  */
 data class PtpipCamera(
     val ipAddress: String,
@@ -81,7 +121,11 @@ data class PtpipCamera(
     val name: String,
     val isOnline: Boolean = true,
     val discoveredServiceType: String? = null,  // mDNS 서비스 타입: "_ptp._tcp" 또는 "_ptpip._tcp"
-    val vendorVerdict: VendorVerdict = VendorVerdict.unknown()  // 디스커버리 신호 기반 제조사 판별
+    val vendorVerdict: VendorVerdict = VendorVerdict.unknown(),  // 디스커버리 신호 기반 제조사 판별
+    val displayName: String? = null,  // 표시 전용(게이트 입력 아님). null이면 UI가 폴백 체인 적용
+    val discoverySource: CameraDiscoverySource = CameraDiscoverySource.UNKNOWN,
+    // mDNS TXT `apps` 로 읽은 연결 프로파일. 바디 조작 가능 여부를 좌우한다(NikonConnectionProfile 참조).
+    val connectionProfile: NikonConnectionProfile = NikonConnectionProfile.UNKNOWN
 )
 
 /**

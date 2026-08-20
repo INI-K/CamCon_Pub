@@ -16,6 +16,8 @@
     <string name="referral_error_self">Non puoi usare il tuo codice di invito.</string>
     <string name="referral_error_not_grantable">Questo codice non può essere applicato a questo account.</string>
     <string name="referral_error_network">Errore di rete. Riprova tra poco.</string>
+    <string name="referral_error_rate_limited">Troppi tentativi. Riprova tra poco.</string>
+    <string name="referral_error_rate_limited_minutes">Troppi tentativi. Riprova tra circa %1$d min.</string>
 
     <!-- 로그아웃 오류 상세 (settings_toast_logout_failed의 "%s") -->
     <string name="auth_error_network_detail">errore di rete</string>

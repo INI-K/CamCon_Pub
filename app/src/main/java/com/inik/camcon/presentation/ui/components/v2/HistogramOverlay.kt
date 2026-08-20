@@ -2,6 +2,7 @@ package com.inik.camcon.presentation.ui.components.v2
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -13,8 +14,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.Surface1
 import com.inik.camcon.presentation.util.HistogramData
 
@@ -34,8 +37,11 @@ fun HistogramOverlay(
     Box(
         modifier = modifier
             .size(width = HISTOGRAM_WIDTH, height = HISTOGRAM_HEIGHT)
-            .clip(RoundedCornerShape(Radius.md))
+            // 계측기 패널 — 타이트 라운드 + 헤어라인 경계. 라이브뷰 위에 얹히므로
+            // 그림자 없이 선 하나로 표면 tier 경계를 드러낸다.
+            .clip(RoundedCornerShape(Radius.sm))
             .background(Surface1.copy(alpha = 0.7f))
+            .border(StrokeWidth.hairline, DividerLine, RoundedCornerShape(Radius.sm))
             .padding(Spacing.xs)
     ) {
         if (data == null) return@Box

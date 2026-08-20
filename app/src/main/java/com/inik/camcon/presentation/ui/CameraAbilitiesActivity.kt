@@ -18,19 +18,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.presentation.theme.Body
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.Caption
+import com.inik.camcon.presentation.theme.DisplayL
 import com.inik.camcon.presentation.theme.HeadingM
+import com.inik.camcon.presentation.theme.HeadingS
 import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoMicro
+import com.inik.camcon.presentation.theme.MonoNumeric
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.SuccessV2
+import com.inik.camcon.presentation.theme.Surface3
+import com.inik.camcon.presentation.theme.TextDisabled
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.theme.WarningV2
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
@@ -217,8 +231,13 @@ private fun CameraAbilitiesContent(
         modifier = modifier
             .fillMaxSize()
             .padding(Spacing.base),
-        verticalArrangement = Arrangement.spacedBy(Spacing.base)
+        verticalArrangement = Arrangement.spacedBy(Spacing.md)
     ) {
+        // 히어로 — 이 화면의 존재 이유(어떤 카메라이고 원격제어가 되는가)
+        item {
+            AbilitiesHero(abilities = abilities, deviceInfo = deviceInfo)
+        }
+
         // 카메라 기본 정보
         item {
             SurfaceV2(tier = 2, border = true, modifier = Modifier.fillMaxWidth()) {
@@ -230,19 +249,23 @@ private fun CameraAbilitiesContent(
                 ) {
                     Text(
                         text = stringResource(R.string.diag_abilities_section_camera),
-                        style = HeadingM
+                        style = HeadingM,
+                        color = TextPrimaryV2
                     )
-                    HorizontalDivider()
 
                     if (deviceInfo != null) {
-                        InfoRow(stringResource(R.string.diag_abilities_label_manufacturer), deviceInfo.manufacturer)
-                        InfoRow(stringResource(R.string.diag_abilities_label_model), deviceInfo.model)
-                        InfoRow(stringResource(R.string.diag_abilities_label_version), deviceInfo.version)
+                        InfoRow(
+                            stringResource(R.string.diag_abilities_label_version),
+                            deviceInfo.version,
+                            numeric = true
+                        )
                         if (deviceInfo.hasValidSerialNumber()) {
-                            InfoRow(stringResource(R.string.diag_abilities_label_serial), deviceInfo.serialNumber)
+                            InfoRow(
+                                stringResource(R.string.diag_abilities_label_serial),
+                                deviceInfo.serialNumber,
+                                numeric = true
+                            )
                         }
-                    } else {
-                        InfoRow(stringResource(R.string.diag_abilities_label_model), abilities.model)
                     }
 
                     InfoRow(
@@ -272,9 +295,9 @@ private fun CameraAbilitiesContent(
                 ) {
                     Text(
                         text = stringResource(R.string.diag_abilities_section_connection),
-                        style = HeadingM
+                        style = HeadingM,
+                        color = TextPrimaryV2
                     )
-                    HorizontalDivider()
 
                     val portType = when {
                         abilities.isUsbConnection() -> stringResource(R.string.diag_abilities_value_usb)
@@ -282,9 +305,21 @@ private fun CameraAbilitiesContent(
                         else -> stringResource(R.string.diag_abilities_value_unknown)
                     }
                     InfoRow(stringResource(R.string.diag_abilities_label_connection_type), portType)
-                    InfoRow(stringResource(R.string.diag_abilities_label_usb_vendor), abilities.usbVendor)
-                    InfoRow(stringResource(R.string.diag_abilities_label_usb_product), abilities.usbProduct)
-                    InfoRow(stringResource(R.string.diag_abilities_label_usb_class), abilities.usbClass.toString())
+                    InfoRow(
+                        stringResource(R.string.diag_abilities_label_usb_vendor),
+                        abilities.usbVendor,
+                        numeric = true
+                    )
+                    InfoRow(
+                        stringResource(R.string.diag_abilities_label_usb_product),
+                        abilities.usbProduct,
+                        numeric = true
+                    )
+                    InfoRow(
+                        stringResource(R.string.diag_abilities_label_usb_class),
+                        abilities.usbClass.toString(),
+                        numeric = true
+                    )
                 }
             }
         }
@@ -400,20 +435,22 @@ private fun CameraAbilitiesContent(
             )
         }
 
-        // 비트마스크 원본 값 (개발자용)
+        // 비트마스크 원본 값 (개발자용) — 폭을 끊어 전폭 카드 나열의 리듬을 깬다
         item {
-            SurfaceV2(tier = 2, border = true, modifier = Modifier.fillMaxWidth()) {
+            SurfaceV2(
+                tier = 2,
+                border = true,
+                modifier = Modifier.wrapContentWidth(Alignment.Start)
+            ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(Spacing.base),
+                    modifier = Modifier.padding(Spacing.base),
                     verticalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
                     Text(
                         text = stringResource(R.string.diag_abilities_section_raw),
-                        style = HeadingM
+                        style = HeadingM,
+                        color = TextPrimaryV2
                     )
-                    HorizontalDivider()
 
                     CodeRow("operations", "0x${abilities.operations.toString(16).uppercase()}")
                     CodeRow(
@@ -448,45 +485,69 @@ private fun CameraAbilitiesContent(
                                 else -> Icons.Default.Info
                             },
                             contentDescription = null,
+                            modifier = Modifier.size(IconSize.md),
                             tint = when {
-                                abilities.supports.isFullyControllable() ->
-                                    MaterialTheme.colorScheme.primary
-
-                                abilities.supports.isDownloadOnly() ->
-                                    MaterialTheme.colorScheme.error
-
-                                else ->
-                                    MaterialTheme.colorScheme.secondary
+                                abilities.supports.isFullyControllable() -> SuccessV2
+                                abilities.supports.isDownloadOnly() -> WarningV2
+                                else -> TextSecondaryV2
                             }
                         )
                         Text(
                             text = stringResource(R.string.diag_abilities_section_summary),
-                            style = HeadingM
+                            style = HeadingM,
+                            color = TextPrimaryV2
                         )
                     }
-
-                    HorizontalDivider()
 
                     Text(
                         text = when {
                             abilities.supports.isFullyControllable() ->
-                                stringResource(R.string.diag_abilities_summary_full)
+                                stringResource(R.string.v3_abilities_summary_full)
 
                             abilities.supports.isDownloadOnly() ->
                                 stringResource(
-                                    R.string.diag_abilities_summary_download_only,
-                                    abilities.getManufacturer(),
+                                    R.string.v3_abilities_summary_download,
                                     abilities.getManufacturer()
                                 )
 
                             !abilities.supports.capturePreview ->
-                                stringResource(R.string.diag_abilities_summary_partial)
+                                stringResource(R.string.v3_abilities_summary_partial)
 
                             else ->
-                                stringResource(R.string.diag_abilities_summary_some)
+                                stringResource(R.string.v3_abilities_summary_some)
                         },
-                        style = MaterialTheme.typography.bodyMedium
+                        style = Body,
+                        color = TextSecondaryV2,
+                        modifier = Modifier.widthIn(max = READING_WIDTH_MAX)
                     )
+
+                    if (abilities.supports.isFullyControllable()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                            listOf(
+                                R.string.v3_abilities_cap_capture,
+                                R.string.v3_abilities_cap_liveview,
+                                R.string.v3_abilities_cap_config,
+                                R.string.v3_abilities_cap_files
+                            ).forEach { capRes ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = SuccessV2,
+                                        modifier = Modifier.size(IconSize.sm)
+                                    )
+                                    Text(
+                                        text = stringResource(capRes),
+                                        style = Body,
+                                        color = TextPrimaryV2
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -522,10 +583,10 @@ private fun DiagnosticsSection(
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
             Text(
-                text = stringResource(R.string.diag_section_title),
-                style = HeadingM
+                text = stringResource(R.string.v3_diag_section_title),
+                style = HeadingM,
+                color = TextPrimaryV2
             )
-            HorizontalDivider()
 
             // 진단 실행
             PrimaryButton(
@@ -540,8 +601,9 @@ private fun DiagnosticsSection(
             if (currentReport == null) {
                 Text(
                     text = stringResource(R.string.diag_report_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = Body,
+                    color = TextTertiary,
+                    modifier = Modifier.widthIn(max = READING_WIDTH_MAX)
                 )
             } else {
                 InfoRow(
@@ -554,12 +616,11 @@ private fun DiagnosticsSection(
                 )
             }
 
-            HorizontalDivider()
-
             // 에러 히스토리
             Text(
                 text = stringResource(R.string.diag_error_history_title),
-                style = HeadingM
+                style = HeadingS,
+                color = TextSecondaryV2
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -586,18 +647,16 @@ private fun DiagnosticsSection(
             errorHistory?.let { history ->
                 Text(
                     text = history.ifBlank { stringResource(R.string.diag_error_history_empty) },
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = MonoMicro,
+                    color = TextTertiary
                 )
             }
-
-            HorizontalDivider()
 
             // 메모리 풀 상태
             Text(
                 text = stringResource(R.string.diag_memory_title),
-                style = HeadingM
+                style = HeadingS,
+                color = TextSecondaryV2
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -617,11 +676,13 @@ private fun DiagnosticsSection(
             memoryStatus?.let { status ->
                 InfoRow(
                     stringResource(R.string.diag_memory_active_count),
-                    status.activeCount.toString()
+                    status.activeCount.toString(),
+                    numeric = true
                 )
                 InfoRow(
                     stringResource(R.string.diag_memory_total_allocated),
-                    status.totalAllocated.toString()
+                    status.totalAllocated.toString(),
+                    numeric = true
                 )
                 if (status.details.isNotBlank()) {
                     InfoRow(stringResource(R.string.diag_memory_details), status.details)
@@ -645,9 +706,9 @@ private fun FeatureCard(
         ) {
             Text(
                 text = title,
-                style = HeadingM
+                style = HeadingM,
+                color = TextPrimaryV2
             )
-            HorizontalDivider()
 
             features.forEach { feature ->
                 Row(
@@ -664,14 +725,12 @@ private fun FeatureCard(
                             imageVector = feature.icon,
                             contentDescription = null,
                             modifier = Modifier.size(IconSize.md),
-                            tint = if (feature.supported)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (feature.supported) TextSecondaryV2 else TextDisabled
                         )
                         Text(
                             text = feature.name,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = Body,
+                            color = if (feature.supported) TextPrimaryV2 else TextTertiary
                         )
                     }
 
@@ -681,11 +740,8 @@ private fun FeatureCard(
                             stringResource(R.string.diag_abilities_feature_supported)
                         else
                             stringResource(R.string.diag_abilities_feature_unsupported),
-                        tint = if (feature.supported)
-                            com.inik.camcon.presentation.theme.SuccessV2
-                        else
-                            com.inik.camcon.presentation.theme.ErrorV2,
-                        modifier = Modifier.size(IconSize.lg)
+                        tint = if (feature.supported) SuccessV2 else TextTertiary,
+                        modifier = Modifier.size(IconSize.md)
                     )
                 }
             }
@@ -693,21 +749,76 @@ private fun FeatureCard(
     }
 }
 
+/**
+ * 히어로 — 제조사(eyebrow) / 모델명(34sp) / 원격제어 등급(semantic).
+ * 화면에서 단 하나의 히어로 슬롯이다.
+ */
 @Composable
-private fun InfoRow(label: String, value: String) {
+private fun AbilitiesHero(
+    abilities: com.inik.camcon.domain.model.CameraAbilitiesInfo,
+    deviceInfo: com.inik.camcon.domain.model.PtpDeviceInfo?
+) {
+    val manufacturer = deviceInfo?.manufacturer?.takeIf { it.isNotBlank() }
+        ?: abilities.getManufacturer()
+    val model = deviceInfo?.model?.takeIf { it.isNotBlank() } ?: abilities.model
+
+    val gradeRes = when {
+        abilities.supports.isFullyControllable() -> R.string.v3_abilities_grade_full
+        abilities.supports.isDownloadOnly() -> R.string.v3_abilities_grade_download
+        else -> R.string.v3_abilities_grade_partial
+    }
+    val gradeColor = when {
+        abilities.supports.isFullyControllable() -> SuccessV2
+        abilities.supports.isDownloadOnly() -> WarningV2
+        else -> TextSecondaryV2
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = Spacing.sm, bottom = Spacing.xs),
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs)
+    ) {
+        // 제조사는 라틴 문자 전제라 트래킹 라벨을 그대로 쓴다.
+        Text(
+            text = manufacturer,
+            style = MicroLabel,
+            color = TextTertiary
+        )
+        Text(
+            text = model,
+            style = DisplayL,
+            color = TextPrimaryV2,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = stringResource(gradeRes),
+            style = Caption,
+            color = gradeColor
+        )
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String, numeric: Boolean = false) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = Caption,
+            color = TextTertiary,
+            modifier = Modifier.weight(1f)
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium
+            style = if (numeric) MonoNumeric else Body,
+            color = TextPrimaryV2,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -715,25 +826,24 @@ private fun InfoRow(label: String, value: String) {
 @Composable
 private fun CodeRow(label: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall,
-            fontFamily = FontFamily.Monospace,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = MonoMicro,
+            color = TextTertiary,
+            // 카드가 wrapContentWidth라 weight를 못 쓴다. 최소폭으로 hex 열을 정렬한다.
+            modifier = Modifier.widthIn(min = CODE_LABEL_MIN_WIDTH)
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall,
-            fontFamily = FontFamily.Monospace,
-            fontWeight = FontWeight.Bold,
+            style = MonoNumeric,
+            color = TextPrimaryV2,
             modifier = Modifier
                 .background(
-                    color = MaterialTheme.colorScheme.surface,
-                    shape = RoundedCornerShape(Radius.md)
+                    color = Surface3,
+                    shape = RoundedCornerShape(Radius.sm)
                 )
                 .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
         )
@@ -746,42 +856,49 @@ private data class FeatureItem(
     val icon: ImageVector
 )
 
+/** 장문 설명 최대 폭 — 전폭 문단이 계속 이어지는 것을 끊는다. */
+private val READING_WIDTH_MAX = 420.dp
+
+/** 비트마스크 카드의 라벨 열 최소 폭 — hex 값 열을 수직 정렬한다. */
+private val CODE_LABEL_MIN_WIDTH = 132.dp
+
 @Preview(showBackground = true, name = "Camera Abilities")
 @Composable
 private fun Preview_CameraAbilitiesScreen() {
+    // 실제 개체에서 읽히는 값에 가깝게 — 미지원 플래그가 섞여야 Close 경로도 프리뷰에서 검증된다.
     val dummyAbilities = com.inik.camcon.domain.model.CameraAbilitiesInfo(
-        model = "EOS R5",
+        model = "Canon EOS R5",
         portType = 1,
         usbVendor = "0x04A9",
         usbProduct = "0x3229",
         usbClass = 6,
-        operations = 0x00000FFF,
-        fileOperations = 0x000003F7,
-        folderOperations = 0x00000007,
-        status = "connected",
+        operations = 0x000004D3,
+        fileOperations = 0x000002F1,
+        folderOperations = 0x00000002,
+        status = "PRODUCTION",
         supports = com.inik.camcon.domain.model.CameraSupports(
             captureImage = true,
-            captureVideo = true,
-            captureAudio = true,
+            captureVideo = false,
+            captureAudio = false,
             capturePreview = true,
             triggerCapture = true,
             delete = true,
             preview = true,
             raw = true,
-            audio = true,
+            audio = false,
             exif = true,
-            deleteAll = true,
-            putFile = true,
-            makeDir = true,
-            removeDir = true,
+            deleteAll = false,
+            putFile = false,
+            makeDir = false,
+            removeDir = false,
             config = true
         )
     )
     val dummyDeviceInfo = com.inik.camcon.domain.model.PtpDeviceInfo(
-        manufacturer = "Canon",
+        manufacturer = "Canon Inc.",
         model = "EOS R5",
-        version = "1.3.2",
-        serialNumber = "123456789012",
+        version = "1.8.1",
+        serialNumber = "043027000418",
     )
 
     CamConTheme() {

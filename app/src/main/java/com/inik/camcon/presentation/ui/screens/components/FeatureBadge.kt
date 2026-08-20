@@ -24,6 +24,7 @@ import com.inik.camcon.presentation.theme.FeatureBadgeBurst
 import com.inik.camcon.presentation.theme.FeatureBadgeTimeLapse
 import com.inik.camcon.presentation.theme.Micro
 import com.inik.camcon.presentation.theme.Radius
+import com.inik.camcon.presentation.theme.Spacing
 
 /**
  * 카메라 기능을 표시하는 배지 컴포넌트
@@ -38,7 +39,7 @@ fun FeatureBadge(
         modifier = modifier
             .clip(RoundedCornerShape(Radius.sm))
             .background(color.copy(alpha = 0.2f))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
     ) {
         Text(
             text = text,

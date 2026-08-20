@@ -30,7 +30,7 @@
     <string name="settings_v2_camera_controls_on">ライブビューとカメラコントロールUIを表示</string>
     <string name="settings_v2_camera_controls_off">無効 - 最新の撮影写真が表示されます</string>
     <string name="settings_v2_liveview_title">ライブビューを有効化</string>
-    <string name="settings_v2_liveview_subtitle">リアルタイムのカメラ映像を表示（ADMIN専用）</string>
+    <string name="settings_v2_liveview_subtitle">リアルタイムのカメラ映像を表示します</string>
     <string name="settings_v2_liveview_quality_title">ライブビュー画質</string>
     <string name="settings_v2_liveview_quality_speed">速度優先</string>
     <string name="settings_v2_liveview_quality_balanced">バランス</string>
@@ -41,7 +41,7 @@
     <string name="settings_v2_auto_event_title">自動イベント受信</string>
     <string name="settings_v2_auto_event_subtitle">カメラ制御タブに入ると自動でイベントリスナーを開始</string>
     <string name="settings_v2_liveview_locked_title">ライブビュー機能</string>
-    <string name="settings_v2_liveview_locked_subtitle">ADMINティアでのみ利用できる機能です</string>
+    <string name="settings_v2_liveview_locked_subtitle">PRO 以上のプランでご利用いただけます</string>
     <string name="settings_v2_latest_photo_title">最新写真表示</string>
     <string name="settings_v2_latest_photo_subtitle">カメラコントロール無効時に最近撮影した写真を表示</string>
 

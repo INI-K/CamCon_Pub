@@ -50,7 +50,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
@@ -58,6 +57,8 @@ import coil.request.ImageRequest
 import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoMicro
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
@@ -191,15 +192,22 @@ fun ColorTransferImagePickerScreen(
                         .fillMaxWidth()
                         .padding(horizontal = Spacing.base)
                 ) {
-                    Text(
-                        text = message,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(Spacing.base),
-                        textAlign = TextAlign.Center
-                    )
+                    // 에러 본문은 좌측 앵커 — 계측 라벨 + 메시지 2단.
+                    Column(
+                        modifier = Modifier.padding(Spacing.base)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.ct_error_title),
+                            style = MicroLabel,
+                            color = ErrorV2
+                        )
+                        Spacer(modifier = Modifier.height(Spacing.xs))
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = ErrorV2
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(Spacing.sm))
             }

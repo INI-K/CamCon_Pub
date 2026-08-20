@@ -6,11 +6,14 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -49,9 +52,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoNumeric
+import com.inik.camcon.presentation.theme.MonoReadout
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
+import com.inik.camcon.presentation.theme.Surface0
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.viewmodel.ColorTransferViewModel
@@ -62,6 +74,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 private const val TAG = "ColorTransferLivePreview"
+
+/** 결과 비트맵이 아직 없을 때(플레이스홀더·슬라이더 판독) 쓰는 카드 높이. */
+private val PREVIEW_PLACEHOLDER_HEIGHT = 300.dp
 
 /**
  * 실시간 색감 전송 미리보기 컴포넌트
@@ -157,10 +172,20 @@ fun ColorTransferLivePreview(
         }
     }
 
+    // 결과가 있으면 카드가 사진 비율을 따라간다. 고정 300dp 가로 박스에 세로컷을 넣으면
+    // 위아래가 잘려 색 판정 대상이 사라지기 때문이다. 결과 전(플레이스홀더·슬라이더 판독)은 기존 높이 유지.
+    val previewAspectRatio = processedBitmap
+        ?.takeIf { it.width > 0 && it.height > 0 }
+        ?.let { it.width.toFloat() / it.height.toFloat() }
+
     SurfaceV2(
         modifier = modifier
             .fillMaxWidth()
-            .height(300.dp),
+            .then(
+                previewAspectRatio
+                    ?.let { Modifier.aspectRatio(it) }
+                    ?: Modifier.height(PREVIEW_PLACEHOLDER_HEIGHT)
+            ),
         tier = 2,
         border = true,
         shape = RoundedCornerShape(Radius.md)
@@ -196,28 +221,37 @@ fun ColorTransferLivePreview(
                 }
 
                 isSliderActive -> {
-                    // 슬라이더 조작 중일 때
+                    // 슬라이더 조작 중일 때 — 판독값은 tnum 모노로 고정폭 유지(드래그 중 자릿수 흔들림 방지).
+                    // 설정 카드 Hero(MonoHero 38sp)에 종속되는 에코라 MonoReadout(16sp)으로 둔다.
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
                             Icons.Default.Refresh,
                             contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                            modifier = Modifier.size(IconSize.xl),
+                            tint = Accent
                         )
                         Spacer(modifier = Modifier.height(Spacing.sm))
                         Text(
-                            text = stringResource(R.string.ct_lp_intensity_label, (intensity * 100).toInt()),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            text = stringResource(R.string.ct_v3_intensity_eyebrow),
+                            style = MicroLabel,
+                            color = TextTertiary
+                        )
+                        Spacer(modifier = Modifier.height(Spacing.xs))
+                        Text(
+                            text = stringResource(
+                                R.string.ct_intensity_percent,
+                                (intensity * 100).toInt()
+                            ),
+                            style = MonoReadout,
+                            color = Accent
                         )
                         Spacer(modifier = Modifier.height(Spacing.xs))
                         Text(
                             text = stringResource(R.string.ct_lp_slider_active_desc),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            color = TextTertiary
                         )
                     }
                 }
@@ -236,47 +270,67 @@ fun ColorTransferLivePreview(
                         Text(
                             text = stringResource(R.string.ct_lp_processing),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
+                            color = Accent
                         )
                         Text(
-                            text = stringResource(R.string.ct_lp_intensity_label, (intensity * 100).toInt()),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                            text = stringResource(
+                                R.string.ct_intensity_percent,
+                                (intensity * 100).toInt()
+                            ),
+                            style = MonoNumeric,
+                            color = Accent
                         )
                     }
                 }
 
                 processedBitmap != null -> {
-                    // 처리된 결과만 크게 표시
+                    // 처리된 결과만 크게 표시 — 결과 상태는 본문이므로 좌측 앵커.
+                    val resultInteraction = remember { MutableInteractionSource() }
+                    val isResultPressed by resultInteraction.collectIsPressedAsState()
+
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(Spacing.md),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.Start
                     ) {
-                        Text(
-                            text = stringResource(
-                                R.string.ct_lp_result_title,
-                                (lastProcessedIntensity * 100).toInt()
-                            ),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.ct_v3_result_eyebrow),
+                                style = MicroLabel,
+                                color = TextTertiary
+                            )
+                            Text(
+                                text = stringResource(
+                                    R.string.ct_intensity_percent,
+                                    (lastProcessedIntensity * 100).toInt()
+                                ),
+                                style = MonoReadout,
+                                color = Accent
+                            )
+                        }
                         Spacer(modifier = Modifier.height(Spacing.sm))
 
-                        // 처리된 이미지를 크게 표시 (클릭 가능)
+                        // 처리된 이미지를 크게 표시 (클릭 가능).
+                        // 색 판정이 기능이라 이미지 위 앰버 틴트 금지 — 눌림은 테두리 승격으로만 표현한다.
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
                                 .clip(RoundedCornerShape(Radius.md))
                                 .border(
-                                    StrokeWidth.thick,
-                                    MaterialTheme.colorScheme.primary,
+                                    if (isResultPressed) StrokeWidth.thick else StrokeWidth.hairline,
+                                    if (isResultPressed) Accent else DividerLine,
                                     RoundedCornerShape(Radius.md)
                                 )
-                                .clickable {
+                                .clickable(
+                                    interactionSource = resultInteraction,
+                                    indication = null
+                                ) {
                                     // 원본 크기로 색감 처리 시작
                                     // 이미 처리 중이면 중복 실행 방지(재탭 시 ~45MB 결과 비트맵 유기 + GPU 중복 연산 차단)
                                     if (isProcessingFullSize) return@clickable
@@ -308,26 +362,22 @@ fun ColorTransferLivePreview(
                                 bitmap = processedBitmap!!.asImageBitmap(),
                                 contentDescription = stringResource(R.string.ct_lp_cd_applied),
                                 modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                                // 카드가 사진 비율을 따라가지만 헤더 높이만큼 차이가 남는다.
+                                // 색 판정이 기능이라 한 픽셀도 잘리면 안 되므로 Fit 으로 둔다.
+                                contentScale = ContentScale.Fit
                             )
 
-                            // 클릭 힌트 오버레이
+                            // 클릭 힌트 — 전면 틴트 대신 하단 코너 배지(중립 스크림)로 분리.
                             if (!isProcessingFullSize) {
-                                Box(
+                                Text(
+                                    text = stringResource(R.string.ct_v3_lp_tap_full),
+                                    style = MicroLabel,
+                                    color = Accent,
                                     modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.ct_lp_tap_for_full),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                        .align(Alignment.BottomStart)
+                                        .background(Surface0.copy(alpha = 0.72f))
+                                        .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
+                                )
                             } else {
                                 // 원본 크기 처리 중 표시 — shimmer 스켈레톤 + 라벨 오버레이
                                 Box(
@@ -340,9 +390,8 @@ fun ColorTransferLivePreview(
                                     )
                                     Text(
                                         text = stringResource(R.string.ct_lp_processing_full),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onPrimary,
-                                        fontWeight = FontWeight.Bold
+                                        style = MicroLabel,
+                                        color = TextPrimaryV2
                                     )
                                 }
                             }
@@ -352,7 +401,7 @@ fun ColorTransferLivePreview(
                         Text(
                             text = stringResource(R.string.ct_lp_result_hint),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            color = TextTertiary
                         )
                     }
                 }
