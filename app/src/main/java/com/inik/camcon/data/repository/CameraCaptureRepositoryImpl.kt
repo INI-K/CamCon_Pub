@@ -855,6 +855,23 @@ class CameraCaptureRepositoryImpl @Inject constructor(
     }
 
     private suspend fun processNativePhotoDownload(job: NativeDownloadJob) {
+        // 정책상 차단(RAW 수신 OFF·티어 게이팅)은 **실패가 아니다**. 아래 handleNativePhotoDownload
+        // 는 진짜 저장 실패와 정책 차단을 똑같이 null 로 돌려주므로, 그대로 두면 설정대로 동작한
+        // 것을 "사진 저장 실패" STORAGE 오류로 사용자에게 알린다(실측 2026-08-20: 라이브뷰 중
+        // NEF 4 컷마다 오류 표시). 이벤트 리스너 경로(CameraEventManager)는 이미 같은 판정을
+        // 앞단에서 수행해 조용히 건너뛰는데, 라이브뷰 펌프 경로만 그 앞단을 우회한다.
+        if (!downloadManager.isDownloadAllowedByGating(job.fileName)) {
+            com.inik.camcon.utils.LogcatManager.d(
+                TAG,
+                "📵 정책상 수신 제외 — 저장 생략(실패 아님): ${job.fileName}"
+            )
+            // 진행 큐에서 제거하지 않으면 전송 카운트가 영구히 남는다.
+            transferProgressTracker.markDone(job.fileName)
+            // 설정을 다시 켰을 때 같은 컷을 받을 수 있도록 dedup 키를 해제한다.
+            processedFileCache.remove(job.fileName)
+            return
+        }
+
         val capturedPhoto = downloadManager.handleNativePhotoDownload(
             filePath = job.fullPath,
             fileName = job.fileName,

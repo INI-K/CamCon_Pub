@@ -289,7 +289,7 @@ class PhotoDownloadManager @Inject constructor(
      *
      * @return 저장을 진행해도 되면 true, 게이팅으로 차단해야 하면 false.
      */
-    private suspend fun isDownloadAllowedByGating(fileName: String): Boolean {
+    suspend fun isDownloadAllowedByGating(fileName: String): Boolean {
         val allowed = validateImageFormatUseCase.isDownloadAllowed(fileName)
         if (!allowed) {
             Log.w(TAG, "⛔ 포맷 게이팅 차단 — 저장 중단: $fileName")
