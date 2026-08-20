@@ -375,8 +375,14 @@ fun CameraControlScreen(
     // requestedOrientation 을 쓰는 곳은 이 파일에서 여기 하나뿐이어야 한다.
     // 아래 AnimatedContent 의 자식들이 각자 방향을 걸면, 이탈하는 쪽이 fade 300ms 뒤에
     // dispose 되면서 새로 들어온 쪽의 설정을 덮어써 방향이 어긋난다.
+    // 라이브뷰도 전체화면 대상이다 — 카메라 제어 설정에만 묶어 두면 그 토글을 못 켜는
+    // PRO·REFERRER 가 라이브뷰를 전체화면으로 볼 수 없다(2026-08-20).
     val isFullscreenActive =
-        isFullscreen && (appSettings.isCameraControlsEnabled || uiState.capturedPhotos.isNotEmpty())
+        isFullscreen && (
+            appSettings.isCameraControlsEnabled ||
+                appSettings.isLiveViewEnabled ||
+                uiState.capturedPhotos.isNotEmpty()
+            )
     val isShowingLiveView =
         isFullscreenActive && appSettings.isLiveViewEnabled && uiState.isLiveViewActive
 
@@ -925,7 +931,12 @@ private fun PortraitCameraLayout(
                 .background(Surface0),
             contentAlignment = Alignment.Center
         ) {
-            if (appSettings.isCameraControlsEnabled && appSettings.isLiveViewEnabled) {
+            // ⚠️ 라이브뷰는 '카메라 제어' 설정과 무관하게 표시한다(사용자 결정 2026-08-20).
+            // 그 설정의 토글은 ADMIN/개발 빌드에만 노출되므로, 함께 묶으면 PRO·REFERRER 는
+            // 라이브뷰를 켤 방법이 아예 없다. 현재 원격 제어 기능은 노출값 조정뿐이고
+            // 라이브뷰가 이 화면의 실질적 본체다.
+            // '카메라 제어' 개념 자체는 남겨 둔다 — 추후 원격 제어를 되살릴 때 쓴다.
+            if (appSettings.isLiveViewEnabled) {
                 // ✅ 프레임/Bitmap 디코딩 수집은 이 최하위 스코프에서만 (IO 디스패처에서 처리됨).
                 // 프레임레이트 recomposition 을 CameraPreviewArea 서브트리로 국한한다.
                 val liveViewFrame by viewModel.liveViewFrame.collectAsStateWithLifecycle()

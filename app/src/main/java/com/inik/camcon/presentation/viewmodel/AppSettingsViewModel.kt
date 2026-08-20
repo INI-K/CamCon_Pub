@@ -315,14 +315,15 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
-     * 셔터 사운드 활성화 여부 (기본값: true)
+     * 셔터 사운드 활성화 여부 (기본값: false — 저장소 기본값과 일치시킨다).
+     * initialValue 가 저장소 기본값과 다르면 첫 방출 전까지 토글이 켜진 채로 잠깐 보인다.
      */
     val isShutterSoundEnabled: StateFlow<Boolean> =
         appSettingsRepository.isShutterSoundEnabled
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000),
-                initialValue = true
+                initialValue = false
             )
 
     /**

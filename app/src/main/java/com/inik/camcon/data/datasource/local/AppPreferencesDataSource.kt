@@ -276,11 +276,12 @@ class AppPreferencesDataSource @Inject constructor(
         }
 
     /**
-     * 셔터 사운드 사용 여부 (기본값: true)
+     * 셔터 사운드 사용 여부 (기본값: false — 사용자 결정 2026-08-20).
+     * 테더링 촬영은 카메라 셔터음이 이미 나는 상황이라 앱이 소리를 더 내지 않는다.
      */
     override val isShutterSoundEnabled: Flow<Boolean> = context.appDataStore.data
         .map { preferences ->
-            preferences[SHUTTER_SOUND_ENABLED] ?: true
+            preferences[SHUTTER_SOUND_ENABLED] ?: false
         }
 
     /**
