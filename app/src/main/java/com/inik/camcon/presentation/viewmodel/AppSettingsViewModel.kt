@@ -79,15 +79,26 @@ class AppSettingsViewModel @Inject constructor(
     fun isRawFile(path: String): Boolean = validateImageFormatUseCase.isRawFile(path)
 
     /**
-     * 카메라 컨트롤 표시 여부
+     * 카메라 컨트롤 표시 여부.
+     *
+     * 저장된 설정만 보면 구독 만료·강등 뒤에도 계속 켜진 채 남는다(월 구독이라 흔한 경로).
+     * 라이브뷰와 같은 방식으로 티어를 함께 확인해 비허용 티어에서는 강제로 꺼진 것으로 본다.
+     * 판정은 기능 게이팅 단일 지점(ValidateFeatureAccessUseCase)에 위임한다.
      */
-    val isCameraControlsEnabled: StateFlow<Boolean> =
-        appSettingsRepository.isCameraControlsEnabled
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
-                initialValue = false
-            )
+    val isCameraControlsEnabled: StateFlow<Boolean> = combine(
+        appSettingsRepository.isCameraControlsEnabled,
+        getSubscriptionUseCase.getSubscriptionTier()
+    ) { settingEnabled, subscriptionTier ->
+        if (!validateFeatureAccessUseCase.isCameraControlAllowed(subscriptionTier)) {
+            false
+        } else {
+            settingEnabled
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
 
     /**
      * 라이브뷰 표시 여부 - ADMIN 티어에서만 활성화 가능
