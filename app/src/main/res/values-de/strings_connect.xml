@@ -29,6 +29,13 @@
     <string name="ptpip_source_manual">Manuell eingegeben</string>
     <string name="ptpip_vendor_confirmed_fmt">%1$s bestätigt</string>
     <string name="ptpip_vendor_likely_fmt">%1$s (vermutlich)</string>
+    <string name="ptpip_profile_transfer_notice">Bildübertragungsmodus: Während Live-View aufgenommene Fotos kommen erst nach dem Beenden von Live-View an, und die Speicherkarte lässt sich nicht durchsuchen. Stellen Sie die Computerverbindung der Kamera auf Kamerasteuerung um, um alle Funktionen zu nutzen.</string>
+    <string name="ptpip_profile_transfer_dialog_title">Auf Kamerasteuerung umstellen?</string>
+    <string name="ptpip_profile_transfer_dialog_body">Diese Kamera ist im Bildübertragungsmodus. Die Verbindung funktioniert, aber während Live-View aufgenommene Fotos kommen erst nach dem Beenden von Live-View an, und die Speicherkarte lässt sich nicht durchsuchen.\n\nStellen Sie die Computerverbindung an der Kamera auf Kamerasteuerung um und suchen Sie erneut. Einige ältere Modelle unterstützen nur die Bildübertragung.</string>
+    <string name="ptpip_profile_transfer_dialog_research">Erneut suchen</string>
+    <string name="ptpip_profile_transfer_dialog_connect_anyway">Trotzdem verbinden</string>
+    <string name="ptpip_profile_control">Fernsteuerung</string>
+    <string name="ptpip_profile_transfer">Bildübertragung</string>
     <string name="ptpip_vendor_unknown">Hersteller unbekannt</string>
     <string name="ptpip_discovery_empty_title">Keine Kamera gefunden</string>
     <string name="ptpip_discovery_empty_camera_first">Prüfen Sie zuerst die Kamera: 1) Ist sie mit dem Hotspot des Telefons verbunden? 2) Ist das Menü für die Verbindung mit Smart-Geräten (WLAN) aktiviert? 3) Hat der Energiesparmodus das WLAN abgeschaltet? Suchen Sie danach erneut.</string>

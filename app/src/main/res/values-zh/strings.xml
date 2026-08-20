@@ -368,6 +368,7 @@
     <string name="refresh_usb">刷新 USB</string>
     <string name="request_usb_permission">请求 USB 权限</string>
     <string name="photo_capture_failed">拍摄/接收照片失败（错误 %1$d）</string>
+    <string name="photo_transfer_rejected_by_camera">相机拒绝传输这张照片。请在相机上重新传输，或重新连接。</string>
     <string name="photo_delete_camera_failed">无法从相机删除照片</string>
     <string name="notif_channel_status_name">相机状态</string>
     <string name="notif_channel_status_desc">显示相机连接和文件接收状态</string>

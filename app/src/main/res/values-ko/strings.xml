@@ -372,6 +372,7 @@
     <!-- 카메라 미리보기 (i18n 정기 점검, 2026-07-13) -->
     <string name="camera_preview_live_view">라이브뷰</string>
     <string name="photo_capture_failed">사진 촬영/수신 실패 (오류 %1$d)</string>
+    <string name="photo_transfer_rejected_by_camera">카메라가 이 사진의 전송을 거부했습니다. 카메라에서 다시 전송하거나 재연결해 주세요.</string>
     <string name="photo_delete_camera_failed">카메라에서 사진을 삭제하지 못했습니다</string>
     <string name="notif_channel_status_name">카메라 상태</string>
     <string name="notif_channel_status_desc">카메라 연결·파일 수신 상태 표시</string>

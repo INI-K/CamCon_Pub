@@ -370,6 +370,7 @@
     <string name="licenses_contact_click_label">メールで問い合わせる</string>
     <string name="contact_email_copied">メールアプリが見つからないため、アドレスをクリップボードにコピーしました: %1$s</string>
     <string name="photo_capture_failed">写真の撮影/受信に失敗しました (エラー %1$d)</string>
+    <string name="photo_transfer_rejected_by_camera">カメラがこの写真の転送を拒否しました。カメラ側で再送するか、再接続してください。</string>
     <string name="photo_delete_camera_failed">カメラから写真を削除できませんでした</string>
     <string name="notif_channel_status_name">カメラの状態</string>
     <string name="notif_channel_status_desc">カメラの接続とファイル受信の状態を表示します</string>

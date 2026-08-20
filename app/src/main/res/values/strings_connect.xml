@@ -29,6 +29,13 @@
     <string name="ptpip_source_manual">Entered manually</string>
     <string name="ptpip_vendor_confirmed_fmt">%1$s confirmed</string>
     <string name="ptpip_vendor_likely_fmt">%1$s (likely)</string>
+    <string name="ptpip_profile_transfer_notice">Image transfer mode: photos taken during live view arrive only after live view is turned off, and browsing the memory card is unavailable. Set the camera\'s computer-connection type to camera control for full features.</string>
+    <string name="ptpip_profile_transfer_dialog_title">Switch to camera control?</string>
+    <string name="ptpip_profile_transfer_dialog_body">This camera is in image transfer mode. Connecting works, but photos taken during live view arrive only after live view ends, and the memory card cannot be browsed.\n\nChange the computer-connection type on the camera to camera control, then search again. Some older models only support image transfer.</string>
+    <string name="ptpip_profile_transfer_dialog_research">Search again</string>
+    <string name="ptpip_profile_transfer_dialog_connect_anyway">Connect anyway</string>
+    <string name="ptpip_profile_control">Remote control</string>
+    <string name="ptpip_profile_transfer">Image transfer</string>
     <string name="ptpip_vendor_unknown">Maker unknown</string>
     <string name="ptpip_discovery_empty_title">No cameras found</string>
     <string name="ptpip_discovery_empty_camera_first">Check the camera first: 1) it has joined the phone hotspot, 2) its smart-device (Wi-Fi) connection menu is on, 3) power saving has not switched Wi-Fi off. Then search again.</string>

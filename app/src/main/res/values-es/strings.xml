@@ -368,6 +368,7 @@
     <string name="request_usb_permission">Solicitar Permiso USB</string>
     <string name="camera_preview_live_view">Vista en vivo</string>
     <string name="photo_capture_failed">No se pudo capturar/recibir la foto (error %1$d)</string>
+    <string name="photo_transfer_rejected_by_camera">La cámara rechazó la transferencia de esta foto. Vuelve a transferirla desde la cámara o reconecta.</string>
     <string name="photo_delete_camera_failed">No se pudo eliminar la foto de la cámara</string>
     <string name="notif_channel_status_name">Estado de la cámara</string>
     <string name="notif_channel_status_desc">Muestra el estado de conexión y de recepción de archivos de la cámara</string>

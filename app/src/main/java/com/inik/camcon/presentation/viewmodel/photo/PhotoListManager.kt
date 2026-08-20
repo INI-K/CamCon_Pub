@@ -2,6 +2,7 @@ package com.inik.camcon.presentation.viewmodel.photo
 
 import android.content.Context
 import android.util.Log
+import androidx.annotation.VisibleForTesting
 import com.inik.camcon.BuildConfig
 import com.inik.camcon.R
 import com.inik.camcon.di.ApplicationScope
@@ -52,6 +53,31 @@ class PhotoListManager @Inject constructor(
     // 전체 사진 목록 (필터링 전)
     private val _allPhotos = MutableStateFlow<List<CameraPhoto>>(emptyList())
     val allPhotos: StateFlow<List<CameraPhoto>> = _allPhotos.asStateFlow()
+
+    /**
+     * 기존 목록에 다음 페이지를 이어붙이되 경로 기준 중복을 제거한다.
+     *
+     * 네이티브 페이징은 "역순 수집"(최신 우선)이라 페이지 사이에 새 사진이 들어오면
+     * 창이 밀려 같은 파일이 두 페이지에 걸쳐 나온다(Z8 실측 2026-08-19 16:56:
+     * KAY_3030.JPG 중복). 목록 화면은 `key = { photo -> photo.path }`(PhotoPreviewScreen)
+     * 로 그리므로 중복이 그대로 흘러가면 Compose 가 IllegalArgumentException 으로
+     * **앱을 죽인다**. 누적 지점은 여기 한 곳으로 모아 방어한다.
+     */
+    @VisibleForTesting
+    internal fun appendDistinct(
+        current: List<CameraPhoto>,
+        incoming: List<CameraPhoto>
+    ): List<CameraPhoto> {
+        if (incoming.isEmpty()) return current
+        val seen = HashSet<String>(current.size + incoming.size)
+        current.forEach { seen.add(it.path) }
+        val fresh = incoming.filter { seen.add(it.path) }
+        val dropped = incoming.size - fresh.size
+        if (dropped > 0) {
+            Log.d(TAG, "페이지 누적 중복 제거: ${dropped}개 (수신 ${incoming.size}개)")
+        }
+        return if (fresh.isEmpty()) current else current + fresh
+    }
 
     // 필터링된 사진 목록
     private val _filteredPhotos = MutableStateFlow<List<CameraPhoto>>(emptyList())
@@ -155,7 +181,8 @@ class PhotoListManager @Inject constructor(
                         }
 
                         Log.d(TAG, "사진 목록 불러오기 성공: ${paginatedPhotos.photos.size}개")
-                        _allPhotos.value = paginatedPhotos.photos
+                        // 첫 페이지도 경로 유일성을 보장한다(그리드 key 계약 — appendDistinct 주석 참조).
+                        _allPhotos.value = paginatedPhotos.photos.distinctBy { it.path }
                         updateFilteredPhotos(currentTier)
 
                         _currentPage.value = paginatedPhotos.currentPage
@@ -230,7 +257,7 @@ class PhotoListManager @Inject constructor(
 
                         Log.d(TAG, "loadNextPage 성공: ${paginatedPhotos.photos.size}개 추가")
                         val currentPhotos = _allPhotos.value
-                        val newPhotos = currentPhotos + paginatedPhotos.photos
+                        val newPhotos = appendDistinct(currentPhotos, paginatedPhotos.photos)
 
                         _allPhotos.value = newPhotos
                         updateFilteredPhotos(currentTier)
@@ -399,7 +426,7 @@ class PhotoListManager @Inject constructor(
                 getCameraPhotosPagedUseCase(page = nextPage, pageSize = PREFETCH_PAGE_SIZE).fold(
                     onSuccess = { paginatedPhotos ->
                         val currentPhotos = _allPhotos.value
-                        val newPhotos = currentPhotos + paginatedPhotos.photos
+                        val newPhotos = appendDistinct(currentPhotos, paginatedPhotos.photos)
 
                         _allPhotos.value = newPhotos
                         updateFilteredPhotos(currentTier)

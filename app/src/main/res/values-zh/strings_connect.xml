@@ -29,6 +29,13 @@
     <string name="ptpip_source_manual">手动输入</string>
     <string name="ptpip_vendor_confirmed_fmt">%1$s（已确认）</string>
     <string name="ptpip_vendor_likely_fmt">%1$s（推测）</string>
+    <string name="ptpip_profile_transfer_notice">图像传输模式：实时取景期间拍摄的照片要关闭实时取景后才会传入，且无法浏览存储卡。若要使用全部功能，请将相机的电脑连接方式改为相机控制。</string>
+    <string name="ptpip_profile_transfer_dialog_title">要切换到相机控制吗？</string>
+    <string name="ptpip_profile_transfer_dialog_body">此相机处于图像传输模式。可以连接，但实时取景期间拍摄的照片要在实时取景结束后才会传入，并且无法浏览存储卡。\n\n请在相机上将电脑连接方式改为相机控制，然后重新搜索。部分旧机型仅支持图像传输。</string>
+    <string name="ptpip_profile_transfer_dialog_research">重新搜索</string>
+    <string name="ptpip_profile_transfer_dialog_connect_anyway">仍然连接</string>
+    <string name="ptpip_profile_control">远程控制</string>
+    <string name="ptpip_profile_transfer">图像传输</string>
     <string name="ptpip_vendor_unknown">厂商未知</string>
     <string name="ptpip_discovery_empty_title">未找到相机</string>
     <string name="ptpip_discovery_empty_camera_first">请先检查相机：① 相机是否已连接手机热点 ② 相机的智能设备连接（Wi-Fi）菜单是否已开启 ③ 是否因省电而关闭了 Wi-Fi。确认后请重新搜索。</string>

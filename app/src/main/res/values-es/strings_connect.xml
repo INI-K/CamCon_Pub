@@ -29,6 +29,13 @@
     <string name="ptpip_source_manual">Introducida manualmente</string>
     <string name="ptpip_vendor_confirmed_fmt">%1$s confirmada</string>
     <string name="ptpip_vendor_likely_fmt">%1$s (probable)</string>
+    <string name="ptpip_profile_transfer_notice">Modo de transferencia de imágenes: las fotos tomadas durante la vista en vivo llegan solo al desactivarla, y no se puede explorar la tarjeta de memoria. Cambia el tipo de conexión al ordenador de la cámara a control de cámara para usar todas las funciones.</string>
+    <string name="ptpip_profile_transfer_dialog_title">¿Cambiar a control de cámara?</string>
+    <string name="ptpip_profile_transfer_dialog_body">Esta cámara está en modo de transferencia de imágenes. Se puede conectar, pero las fotos tomadas durante la vista en vivo llegan solo al desactivarla y no se puede explorar la tarjeta de memoria.\n\nCambia el tipo de conexión al ordenador en la cámara a control de cámara y vuelve a buscar. Algunos modelos antiguos solo admiten transferencia de imágenes.</string>
+    <string name="ptpip_profile_transfer_dialog_research">Buscar de nuevo</string>
+    <string name="ptpip_profile_transfer_dialog_connect_anyway">Conectar igualmente</string>
+    <string name="ptpip_profile_control">Control remoto</string>
+    <string name="ptpip_profile_transfer">Transferencia de imágenes</string>
     <string name="ptpip_vendor_unknown">Fabricante desconocido</string>
     <string name="ptpip_discovery_empty_title">No se encontró ninguna cámara</string>
     <string name="ptpip_discovery_empty_camera_first">Comprueba primero la cámara: 1) que se haya conectado al punto de acceso del teléfono, 2) que el menú de conexión con dispositivos inteligentes (Wi-Fi) esté activado, 3) que el ahorro de energía no haya apagado el Wi-Fi. Después, vuelve a buscar.</string>
