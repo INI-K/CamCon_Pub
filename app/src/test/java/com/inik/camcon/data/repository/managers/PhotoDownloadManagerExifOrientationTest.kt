@@ -1,7 +1,7 @@
 package com.inik.camcon.data.repository.managers
 
 import android.app.Application
-import android.media.ExifInterface
+import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
 import com.inik.camcon.domain.manager.PhotoCaptureEventManager
@@ -29,8 +29,9 @@ import java.util.Base64
  * TAG_ORIENTATION 을 NORMAL(1)로 재설정하고, 회전을 건너뛴 경우(false)엔 원본 orientation 을
  * 보존하는지 검증한다. 그 외 태그(MAKE/DATETIME_ORIGINAL)는 두 경우 모두 보존되어야 한다.
  *
- * PhotoDownloadManager 는 androidx 가 아닌 [android.media.ExifInterface] 를 쓰므로 Robolectric 의
- * 실제 프레임워크 구현으로 실 JPEG 파일에 read/write 한다(compileSdk 36 이나 Robolectric 4.14
+ * PhotoDownloadManager 가 쓰는 [androidx.exifinterface.media.ExifInterface] 를 그대로 사용해
+ * 실 JPEG 파일에 read/write 한다. androidx 구현은 순수 자바라 프레임워크에 의존하지 않지만,
+ * 매니저 생성에 Context 가 필요해 Robolectric 위에서 돌린다(compileSdk 36 이나 Robolectric 4.14
  * 지원 한계로 sdk=34 고정). copyAllExifData 는 private → 리플렉션으로 호출한다.
  *
  * application=Application::class: 실제 CamCon(@HiltAndroidApp)은 onCreate 에서 libgphoto2 네이티브를
@@ -101,6 +102,26 @@ class PhotoDownloadManagerExifOrientationTest {
         assertEquals("Nikon", out.getAttribute(ExifInterface.TAG_MAKE))
     }
 
+    @Test
+    fun `색공간 태그는 원본값과 무관하게 sRGB 로 덮어쓰인다`() {
+        // Arrange: AdobeRGB 등 sRGB 가 아닌 원본을 나타내는 Uncalibrated(65535) 를 심는다.
+        val original = makeOriginalWithColorSpace(ExifInterface.COLOR_SPACE_UNCALIBRATED)
+        val output = newBaselineJpeg("out_colorspace.jpg")
+
+        // Act
+        invokeCopyAllExifData(original, output, rotationApplied = false)
+
+        // Assert: 리사이즈 픽셀이 sRGB 로 변환되므로 태그도 sRGB 여야 한다.
+        // 원본값이 그대로 남아 있으면 복사 루프가 색공간 태그까지 베꼈거나
+        // sRGB 설정이 복사 루프보다 앞서 실행돼 덮어쓰인 것이므로, 순서 계약까지 함께 고정된다.
+        val out = ExifInterface(output.absolutePath)
+        assertEquals(
+            "결과 픽셀이 sRGB 이므로 ColorSpace 태그도 sRGB(1) 여야 뷰어 색이 어긋나지 않음",
+            ExifInterface.COLOR_SPACE_S_RGB,
+            out.getAttributeInt(ExifInterface.TAG_COLOR_SPACE, -1)
+        )
+    }
+
     // --- Helpers ---
 
     /** 실 1x1 JPEG 에 orientation + MAKE + DATETIME_ORIGINAL 을 써 원본 픽스처를 만든다. */
@@ -112,12 +133,29 @@ class PhotoDownloadManagerExifOrientationTest {
         exif.setAttribute(ExifInterface.TAG_DATETIME_ORIGINAL, "2026:06:09 14:30:25")
         exif.saveAttributes()
 
-        // fail-fast: Robolectric 의 android.media.ExifInterface writer 가 실제로 persist 하는지 확인.
+        // fail-fast: androidx ExifInterface writer 가 실제로 파일에 persist 하는지 확인.
         val readback = ExifInterface(file.absolutePath)
         assertTrue(
             "테스트 전제: ExifInterface write 가 동작해야 함(setup persist 실패)",
             readback.getAttributeInt(ExifInterface.TAG_ORIENTATION, -1) == orientation &&
                 readback.getAttribute(ExifInterface.TAG_MAKE) == "Nikon"
+        )
+        return file
+    }
+
+    /** 실 1x1 JPEG 에 색공간 태그를 써 sRGB 가 아닌 원본 픽스처를 만든다. */
+    private fun makeOriginalWithColorSpace(colorSpace: Int): File {
+        val file = newBaselineJpeg("original_colorspace.jpg")
+        val exif = ExifInterface(file.absolutePath)
+        exif.setAttribute(ExifInterface.TAG_COLOR_SPACE, colorSpace.toString())
+        exif.saveAttributes()
+
+        // fail-fast: 원본이 sRGB 가 아닌 상태로 실제 기록됐는지 확인(전제가 깨지면 단언이 무의미).
+        val readback = ExifInterface(file.absolutePath)
+        assertEquals(
+            "테스트 전제: 원본 ColorSpace 가 sRGB 가 아닌 값으로 기록돼야 함",
+            colorSpace,
+            readback.getAttributeInt(ExifInterface.TAG_COLOR_SPACE, -1)
         )
         return file
     }

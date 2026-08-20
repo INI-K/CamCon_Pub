@@ -12,8 +12,8 @@ import java.util.Locale
  * JPG/NEF 등 EXIF 를 포함한 포맷 모두에서 동작하며, 추출 실패 시 null 을 반환해
  * 호출측이 System.currentTimeMillis() 등으로 폴백할 수 있게 한다.
  *
- * 주의: 호출측(PhotoDownloadManager 등)은 android.media.ExifInterface 를 쓰므로
- * FQN 충돌을 막기 위해 이 유틸은 androidx ExifInterface 만 자체 import 해 격리한다.
+ * EXIF 읽기·쓰기는 프로젝트 전반이 androidx ExifInterface 로 통일되어 있으며
+ * (PhotoDownloadManager 등 호출측도 동일), 이 유틸도 같은 구현을 사용한다.
  */
 object ExifCaptureTime {
 

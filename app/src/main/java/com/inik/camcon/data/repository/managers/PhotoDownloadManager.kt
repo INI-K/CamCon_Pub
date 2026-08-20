@@ -4,8 +4,9 @@ import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ColorSpace
 import android.graphics.Matrix
-import android.media.ExifInterface
+import androidx.exifinterface.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -1269,18 +1270,6 @@ class PhotoDownloadManager @Inject constructor(
             try {
                 Log.d(TAG, "🔧 FREE 티어 이미지 리사이즈 시작: ${LogMask.path(inputPath)}")
 
-                // 메모리 상태 확인 (간소화)
-                val runtime = Runtime.getRuntime()
-                val availableMemory =
-                    runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
-
-                // 메모리 부족 시: 원본을 그대로 복사하면 FREE 2000px 제한이 우회되므로 실패 처리한다.
-                // (호출부는 false 를 받으면 원본 대신 다운로드 자체를 실패로 간주해야 함)
-                if (availableMemory < 30 * 1024 * 1024) { // 30MB 미만
-                    Log.w(TAG, "메모리 부족으로 리사이즈 불가 — 원본 저장 방지: 사용가능 ${availableMemory / 1024 / 1024}MB")
-                    return@withContext false
-                }
-
                 // 원본 이미지 크기 확인
                 val options = BitmapFactory.Options().apply {
                     inJustDecodeBounds = true
@@ -1291,6 +1280,18 @@ class PhotoDownloadManager @Inject constructor(
                 val originalHeight = options.outHeight
 
                 Log.d(TAG, "원본 이미지 크기: ${originalWidth}x${originalHeight}")
+
+                // 헤더 손상·미지원 포맷 등으로 치수를 못 읽으면 outWidth/outHeight 가 -1 이 된다.
+                // 이 경우를 아래 "이미 상한 이하" 분기와 섞으면 2000px 초과 원본이 그대로 복사되어
+                // FREE 티어 게이팅이 우회되므로, 여기서 명시적으로 실패 처리한다.
+                if (originalWidth <= 0 || originalHeight <= 0) {
+                    Log.w(
+                        TAG,
+                        "원본 치수를 읽지 못해 리사이즈 불가 — 원본 저장 방지: " +
+                                "${originalWidth}x${originalHeight}, ${LogMask.path(inputPath)}"
+                    )
+                    return@withContext false
+                }
 
                 // FREE 티어 리사이즈 목표 치수 판정(순수 함수). null 이면 이미 상한 이하 → 복사만.
                 val target = computeFreeTierTargetSize(originalWidth, originalHeight)
@@ -1310,7 +1311,17 @@ class PhotoDownloadManager @Inject constructor(
                 options.apply {
                     inJustDecodeBounds = false
                     inSampleSize = sampleSize
-                    inPreferredConfig = Bitmap.Config.RGB_565 // 메모리 절약 - ARGB_8888에서 RGB_565로 변경
+                    // 채널당 8비트 유지. RGB_565 는 채널당 5·6·5비트로 떨어뜨려 하늘·피부 같은
+                    // 완만한 그라데이션에 밴딩을 만들었다. 픽셀당 바이트가 2 배로 늘지만
+                    // calculateInSampleSize 가 디코딩본 장축을 항상 4000px 미만으로 묶으므로
+                    // 원본이 아무리 커도 디코딩 메모리는 유계다(추정 피크 약 120MB 이내).
+                    // 그래도 부족한 경우는 아래 catch (OutOfMemoryError) 가 잡아 false 를 반환하며,
+                    // 그 경로가 유일한 방어선이자 fail-closed 보장 지점이다.
+                    // (호출부는 false 를 받으면 원본 대신 다운로드 자체를 실패로 간주해야 함)
+                    inPreferredConfig = Bitmap.Config.ARGB_8888
+                    // 결과 색공간을 sRGB 로 고정한다. AdobeRGB 등 다른 색공간 원본이 들어와도
+                    // sRGB 로 변환해 저장하므로 뷰어마다 색이 달라지지 않는다.
+                    inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
                 }
 
                 originalBitmap = BitmapFactory.decodeFile(inputPath, options)
@@ -1351,7 +1362,9 @@ class PhotoDownloadManager @Inject constructor(
                     // 파일로 저장
                     FileOutputStream(outputPath).use { out ->
                         val compressFormat = Bitmap.CompressFormat.JPEG
-                        val compressQuality = 92 // 품질을 약간 낮춰서 메모리 절약
+                        // 재압축 손실을 줄이기 위한 품질값. 파일 크기에만 영향을 주고
+                        // 힙 사용량과는 무관하므로, 리사이즈 결과물 화질을 우선해 95 로 둔다.
+                        val compressQuality = 95
                         rotatedBitmap.compress(compressFormat, compressQuality, out)
                     }
 
@@ -1475,17 +1488,13 @@ class PhotoDownloadManager @Inject constructor(
                 ExifInterface.TAG_ARTIST,
                 ExifInterface.TAG_COPYRIGHT,
                 ExifInterface.TAG_IMAGE_DESCRIPTION,
-                ExifInterface.TAG_USER_COMMENT,
-
-                // 색상 공간 및 렌더링
-                ExifInterface.TAG_COLOR_SPACE,
-                ExifInterface.TAG_PHOTOMETRIC_INTERPRETATION,
-                ExifInterface.TAG_REFERENCE_BLACK_WHITE,
-                ExifInterface.TAG_WHITE_POINT,
-                ExifInterface.TAG_PRIMARY_CHROMATICITIES,
-                ExifInterface.TAG_Y_CB_CR_COEFFICIENTS,
-                ExifInterface.TAG_Y_CB_CR_POSITIONING,
-                ExifInterface.TAG_Y_CB_CR_SUB_SAMPLING
+                ExifInterface.TAG_USER_COMMENT
+                // 색상 공간·인코딩 특성 태그(TAG_COLOR_SPACE, TAG_PHOTOMETRIC_INTERPRETATION,
+                // TAG_REFERENCE_BLACK_WHITE, TAG_WHITE_POINT, TAG_PRIMARY_CHROMATICITIES,
+                // TAG_Y_CB_CR_* )는 복사하지 않는다. 리사이즈 픽셀은 inPreferredColorSpace 로 이미
+                // sRGB 로 변환됐고 JPEG 도 새로 인코딩하므로, 원본(예: AdobeRGB) 값을 그대로 베끼면
+                // 픽셀과 태그가 어긋나 EXIF 를 존중하는 뷰어에서 색이 틀어진다.
+                // TAG_COLOR_SPACE 는 아래에서 sRGB 로 명시 설정한다.
                 // 방향(TAG_ORIENTATION)은 아래에서 회전 적용 여부에 따라 별도 처리 — 원본값 그대로 복사 금지(이중 회전 방지)
             )
 
@@ -1498,6 +1507,13 @@ class PhotoDownloadManager @Inject constructor(
                     copiedCount++
                 }
             }
+
+            // 색공간 태그: 리사이즈 픽셀이 sRGB 로 변환된 상태이므로 원본값을 물려받지 않고 sRGB 로 고정한다.
+            // CamCon 은 결과물 색공간을 sRGB 하나로 통일하기로 했고, 그래야 뷰어마다 색이 달라지지 않는다.
+            newExif.setAttribute(
+                ExifInterface.TAG_COLOR_SPACE,
+                ExifInterface.COLOR_SPACE_S_RGB.toString()
+            )
 
             // 방향 태그: 픽셀 회전을 실제로 적용했으면 NORMAL 로 재설정해 뷰어·후속 색감/필름 단계의 이중 회전을 막는다.
             // 회전을 건너뛴 경우(NORMAL·메모리 부족·OOM)엔 원본 orientation 을 보존해 뷰어 자동 회전에 맡긴다.
