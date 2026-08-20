@@ -2,13 +2,19 @@ package com.inik.camcon.presentation.viewmodel
 
 import app.cash.turbine.test
 import com.inik.camcon.R
+import com.inik.camcon.domain.model.Subscription
+import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.User
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.auth.SignInWithGoogleUseCase
 import com.inik.camcon.domain.usecase.auth.UserReferralUseCase
 import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.unmockkAll
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -28,6 +34,7 @@ class LoginViewModelTest {
     private val testDispatcher = UnconfinedTestDispatcher()
     private lateinit var signInWithGoogleUseCase: SignInWithGoogleUseCase
     private lateinit var userReferralUseCase: UserReferralUseCase
+    private lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
     private lateinit var viewModel: LoginViewModel
 
     private val testUser = User(
@@ -42,6 +49,9 @@ class LoginViewModelTest {
         Dispatchers.setMain(testDispatcher)
         signInWithGoogleUseCase = mockk()
         userReferralUseCase = mockk()
+        getSubscriptionUseCase = mockk(relaxed = true)
+        every { getSubscriptionUseCase.invoke() } returns
+                MutableStateFlow(Subscription(tier = SubscriptionTier.REFERRER, isActive = true))
     }
 
     @After
@@ -51,7 +61,11 @@ class LoginViewModelTest {
     }
 
     private fun createViewModel(): LoginViewModel {
-        return LoginViewModel(signInWithGoogleUseCase, userReferralUseCase)
+        return LoginViewModel(
+            signInWithGoogleUseCase,
+            userReferralUseCase,
+            getSubscriptionUseCase
+        )
     }
 
     @Test
@@ -168,6 +182,64 @@ class LoginViewModelTest {
             assertTrue(state.isLoggedIn) // 잘못된 추천 코드여도 로그인은 유지된다
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    /**
+     * 회귀 방지: 가입과 동시에 추천 코드를 넣으면 서버가 티어를 올리지만, 가입 직후 uid 등장으로
+     * 이미 조회된 FREE 가 in-memory 에 남는다. 재조회하지 않으면 다음 갱신이 포그라운드 15분
+     * 스로틀에 걸려 세션 내내 FREE 로 게이팅된다.
+     */
+    @Test
+    fun `가입 시 추천 코드가 적용되면 구독을 재조회하고 영속화한다`() = runTest {
+        // Given
+        val referralCode = "TEST123"
+        coEvery { signInWithGoogleUseCase("test-id-token") } returns Result.success(testUser)
+        coEvery { userReferralUseCase.useReferralCode(referralCode) } returns Result.success(true)
+
+        viewModel = createViewModel()
+
+        // When
+        viewModel.signInWithGoogle("test-id-token", referralCode)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        coVerify(exactly = 1) { getSubscriptionUseCase.refreshSubscription(false) }
+        coVerify(exactly = 1) {
+            getSubscriptionUseCase.persistSubscriptionTier(SubscriptionTier.REFERRER)
+        }
+    }
+
+    @Test
+    fun `추천 코드가 거부되면 구독을 재조회하지 않는다`() = runTest {
+        // Given
+        val referralCode = "INVALID"
+        coEvery { signInWithGoogleUseCase("test-id-token") } returns Result.success(testUser)
+        coEvery { userReferralUseCase.useReferralCode(referralCode) } returns Result.success(false)
+
+        viewModel = createViewModel()
+
+        // When
+        viewModel.signInWithGoogle("test-id-token", referralCode)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        coVerify(exactly = 0) { getSubscriptionUseCase.refreshSubscription(any()) }
+        coVerify(exactly = 0) { getSubscriptionUseCase.persistSubscriptionTier(any()) }
+    }
+
+    @Test
+    fun `추천 코드 없이 가입하면 구독을 재조회하지 않는다`() = runTest {
+        // Given
+        coEvery { signInWithGoogleUseCase("test-id-token") } returns Result.success(testUser)
+
+        viewModel = createViewModel()
+
+        // When
+        viewModel.signInWithGoogle("test-id-token")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Then
+        coVerify(exactly = 0) { getSubscriptionUseCase.refreshSubscription(any()) }
     }
 
     @Test
