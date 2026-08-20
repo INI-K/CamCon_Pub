@@ -30,7 +30,7 @@
     <string name="settings_v2_camera_controls_on">라이브뷰 및 카메라 컨트롤 UI 표시</string>
     <string name="settings_v2_camera_controls_off">비활성화 - 최신 촬영 사진이 표시됩니다</string>
     <string name="settings_v2_liveview_title">라이브뷰 활성화</string>
-    <string name="settings_v2_liveview_subtitle">실시간 카메라 화면 표시 (ADMIN 전용)</string>
+    <string name="settings_v2_liveview_subtitle">실시간 카메라 화면을 표시합니다</string>
     <string name="settings_v2_liveview_quality_title">라이브뷰 화질</string>
     <string name="settings_v2_liveview_quality_speed">속도</string>
     <string name="settings_v2_liveview_quality_balanced">균형</string>
