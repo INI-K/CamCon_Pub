@@ -30,7 +30,7 @@
     <string name="settings_v2_camera_controls_on">Afficher la visée en direct et l\'interface de commande de l\'appareil photo</string>
     <string name="settings_v2_camera_controls_off">Désactivé - la dernière photo prise est affichée</string>
     <string name="settings_v2_liveview_title">Activer la visée en direct</string>
-    <string name="settings_v2_liveview_subtitle">Afficher le flux de l\'appareil photo en temps réel (ADMIN uniquement)</string>
+    <string name="settings_v2_liveview_subtitle">Afficher le flux de l\'appareil photo en temps réel</string>
     <string name="settings_v2_liveview_quality_title">Qualité Live View</string>
     <string name="settings_v2_liveview_quality_speed">Vitesse</string>
     <string name="settings_v2_liveview_quality_balanced">Équilibré</string>
