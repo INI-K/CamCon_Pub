@@ -13,6 +13,7 @@ import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.BuildConfig
 import com.inik.camcon.domain.model.CameraDiscoverySource
 import com.inik.camcon.domain.model.CameraVendor
+import com.inik.camcon.domain.model.NikonConnectionProfile
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CancellationException
@@ -780,7 +781,8 @@ class PtpipDiscoveryService @Inject constructor(
                 Log.i(
                     TAG,
                     "VENDOR_MDNS_DUMP name=${LogMask.id(serviceName)} " +
-                        "type=${serviceInfo.serviceType} verdict=$verdict txt={$txt}"
+                        "type=${serviceInfo.serviceType} verdict=$verdict " +
+                        "profile=${parseNikonConnectionProfile(serviceInfo.attributes)} txt={$txt}"
                 )
             } else {
                 Log.i(
@@ -815,7 +817,8 @@ class PtpipDiscoveryService @Inject constructor(
                 discoveredServiceType = serviceInfo.serviceType,
                 vendorVerdict = verdict,
                 displayName = null,
-                discoverySource = CameraDiscoverySource.MDNS
+                discoverySource = CameraDiscoverySource.MDNS,
+                connectionProfile = parseNikonConnectionProfile(serviceInfo.attributes)
             )
         } catch (e: Exception) {
             Log.w(TAG, "서비스 정보 처리 중 오류: ${e.message}")
@@ -833,13 +836,27 @@ class PtpipDiscoveryService @Inject constructor(
      *
      * 예외: 프린터 계열 타입이라도 **표준 PTP/IP 포트(15740)를 광고하면 카메라로 본다** —
      * 일부 Canon이 `_ipp._tcp`를 쓴다는 기록이 있다.
+     *
+     * 단 하나 더 막는 조합이 있다: **미지 타입 + 비표준 포트**. 메타 쿼리로 네트워크의 모든 서비스
+     * 타입이 유입되므로 순수 블랙리스트만으로는 무관한 기기가 후보로 올라온다(본문 주석 참조).
      */
     private fun isPlausiblePtpipService(serviceType: String?, port: Int): Boolean {
         val type = serviceType?.lowercase().orEmpty()
         if (NON_CAMERA_SERVICE_TYPES.any { type.contains(it) }) {
             return port == PTPIP_PORT
         }
-        return true
+        // 표준 포트(15740)를 광고하면 타입이 무엇이든 통과 — 블랙리스트의 취지(제조사 편향 방지) 유지.
+        if (port == PTPIP_PORT) return true
+
+        // 여기까지 왔다면 "미지 타입 + 비표준 포트"다. 메타 쿼리(RFC 6763 §9)로 네트워크의 모든
+        // 서비스 타입이 유입되므로, 이 조합을 통과시키면 카메라와 무관한 기기가 사용자 선택지에
+        // 그대로 올라간다(실측: MAC 형태 타입 `_FC9F5ED42C8A._tcp` @ :53601 이 "카메라 발견"으로
+        // 표시돼 진짜 Z8 과 함께 2지 선택을 강요했다, 2026-08-20).
+        //
+        // PTP/IP 는 15740 에 정의된 프로토콜이고, 비표준 포트를 쓰면서 우리가 아는 카메라 타입도
+        // 아닌 실기 사례는 아직 없다. 프로브 없이 판정한다(무프로브 규약 유지) — 새 사례가 나오면
+        // PRIORITY_SERVICE_TYPES 에 타입을 추가하는 쪽으로 연다.
+        return PRIORITY_SERVICE_TYPES.any { type.contains(it) }
     }
 
     /**
@@ -964,5 +981,34 @@ class PtpipDiscoveryService @Inject constructor(
                 signal.receive()
             }
         }
+    }
+}
+
+/**
+ * mDNS TXT 의 `apps` 필드로 카메라의 Wi-Fi 연결 프로파일을 판별한다(무프로브·무비용).
+ *
+ * Z8 실측(2026-08-19):
+ * - 바디 [컴퓨터에 연결] → 카메라 컨트롤 → `apps=$DSC`  → 세션 중 본체 재생(▶) 잠김
+ * - 바디 [컴퓨터에 연결] → 사진 전송     → `apps=WT3T` → 본체 조작 자유 + 촬영물 수신 동작
+ *
+ * `WT`(Wireless Transmitter) 접두로 매칭한다 — WT3T 외 변형(WT-7 등)이 올 수 있는데
+ * 정확한 문자열 집합이 미확정이라 알려진 값만 하드코딩하면 신형에서 UNKNOWN 으로 떨어진다.
+ * 판별 실패는 [NikonConnectionProfile.UNKNOWN] 으로 두고 UI 는 아무것도 표시하지 않는다
+ * (틀린 안내보다 무표시가 낫다).
+ */
+internal fun parseNikonConnectionProfile(
+    attributes: Map<String, ByteArray?>
+): NikonConnectionProfile {
+    val apps = attributes.entries
+        .firstOrNull { it.key.equals("apps", ignoreCase = true) }
+        ?.value
+        ?.toString(Charsets.UTF_8)
+        ?.trim()
+        ?: return NikonConnectionProfile.UNKNOWN
+
+    return when {
+        apps.equals("\$DSC", ignoreCase = true) -> NikonConnectionProfile.CAMERA_CONTROL
+        apps.startsWith("WT", ignoreCase = true) -> NikonConnectionProfile.IMAGE_TRANSFER
+        else -> NikonConnectionProfile.UNKNOWN
     }
 }

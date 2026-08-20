@@ -93,6 +93,12 @@ internal class PtpipDiscoveryCoordinator(
                 cameras.none { it.ipAddress == existing.ipAddress }
         }
         _discoveredCameras.value = cameras + preserved
+        Log.d(
+            TAG,
+            "후보 목록 갱신: " + (cameras + preserved).joinToString {
+                "${LogMask.id(it.ipAddress)}(${it.discoverySource}/${it.connectionProfile})"
+            }
+        )
     }
 
     // 사용자가 직접 입력한 카메라 IP. 폰 핫스팟 모드의 mDNS 폴백용.
@@ -228,12 +234,13 @@ internal class PtpipDiscoveryCoordinator(
                     )
                     publishDiscovered(listOf(apCamera))
                     return listOf(apCamera)
-                } else {
-                    Log.w(TAG, "❌ AP모드이지만 libgphoto2로 연결 가능한 카메라 IP를 찾을 수 없음")
-                    // 빈 리스트 반환하여 사용자에게 상황을 알림
-                    publishDiscovered(emptyList())
-                    return emptyList()
                 }
+                // ⚠️ 여기서 빈 목록으로 끝내지 않는다. AP 판정은 SSID 를 못 읽을 때 게이트웨이
+                // IP 패턴에 기대는 추정이라 오탐이 난다(실측 2026-08-20: 남의 핫스팟을 카메라
+                // AP 로 오판 → 게이트웨이 192.168.137.1 만 찔러보고 0건 종료. 정작 카메라는
+                // 같은 서브넷 .198 에서 15740 을 열고 있었고 mDNS 로도 잡히는 상태였다).
+                // 판정이 틀렸을 수 있으므로 아래 일반 경로(mDNS/SSDP)로 이어서 찾는다.
+                Log.w(TAG, "AP모드 추정이지만 게이트웨이에서 카메라를 못 찾음 - 일반 검색으로 계속")
             }
 
             // STA모드에서는 mDNS 검색 사용. 후보가 잡히는 즉시 목록에 반영한다(증분 방출).

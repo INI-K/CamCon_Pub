@@ -85,6 +85,8 @@ class PtpipDataSource @Inject constructor(
     private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver,
     private val errorNotifier: com.inik.camcon.domain.manager.ErrorNotifier,
     private val photoDownloadManager: com.inik.camcon.data.repository.managers.PhotoDownloadManager,
+    private val nikonApplicationModeManager: com.inik.camcon.data.datasource.nativesource.NikonApplicationModeManager,
+    private val nikonLinkDiagnostics: com.inik.camcon.data.datasource.nativesource.NikonLinkDiagnostics,
     private val autoConnectManager: AutoConnectManager,
     private val autoConnectTaskRunnerProvider: Lazy<AutoConnectTaskRunner>,
     private val ptpipPreferencesDataSource: com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource,
@@ -1107,6 +1109,14 @@ class PtpipDataSource @Inject constructor(
             // 초기화 성공 = 카메라가 연결을 수락함(페어링 완료 또는 기등록). 페어링 대기 사유 해제.
             _connectFailure.value = null
 
+            // 니콘 앱 모드는 새 세션에서 항상 기본값(OFF)으로 돌아간다 — 캐시된 상태를 버려
+            // 다음 요청이 실제로 와이어를 타게 한다. 켜고 끄는 판단은
+            // NikonApplicationModeManager 가 화면 구간별로 내린다(카드 탐색=OFF / 그 외=ON).
+            nikonApplicationModeManager.onCameraSessionStarted()
+
+            // 링크 사실(USBSpeed/ConnectionPath) 1회 로깅 — 전송 속도 진단 근거.
+            nikonLinkDiagnostics.logLinkFacts()
+
             // =========================
             // Step 2: 카메라 기능 조회
             // =========================
@@ -1965,17 +1975,33 @@ class PtpipDataSource @Inject constructor(
      * (ErrorNotifier→errorEvent→setError→Snackbar)로 통지해 무음 유실을 방지한다
      * (CameraCaptureRepositoryImpl.notifyCaptureFailed와 동일 패턴).
      */
-    private fun notifyCaptureFailed(errorCode: Int) {
+    @androidx.annotation.VisibleForTesting
+    internal fun notifyCaptureFailed(errorCode: Int) {
         try {
             errorNotifier.emitError(
                 type = com.inik.camcon.domain.manager.ErrorType.OPERATION,
-                message = context.getString(R.string.photo_capture_failed, errorCode),
+                message = captureFailureMessage(errorCode),
                 severity = com.inik.camcon.domain.manager.ErrorSeverity.HIGH
             )
         } catch (e: Exception) {
             Log.w(TAG, "촬영 실패 통지 방출 실패: $errorCode", e)
         }
     }
+
+    /**
+     * 실패 코드를 사용자 문구로 옮긴다.
+     *
+     * -6(GP_ERROR_NOT_SUPPORTED)은 카메라가 그 객체의 전송 자체를 거부한 경우로, 재시도해도
+     * 결과가 같다(네이티브가 3회에서 자동 중단한다). "오류 -6" 대신 사용자가 실제로 할 수 있는
+     * 행동을 안내한다. 그 외 코드는 종전 문구를 유지한다.
+     * (CameraCaptureRepositoryImpl.captureFailureMessage와 동일 규약.)
+     */
+    private fun captureFailureMessage(errorCode: Int): String =
+        if (errorCode == -6) {
+            context.getString(R.string.photo_transfer_rejected_by_camera)
+        } else {
+            context.getString(R.string.photo_capture_failed, errorCode)
+        }
 
     /**
      * Wi-Fi 연결 끊어짐 알림 콜백 설정
