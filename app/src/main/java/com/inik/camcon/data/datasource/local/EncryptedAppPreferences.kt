@@ -100,7 +100,8 @@ class EncryptedAppPreferences @Inject constructor(
 
     // ===== RAW File Download Enabled =====
 
-    fun getRawFileDownloadEnabled(default: Boolean = true): Boolean {
+    /** 기본값 false — RAW 는 파일이 커서 기본으로 받지 않는다(사용자 결정 2026-08-20). */
+    fun getRawFileDownloadEnabled(default: Boolean = false): Boolean {
         val p = prefs
         if (usingFallback) return false   // fail-closed: 폴백 모드에선 RAW 비활성 강제
         return runCatching { p.getBoolean(KEY_RAW_FILE_DOWNLOAD_ENABLED, default) }

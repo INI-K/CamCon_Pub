@@ -222,7 +222,8 @@ class AppPreferencesDataSource @Inject constructor(
         }
 
     /**
-     * RAW 파일 다운로드 활성화 여부 (기본값: true).
+     * RAW 파일 다운로드 활성화 여부 (기본값: false — 사용자 결정 2026-08-20).
+     * RAW 는 파일이 크고 무선에서 전송이 길어 기본으로 받지 않는다. 필요한 사용자가 켠다.
      * 암호화 저장소에서 읽는다. 레거시 평문 값이 있으면 1회 이관 후 반환.
      * EncryptedSharedPreferences는 변경 통지가 없어 setter 갱신을 구독자에게
      * 재방출하기 위해 MutableStateFlow를 경유한다(최초 구독 시 디스크 값 시드).
@@ -233,7 +234,7 @@ class AppPreferencesDataSource @Inject constructor(
         migrateSensitiveFlagsIfNeeded()
         rawFileDownloadState.compareAndSet(
             expect = null,
-            update = encryptedPrefs.getRawFileDownloadEnabled(default = true)
+            update = encryptedPrefs.getRawFileDownloadEnabled(default = false)
         )
         emitAll(rawFileDownloadState.filterNotNull())
     }.flowOn(ioDispatcher) // 키스토어·디스크 블로킹(migrate/시드)을 수집자 컨텍스트 밖 IO로 오프로드. emitAll(MutableStateFlow)라 지속 방출은 유지.
@@ -688,8 +689,8 @@ class AppPreferencesDataSource @Inject constructor(
         }
         encryptedPrefs.setSubscriptionTierString(null)
         subscriptionTierState.value = TierHolder(null)
-        // RAW 플래그는 명시적 기본값(true)이 있으므로 명시적으로 다시 기록한다.
-        encryptedPrefs.setRawFileDownloadEnabled(true)
-        rawFileDownloadState.value = true
+        // RAW 플래그는 명시적 기본값(false)이 있으므로 명시적으로 다시 기록한다.
+        encryptedPrefs.setRawFileDownloadEnabled(false)
+        rawFileDownloadState.value = false
     }
 }
