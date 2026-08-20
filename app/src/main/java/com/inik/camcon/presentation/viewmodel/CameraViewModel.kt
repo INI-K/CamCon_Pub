@@ -199,26 +199,22 @@ class CameraViewModel @Inject constructor(
     }
 
     /**
-     * 앱 시작 시 구독 티어 미리 로드
+     * 앱 시작 시 RAW 다운로드 설정 미리 로드.
+     *
+     * ⚠️ 구독 티어는 여기서 쓰지 않는다. 티어는 서버가 권위이고, 아래 [observeSubscriptionTier]
+     * 의 지속 관찰자가 이미 네이티브에 반영한다. 과거에는 여기서 로컬 pref 캐시를 1회성으로
+     * 읽어 함께 밀어 넣었는데, DataStore 읽기가 in-memory StateFlow 첫 방출보다 늦게 끝나
+     * **나중에 도착한 stale 캐시가 방금 확인한 서버 티어를 덮어썼다**(실측 2026-08-20:
+     * REFERRER 적용 0.4초 뒤 FREE 로 되돌아감). 오프라인 보호는 여기가 아니라
+     * GetSubscriptionUseCase.seedFromCache 가 같은 캐시로 이미 수행하므로 손실이 없다.
+     *
+     * RAW 다운로드는 서버가 아니라 로컬 설정이 권위라 1회성 로드가 옳다.
      */
     private fun loadSubscriptionTierAtStartup() {
         viewModelScope.launch {
             try {
-                Log.d(TAG, "🔑 앱 시작 시 구독 티어 로드 시작")
+                Log.d(TAG, "🔑 앱 시작 시 RAW 다운로드 설정 로드 시작")
 
-                // 로컬 캐시된 구독 티어를 먼저 적용 (Firebase 오프라인 대비)
-                val cachedTier = appSettingsRepository.subscriptionTierEnum.first()
-
-                // C-3 수정: Repository를 통한 간접 호출
-                cameraRepository.setSubscriptionTier(cachedTier)
-                    .onSuccess {
-                        Log.d(TAG, "✅ 앱 시작 시 구독 티어 설정 완료: $cachedTier")
-                    }
-                    .onFailure { e ->
-                        Log.e(TAG, "❌ 구독 티어 설정 실패", e)
-                    }
-
-                // RAW 파일 다운로드 설정도 함께 로드
                 val isRawDownloadEnabled = appSettingsRepository.isRawFileDownloadEnabled.first()
                 cameraRepository.setRawFileDownloadEnabled(isRawDownloadEnabled)
                     .onSuccess {
@@ -231,10 +227,11 @@ class CameraViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e(TAG, "❌ 앱 시작 시 구독 티어 로드 실패", e)
-                // 실패 시 기본값(FREE) 설정
-                cameraRepository.setSubscriptionTier(SubscriptionTier.FREE)
-                cameraRepository.setRawFileDownloadEnabled(true)
+                Log.e(TAG, "❌ 앱 시작 시 RAW 다운로드 설정 로드 실패", e)
+                // 설정을 못 읽었으면 받지 않는 쪽(false)으로 닫는다. 과거에는 true 로 열었는데,
+                // 기본값이 false 로 바뀐 뒤로는 그게 사용자가 끈 RAW 를 되살리는 동작이 된다.
+                // 티어는 여기서 건드리지 않는다 — 지속 관찰자가 유일한 기록자여야 한다.
+                cameraRepository.setRawFileDownloadEnabled(false)
             }
         }
     }
