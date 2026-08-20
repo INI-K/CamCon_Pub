@@ -64,6 +64,8 @@ class PtpipDiscoveryGuardAndCancelTest {
             tetherService = mockk(relaxed = true),
             nativeCameraDataSource = mockk(relaxed = true),
             libgphoto2PluginInstaller = mockk(relaxed = true),
+            nikonApplicationModeManager = mockk(relaxed = true),
+            nikonLinkDiagnostics = mockk(relaxed = true),
             coroutineScope = scope,
             ioDispatcher = dispatcher
         )

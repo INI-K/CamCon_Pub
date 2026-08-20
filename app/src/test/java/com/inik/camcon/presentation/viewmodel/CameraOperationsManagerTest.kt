@@ -86,6 +86,7 @@ class CameraOperationsManagerTest {
             stopLiveViewUseCase = stopLiveViewUseCase,
             performAutoFocusUseCase = performAutoFocusUseCase,
             startTimelapseUseCase = startTimelapseUseCase,
+            nikonApplicationModeManager = io.mockk.mockk(relaxed = true),
             appScope = appScope
         )
     }
