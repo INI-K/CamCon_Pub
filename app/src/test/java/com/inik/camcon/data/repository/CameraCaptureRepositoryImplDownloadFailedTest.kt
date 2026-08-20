@@ -1,6 +1,7 @@
 package com.inik.camcon.data.repository
 
 import android.content.Context
+import com.inik.camcon.R
 import com.inik.camcon.data.cache.CacheSweeper
 import com.inik.camcon.data.cache.TtlLruProcessedFileCache
 import com.inik.camcon.data.datasource.nativesource.NativeCameraDataSource
@@ -14,6 +15,7 @@ import com.inik.camcon.domain.manager.ErrorNotifier
 import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.domain.model.CapturedPhoto
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.CoroutineDispatcher
@@ -44,10 +46,11 @@ class CameraCaptureRepositoryImplDownloadFailedTest {
 
     private lateinit var captureRepo: CameraCaptureRepositoryImpl
     private lateinit var errorNotifier: ErrorNotifier
+    private lateinit var context: Context
 
     @Before
     fun setUp() {
-        val context = mockk<Context>(relaxed = true)
+        context = mockk<Context>(relaxed = true)
         val nativeDataSource = mockk<NativeCameraDataSource>(relaxed = true)
         val ptpipDataSource = mockk<PtpipDataSource>(relaxed = true)
         val usbCameraManager = mockk<UsbCameraManager>(relaxed = true)
@@ -143,6 +146,45 @@ class CameraCaptureRepositoryImplDownloadFailedTest {
             errorNotifier.emitError(
                 ErrorType.STORAGE,
                 match { it.contains("A.JPG") },
+                any(),
+                ErrorSeverity.HIGH
+            )
+        }
+    }
+
+    /**
+     * 전송 거부(-6, GP_ERROR_NOT_SUPPORTED)는 재시도해도 결과가 같아 네이티브가 3회에서
+     * 자동 중단한다. 사용자에게는 "오류 -6" 대신 실제로 취할 수 있는 행동을 안내해야 하므로
+     * 전용 문구를 쓴다. 나머지 코드는 종전 문구를 유지한다(회귀 방지).
+     */
+    @Test
+    fun `전송 거부(-6)는 전용 안내 문구로 통지한다`() = runTest {
+        every { context.getString(R.string.photo_transfer_rejected_by_camera) } returns "REJECTED"
+        every { context.getString(R.string.photo_capture_failed, any()) } returns "GENERIC"
+
+        captureRepo.notifyCaptureFailed(-6)
+
+        verify {
+            errorNotifier.emitError(
+                ErrorType.OPERATION,
+                "REJECTED",
+                any(),
+                ErrorSeverity.HIGH
+            )
+        }
+    }
+
+    @Test
+    fun `전송 거부가 아닌 코드는 기존 문구를 유지한다`() = runTest {
+        every { context.getString(R.string.photo_transfer_rejected_by_camera) } returns "REJECTED"
+        every { context.getString(R.string.photo_capture_failed, any()) } returns "GENERIC"
+
+        captureRepo.notifyCaptureFailed(-7) // GP_ERROR_IO — 일시적 실패
+
+        verify {
+            errorNotifier.emitError(
+                ErrorType.OPERATION,
+                "GENERIC",
                 any(),
                 ErrorSeverity.HIGH
             )
