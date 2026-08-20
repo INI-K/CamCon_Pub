@@ -29,6 +29,9 @@ import java.util.Base64
  * TAG_ORIENTATION 을 NORMAL(1)로 재설정하고, 회전을 건너뛴 경우(false)엔 원본 orientation 을
  * 보존하는지 검증한다. 그 외 태그(MAKE/DATETIME_ORIGINAL)는 두 경우 모두 보존되어야 한다.
  *
+ * 함께 색공간 계약도 고정한다. 리사이즈 픽셀은 sRGB 로 변환되므로 결과 파일의 TAG_COLOR_SPACE 는
+ * 원본이 무엇이든 sRGB(1) 로 기록되어야 한다.
+ *
  * PhotoDownloadManager 가 쓰는 [androidx.exifinterface.media.ExifInterface] 를 그대로 사용해
  * 실 JPEG 파일에 read/write 한다. androidx 구현은 순수 자바라 프레임워크에 의존하지 않지만,
  * 매니저 생성에 Context 가 필요해 Robolectric 위에서 돌린다(compileSdk 36 이나 Robolectric 4.14
