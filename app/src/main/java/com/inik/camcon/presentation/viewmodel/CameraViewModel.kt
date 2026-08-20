@@ -75,6 +75,7 @@ class CameraViewModel @Inject constructor(
     private val fileManager: CameraFileManager,
     private val streamingManager: CameraStreamingManager,
     private val diagnosticsManager: CameraDiagnosticsManager,
+    private val nikonApplicationModeManager: com.inik.camcon.data.datasource.nativesource.NikonApplicationModeManager,
 
     // Hilt 로 주입되는 IO 디스패처 — 테스트 시 교체 가능하도록 하드코딩 회피.
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher

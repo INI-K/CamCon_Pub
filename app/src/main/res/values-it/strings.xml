@@ -368,6 +368,7 @@
     <string name="contact_email_copied">Nessuna app di posta trovata. L\'indirizzo è stato copiato negli appunti: %1$s</string>
     <string name="camera_preview_live_view">Live View</string>
     <string name="photo_capture_failed">Impossibile scattare/ricevere la foto (errore %1$d)</string>
+    <string name="photo_transfer_rejected_by_camera">La fotocamera ha rifiutato il trasferimento di questa foto. Ritrasferiscila dalla fotocamera o riconnettiti.</string>
     <string name="photo_delete_camera_failed">Impossibile eliminare la foto dalla fotocamera</string>
     <string name="notif_channel_status_name">Stato della fotocamera</string>
     <string name="notif_channel_status_desc">Mostra lo stato di connessione e ricezione file della fotocamera</string>

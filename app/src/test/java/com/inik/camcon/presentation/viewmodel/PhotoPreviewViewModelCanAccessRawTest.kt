@@ -126,7 +126,8 @@ class PhotoPreviewViewModelCanAccessRawTest {
         photoSelectionManager = photoSelectionManager,
         errorHandlingManager = errorHandlingManager,
         resumeNativeOperationsUseCase = resumeNativeOperationsUseCase,
-        deleteCameraFileUseCase = deleteCameraFileUseCase
+        deleteCameraFileUseCase = deleteCameraFileUseCase,
+        nikonApplicationModeManager = io.mockk.mockk(relaxed = true)
     )
 
     @Test

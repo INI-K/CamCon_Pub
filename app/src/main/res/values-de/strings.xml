@@ -367,6 +367,7 @@
     <string name="contact_email_copied">Keine E-Mail-App gefunden. Die Adresse wurde in die Zwischenablage kopiert: %1$s</string>
     <string name="camera_preview_live_view">Live-Ansicht</string>
     <string name="photo_capture_failed">Foto konnte nicht aufgenommen/empfangen werden (Fehler %1$d)</string>
+    <string name="photo_transfer_rejected_by_camera">Die Kamera hat die Übertragung dieses Fotos abgelehnt. Übertragen Sie es erneut an der Kamera oder stellen Sie die Verbindung neu her.</string>
     <string name="photo_delete_camera_failed">Foto konnte nicht von der Kamera gelöscht werden</string>
     <string name="notif_channel_status_name">Kamerastatus</string>
     <string name="notif_channel_status_desc">Zeigt den Verbindungs- und Dateiempfangsstatus der Kamera an</string>

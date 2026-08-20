@@ -131,3 +131,50 @@ test("헤드라인 카운트는 VERIFIED_MIN 미만이면 숨긴다", () => {
   assert.equal(dom.elements.camVerified.hidden, false);
   assert.match(dom.elements.camVerified.textContent, /실사용 확인 \d+종/);
 });
+
+/* loadVerified 캐시 규약 — 실패 응답을 성공처럼 캐시하면 배지가 6시간 전멸한다(회귀 방지). */
+function withFetch(response, fn) {
+  const origFetch = global.fetch;
+  const store = {};
+  const origLs = global.localStorage;
+  global.localStorage = {
+    getItem: (k) => (k in store ? store[k] : null),
+    setItem: (k, v) => { store[k] = v; },
+    removeItem: (k) => { delete store[k]; }
+  };
+  global.fetch = () => Promise.resolve(response);
+  return Promise.resolve()
+    .then(() => fn(store))
+    .finally(() => { global.fetch = origFetch; global.localStorage = origLs; });
+}
+
+test("CF 오류 응답은 캐시되지 않는다 (배지 6시간 전멸 회귀 방지)", async () => {
+  await withFetch({ ok: false, status: 500, json: () => Promise.resolve({ cameras: [] }) }, async (store) => {
+    let called = false;
+    site.loadVerified(() => { called = true; });
+    await new Promise((r) => setImmediate(r));
+    assert.equal(called, false, "실패 시 done 을 호출하면 배지가 빈 채로 렌더된다");
+    assert.equal(store[site.VERIFIED_CACHE_KEY], undefined, "실패 응답이 캐시되면 안 된다");
+  });
+});
+
+test("cameras 배열이 없는 손상 응답도 캐시되지 않는다", async () => {
+  await withFetch({ ok: true, status: 200, json: () => Promise.resolve({ error: "boom" }) }, async (store) => {
+    let called = false;
+    site.loadVerified(() => { called = true; });
+    await new Promise((r) => setImmediate(r));
+    assert.equal(called, false);
+    assert.equal(store[site.VERIFIED_CACHE_KEY], undefined);
+  });
+});
+
+test("정상 응답은 done 으로 전달되고 캐시에 저장된다", async () => {
+  const payload = { cameras: [{ key: "nikon:z8", model: "Nikon Z 8", usb: true, wifi: false }] };
+  await withFetch({ ok: true, status: 200, json: () => Promise.resolve(payload) }, async (store) => {
+    let got = null;
+    site.loadVerified((v) => { got = v; });
+    await new Promise((r) => setImmediate(r));
+    assert.deepEqual(got, payload);
+    assert.deepEqual(JSON.parse(store[site.VERIFIED_CACHE_KEY]).data, payload);
+  });
+});

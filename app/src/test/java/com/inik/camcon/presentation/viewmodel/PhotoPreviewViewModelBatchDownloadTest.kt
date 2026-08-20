@@ -132,7 +132,8 @@ class PhotoPreviewViewModelBatchDownloadTest {
         photoSelectionManager = photoSelectionManager,
         errorHandlingManager = errorHandlingManager,
         resumeNativeOperationsUseCase = resumeNativeOperationsUseCase,
-        deleteCameraFileUseCase = deleteCameraFileUseCase
+        deleteCameraFileUseCase = deleteCameraFileUseCase,
+        nikonApplicationModeManager = io.mockk.mockk(relaxed = true)
     )
 
     private fun paths(n: Int): List<String> =

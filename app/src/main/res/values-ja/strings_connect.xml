@@ -29,6 +29,13 @@
     <string name="ptpip_source_manual">手動入力</string>
     <string name="ptpip_vendor_confirmed_fmt">%1$s 確定</string>
     <string name="ptpip_vendor_likely_fmt">%1$s の可能性</string>
+    <string name="ptpip_profile_transfer_notice">画像転送モードです。ライブビュー中に撮影した写真はライブビューを終了するまで届かず、メモリーカードの参照もできません。すべての機能を使うには、カメラのパソコン接続方法をカメラコントロールに変更してください。</string>
+    <string name="ptpip_profile_transfer_dialog_title">カメラコントロールに変更しますか？</string>
+    <string name="ptpip_profile_transfer_dialog_body">このカメラは画像転送モードです。接続はできますが、ライブビュー中に撮影した写真はライブビュー終了後に届き、メモリーカードの参照はできません。\n\nカメラのパソコン接続方法をカメラコントロールに変更してから、もう一度検索してください。一部の旧機種は画像転送のみに対応しています。</string>
+    <string name="ptpip_profile_transfer_dialog_research">もう一度検索</string>
+    <string name="ptpip_profile_transfer_dialog_connect_anyway">このまま接続</string>
+    <string name="ptpip_profile_control">リモート制御</string>
+    <string name="ptpip_profile_transfer">画像転送</string>
     <string name="ptpip_vendor_unknown">メーカー不明</string>
     <string name="ptpip_discovery_empty_title">カメラが見つかりませんでした</string>
     <string name="ptpip_discovery_empty_camera_first">まずカメラ側を確認してください。① カメラがスマートフォンのテザリングに接続しているか ② カメラのスマートデバイス接続（Wi-Fi）メニューがオンか ③ 省電力でWi-Fiがオフになっていないか を確認してから、もう一度検索してください。</string>

@@ -23,6 +23,7 @@ import com.inik.camcon.domain.model.CameraDiscoverySource
 import com.inik.camcon.domain.model.CameraProtocol
 import com.inik.camcon.domain.model.DiscoveryEmptyReason
 import com.inik.camcon.domain.model.NetworkTrust
+import com.inik.camcon.domain.model.NikonConnectionProfile
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.VendorConfidence
 import com.inik.camcon.presentation.theme.BodySmall
@@ -97,6 +98,22 @@ fun DiscoveredCameraList(
                 // 확인이 필요한 후보(비신뢰 링크 + 기지 아님)는 탭 즉시 연결하지 않는다. 연결은 대상
                 // 카메라에 승인 요청을 띄우고 최대 60초 세션을 점유하므로 오탭 비용이 크다.
                 onTap = { onCandidateTap(candidate.camera, candidate.requiresConfirm) }
+            )
+        }
+
+        // 사진 전송 모드 카메라가 목록에 있으면 기능 제약을 **연결 전에** 알린다.
+        // 2026-08-19 Z8 전수 실측으로 모드별 능력이 확정됐다:
+        //   [카메라 컨트롤] 라이브뷰 중 실시간 수신 O / 갤러리 O / 앱셔터 O
+        //   [사진 전송]     라이브뷰 중 실시간 수신 X(라이브뷰를 꺼야 들어옴) / 갤러리 X(폴더 정보 잠금)
+        // 즉 CamCon 에는 카메라 컨트롤이 상위 호환이다. 본체 재생(▶)은 니콘 사양상 PC 연결 중이면
+        // 어느 모드든 제한되므로(벤더 사양 — 유일한 예외인 application mode 는 카드
+        // 저장소를 통째로 감춰 갤러리를 죽이는 것이 실측됨) 모드 선택 기준이 되지 못한다.
+        if (candidates.any { it.camera.connectionProfile == NikonConnectionProfile.IMAGE_TRANSFER }) {
+            Spacer(modifier = Modifier.height(Spacing.sm))
+            Text(
+                text = stringResource(R.string.ptpip_profile_transfer_notice),
+                style = BodySmall,
+                color = TextSecondaryV2
             )
         }
 
@@ -180,6 +197,58 @@ fun CameraConnectConfirmDialog(
     )
 }
 
+/**
+ * 니콘 [사진 전송] 프로파일 카메라를 탭했을 때 뜨는 안내.
+ *
+ * 이 모드로도 연결·촬영·수신은 되지만 (1) 라이브뷰 중 촬영물이 라이브뷰를 끌 때까지 안 들어오고
+ * (2) 갤러리(카드 탐색)가 폴더 정보 잠금으로 동작하지 않는다(Z8 실측 2026-08-19). 카메라에서
+ * [카메라 컨트롤]로 바꾸면 둘 다 해결되므로 재검색을 1순위로 권한다.
+ *
+ * 다만 **차단하지 않는다** — 카메라 컨트롤 프로파일을 무선에서 제공하지 않는 기종이 있으면
+ * 막는 순간 그 기종의 무선 수신이 통째로 죽는다. EXPEED 6 세대(Z6/Z7/Z5/Z50 등)가 그렇다는
+ * 정황(업스트림 이슈 #976: Z6II 무선에서 객체 접근 잠금, "smart device mode 에서만 잠금 없음")은
+ * 있으나 **확정된 사실이 아니다** — 벤더 문서는 스스로 USB 범위임을 밝히고
+ * 있어 무선 프로파일 구성을 규정하지 않는다(다만 ConnectionPath 0x**** 는 구세대 문서에도
+ * 'Built-in Wi-Fi' 값을 정의한다 = 무선에서도 같은 PTP 방언을 쓴다는 뜻). 실기 확인 전까지
+ * 보수적으로 열어 둔다.
+ */
+@Composable
+fun ImageTransferProfileDialog(
+    onDismiss: () -> Unit,
+    onConnectAnyway: () -> Unit,
+    onRetrySearch: () -> Unit
+) {
+    AppDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.ptpip_profile_transfer_dialog_title),
+                style = HeadingM,
+                color = TextPrimaryV2
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.ptpip_profile_transfer_dialog_body),
+                style = BodySmall,
+                color = TextSecondaryV2
+            )
+        },
+        confirmButton = {
+            PrimaryButton(
+                text = stringResource(R.string.ptpip_profile_transfer_dialog_research),
+                onClick = onRetrySearch
+            )
+        },
+        dismissButton = {
+            SecondaryButton(
+                text = stringResource(R.string.ptpip_profile_transfer_dialog_connect_anyway),
+                onClick = onConnectAnyway
+            )
+        }
+    )
+}
+
 /** mDNS/SSDP 등 카메라가 스스로 광고한 라이브 신호인가. */
 private fun CameraDiscoverySource.isLiveSignal(): Boolean = when (this) {
     CameraDiscoverySource.MDNS,
@@ -234,13 +303,28 @@ private fun PtpipCamera.resolveDisplayLabel(): String =
         ?: name.takeIf { it.isNotBlank() }
         ?: stringResource(R.string.ptpip_candidate_unnamed_fmt, ipAddress)
 
-/** "192.168.49.137:15740 · 자동 발견 · Nikon 확정" 형태의 보조 설명. */
+/** "192.168.49.137:15740 · 자동 발견 · Nikon 확정 · 원격 제어" 형태의 보조 설명. */
 @Composable
 private fun PtpipCamera.buildSubtext(): String {
     val parts = mutableListOf("$ipAddress:$port")
     sourceLabel()?.let(parts::add)
     parts.add(vendorLabel())
+    profileLabel()?.let(parts::add)
     return parts.joinToString(" · ")
+}
+
+/**
+ * 카메라가 광고한 연결 프로파일. 판별 불가(UNKNOWN)면 아무것도 붙이지 않는다.
+ *
+ * 이 값은 mDNS TXT 로 읽은 것이라 연결 전에 알 수 있고, **바디 조작 가능 여부**를 좌우한다
+ * (원격 제어=본체 재생 잠김 / 사진 전송=본체 자유. Z8 실측 2026-08-19).
+ * 사용자가 용도에 맞는 모드를 고를 수 있게 목록에서 미리 보여준다.
+ */
+@Composable
+private fun PtpipCamera.profileLabel(): String? = when (connectionProfile) {
+    NikonConnectionProfile.CAMERA_CONTROL -> stringResource(R.string.ptpip_profile_control)
+    NikonConnectionProfile.IMAGE_TRANSFER -> stringResource(R.string.ptpip_profile_transfer)
+    NikonConnectionProfile.UNKNOWN -> null
 }
 
 @Composable

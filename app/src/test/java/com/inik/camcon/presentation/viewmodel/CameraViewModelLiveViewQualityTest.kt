@@ -194,6 +194,7 @@ class CameraViewModelLiveViewQualityTest {
         fileManager = fileManager,
         streamingManager = streamingManager,
         diagnosticsManager = diagnosticsManager,
+        nikonApplicationModeManager = io.mockk.mockk(relaxed = true),
         ioDispatcher = testDispatcher as CoroutineDispatcher
     )
 
