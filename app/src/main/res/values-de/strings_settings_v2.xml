@@ -41,7 +41,7 @@
     <string name="settings_v2_auto_event_title">Automatischer Event-Empfang</string>
     <string name="settings_v2_auto_event_subtitle">Event-Listener beim Öffnen des Kamerasteuerungs-Tabs automatisch starten</string>
     <string name="settings_v2_liveview_locked_title">Live-Ansicht-Funktion</string>
-    <string name="settings_v2_liveview_locked_subtitle">Nur in der ADMIN-Stufe verfügbar</string>
+    <string name="settings_v2_liveview_locked_subtitle">Verfügbar ab dem PRO-Abo</string>
     <string name="settings_v2_latest_photo_title">Neuestes Foto anzeigen</string>
     <string name="settings_v2_latest_photo_subtitle">Zuletzt aufgenommenes Foto anzeigen, wenn die Kamerasteuerung deaktiviert ist</string>
 

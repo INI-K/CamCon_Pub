@@ -41,7 +41,7 @@
     <string name="settings_v2_auto_event_title">自動イベント受信</string>
     <string name="settings_v2_auto_event_subtitle">カメラ制御タブに入ると自動でイベントリスナーを開始</string>
     <string name="settings_v2_liveview_locked_title">ライブビュー機能</string>
-    <string name="settings_v2_liveview_locked_subtitle">ADMINティアでのみ利用できる機能です</string>
+    <string name="settings_v2_liveview_locked_subtitle">PRO 以上のプランでご利用いただけます</string>
     <string name="settings_v2_latest_photo_title">最新写真表示</string>
     <string name="settings_v2_latest_photo_subtitle">カメラコントロール無効時に最近撮影した写真を表示</string>
 
