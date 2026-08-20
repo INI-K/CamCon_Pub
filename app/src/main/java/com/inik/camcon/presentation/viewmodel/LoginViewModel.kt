@@ -7,6 +7,7 @@ import com.inik.camcon.R
 import com.inik.camcon.domain.model.ReferralRedeemException
 import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.User
+import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.auth.SignInWithGoogleUseCase
 import com.inik.camcon.domain.usecase.auth.UserReferralUseCase
 import com.inik.camcon.utils.LogMask
@@ -50,7 +51,8 @@ private fun classifyLoginError(error: Throwable): UiText = when (error) {
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
-    private val userReferralUseCase: UserReferralUseCase
+    private val userReferralUseCase: UserReferralUseCase,
+    private val getSubscriptionUseCase: GetSubscriptionUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -114,6 +116,16 @@ class LoginViewModel @Inject constructor(
             userReferralUseCase.useReferralCode(referralCode)
                 .fold(
                     onSuccess = { success ->
+                        if (success) {
+                            // 서버가 티어를 올렸으므로 in-memory 구독을 다시 읽어 즉시 반영한다.
+                            // 이게 없으면 가입 직후 uid 등장으로 이미 조회된 FREE 가 그대로 남고,
+                            // 다음 재조회는 포그라운드 15분 스로틀에 걸려 세션 내내 FREE 로
+                            // 게이팅된다(설정 화면 경로인 ReferralRedeemViewModel 과 동일 처리).
+                            getSubscriptionUseCase.refreshSubscription(forceSync = false)
+                            getSubscriptionUseCase.persistSubscriptionTier(
+                                getSubscriptionUseCase.invoke().value.tier
+                            )
+                        }
                         _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
                         if (success) {
                             Log.i("LoginViewModel", "추천 코드 사용 성공: ${LogMask.id(referralCode)}")
