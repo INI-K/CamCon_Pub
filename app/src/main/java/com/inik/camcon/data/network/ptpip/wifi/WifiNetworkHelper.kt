@@ -985,10 +985,19 @@ class WifiNetworkHelper @Inject constructor(
     /**
      * 지정된 IP가 카메라 AP 범위에 있는지 확인
      */
-    fun isValidCameraAPIP(ipAddress: String): Boolean {
-        return COMMON_CAMERA_AP_IPS.contains(ipAddress) ||
-                ipAddress.matches(Regex("^192\\.168\\.[0-9]{1,3}\\.[0-9]{1,3}$"))
-    }
+    /**
+     * 게이트웨이 IP가 **카메라 자체 AP**의 것으로 보이는가.
+     *
+     * ⚠️ 과거엔 `^192\.168\.\d+\.\d+$` 도 통과시켰다. 192.168.0.0/16 은 가정용 공유기·폰
+     * 핫스팟이 거의 다 쓰는 대역이라 사실상 "항상 참"이었고, SSID 를 못 읽는 상황
+     * (`<unknown ssid>`)에서 남의 핫스팟을 카메라 AP 로 오판했다. 그러면 검색이 AP 경로로
+     * 몰려 게이트웨이 한 곳만 찔러보고 끝나, 정작 같은 서브넷에 있는 카메라를 놓친다
+     * (실측 2026-08-20: 게이트웨이 192.168.137.1 은 15740 거부, 카메라는 .198 에서 정상 응답).
+     *
+     * 이제는 제조사들이 실제로 쓰는 고정 게이트웨이만 인정한다.
+     */
+    fun isValidCameraAPIP(ipAddress: String): Boolean =
+        COMMON_CAMERA_AP_IPS.contains(ipAddress)
 
     /**
      * AP모드에서 사용 가능한 카메라 IP 찾기 (libgphoto2 바로 초기화)
@@ -998,11 +1007,14 @@ class WifiNetworkHelper @Inject constructor(
 
         Log.d(TAG, "AP모드에서 사용 가능한 카메라 IP 검색 시작")
 
-        // 1. 게이트웨이 IP 우선 확인
+        // 1. 게이트웨이 IP 우선 확인.
+        // ⚠️ 실패해도 여기서 return 하지 않는다 — 예전엔 `return if(...) ip else null` 이라
+        // 게이트웨이가 존재하기만 하면(=거의 항상) 아래 2·3 단계가 영영 실행되지 않았다.
         val gatewayIP = detectCameraIPInAPMode()
         if (gatewayIP != null) {
             Log.d(TAG, "게이트웨이 IP 발견: ${LogMask.id(gatewayIP)}")
-            return if (testTcpPort(gatewayIP, 15740)) gatewayIP else null
+            if (testTcpPort(gatewayIP, 15740)) return gatewayIP
+            Log.d(TAG, "게이트웨이가 15740 미개방 - 다음 후보로 계속")
         }
 
         // 2. DHCP 정보에서 서버 IP 확인

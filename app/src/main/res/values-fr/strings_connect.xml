@@ -29,6 +29,13 @@
     <string name="ptpip_source_manual">Saisi manuellement</string>
     <string name="ptpip_vendor_confirmed_fmt">%1$s confirmé</string>
     <string name="ptpip_vendor_likely_fmt">%1$s (probable)</string>
+    <string name="ptpip_profile_transfer_notice">Mode transfert d\'images : les photos prises pendant la visée écran n\'arrivent qu\'après l\'arrêt de celle-ci, et la carte mémoire n\'est pas explorable. Réglez la connexion à l\'ordinateur de l\'appareil sur contrôle de l\'appareil pour toutes les fonctions.</string>
+    <string name="ptpip_profile_transfer_dialog_title">Passer au contrôle de l\'appareil ?</string>
+    <string name="ptpip_profile_transfer_dialog_body">Cet appareil est en mode transfert d\'images. La connexion fonctionne, mais les photos prises pendant la visée écran n\'arrivent qu\'après son arrêt et la carte mémoire n\'est pas explorable.\n\nRéglez la connexion à l\'ordinateur sur contrôle de l\'appareil, puis relancez la recherche. Certains anciens modèles ne gèrent que le transfert d\'images.</string>
+    <string name="ptpip_profile_transfer_dialog_research">Relancer la recherche</string>
+    <string name="ptpip_profile_transfer_dialog_connect_anyway">Connecter quand même</string>
+    <string name="ptpip_profile_control">Contrôle à distance</string>
+    <string name="ptpip_profile_transfer">Transfert d\'images</string>
     <string name="ptpip_vendor_unknown">Fabricant inconnu</string>
     <string name="ptpip_discovery_empty_title">Aucun appareil photo trouvé</string>
     <string name="ptpip_discovery_empty_camera_first">Vérifiez d\'abord l\'appareil photo : 1) il est bien connecté au point d\'accès du téléphone, 2) son menu de connexion aux appareils intelligents (Wi-Fi) est activé, 3) l\'économie d\'énergie n\'a pas désactivé le Wi-Fi. Relancez ensuite la recherche.</string>

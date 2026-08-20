@@ -107,6 +107,8 @@ fun CaptureControls(
     isTimelapseRunning: Boolean = false,
     onStopTimelapse: () -> Unit = {},
     compact: Boolean = false,
+    /** false 면 셔터 버튼만 감춘다(갤러리·AF 유지). 라이브뷰 도크에서 앱 셔터를 비노출. */
+    showShutter: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     if (isVertical) {
@@ -128,7 +130,8 @@ fun CaptureControls(
                 isShutterSoundEnabled = isShutterSoundEnabled,
                 isTimelapseRunning = isTimelapseRunning,
                 onStopTimelapse = onStopTimelapse,
-                compact = compact
+                compact = compact,
+                showShutter = showShutter
             )
         }
     } else {
@@ -163,7 +166,8 @@ fun CaptureControls(
                     isLiveViewActive = isLiveViewActive,
                     isShutterSoundEnabled = isShutterSoundEnabled,
                     isTimelapseRunning = isTimelapseRunning,
-                    onStopTimelapse = onStopTimelapse
+                    onStopTimelapse = onStopTimelapse,
+                    showShutter = showShutter
                 )
             }
         }
@@ -182,7 +186,8 @@ private fun CaptureControlsContent(
     isShutterSoundEnabled: Boolean = true,
     isTimelapseRunning: Boolean = false,
     onStopTimelapse: () -> Unit = {},
-    compact: Boolean = false
+    compact: Boolean = false,
+    showShutter: Boolean = true
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -233,7 +238,9 @@ private fun CaptureControlsContent(
         }
     }
 
-    // 메인 촬영 버튼 — DSLR 이중 링 셔터 스타일
+    // 메인 촬영 버튼 — DSLR 이중 링 셔터 스타일.
+    // showShutter=false 면 셔터만 감춘다(갤러리·AF 는 유지). 라이브뷰 중 앱 셔터를
+    // 노출하지 않기 위한 스위치 — 사용자 결정 2026-08-20.
     val scale by animateFloatAsState(
         targetValue = if (captureState.isCapturing) 0.93f else 1f,
         animationSpec = spring(
@@ -259,6 +266,7 @@ private fun CaptureControlsContent(
     val buttonCd = if (isStopMode) stopTimelapseCd else captureCd
 
     // 바깥 장식 링
+    if (showShutter) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
@@ -358,6 +366,7 @@ private fun CaptureControlsContent(
                 )
             }
         }
+    }
     }
 
     // 포커스 버튼

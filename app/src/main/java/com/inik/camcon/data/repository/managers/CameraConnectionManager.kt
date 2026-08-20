@@ -30,6 +30,7 @@ class CameraConnectionManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val nativeDataSource: NativeCameraDataSource,
     private val usbCameraManager: UsbCameraManager,
+    private val nikonApplicationModeManager: com.inik.camcon.data.datasource.nativesource.NikonApplicationModeManager,
     private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver,
     @ApplicationScope private val scope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
@@ -149,6 +150,12 @@ class CameraConnectionManager @Inject constructor(
 
         return if (connected) {
             Log.d("카메라연결매니저", "네이티브 카메라 초기화 성공(connectToCamera 경로)")
+            // 새 세션의 앱 모드 초기화. 카메라를 새로 열면 앱 모드는 기본값(OFF)으로 돌아가고
+            // 제조사도 달라질 수 있으므로 캐시를 버리고, 지금 화면이 카드 탐색을 점유하지
+            // 않으면 곧바로 ON 을 걸어 본체 재생(▶)을 연다(§2.2 No.3).
+            // 이 호출이 PTP/IP 경로에만 있어서 USB 세션은 콜드스타트에 굳은 판별 결과를
+            // 그대로 물려받았다(2026-08-20 실측).
+            nikonApplicationModeManager.onCameraSessionStarted()
             _isConnected.value = true
             _isInitializing.value = false
             updateCameraList()
@@ -175,6 +182,8 @@ class CameraConnectionManager @Inject constructor(
         val result = nativeDataSource.initCamera()
         return if (result.trim().equals("OK", ignoreCase = true)) {
             Log.d("카메라연결매니저", "일반 카메라 초기화 성공")
+            // USB 경로와 동일 — 새 세션이므로 앱 모드/제조사 판별 캐시를 버린다.
+            nikonApplicationModeManager.onCameraSessionStarted()
             _isConnected.value = true
             _isInitializing.value = false  // 초기화 완료 시 상태 해제
             updateCameraList()

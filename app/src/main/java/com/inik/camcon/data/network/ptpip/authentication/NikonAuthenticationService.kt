@@ -33,6 +33,19 @@ class NikonAuthenticationService @Inject constructor(
         private const val MAX_RETRIES = 3
 
         /**
+         * 0x935a 승인 뒤 Phase 1 소켓을 열어 두는 시간.
+         *
+         * **연결 체감 시간의 대부분이 이 값이다** — 사용자 탭에서 연결 완료까지 3.47초 중 3.00초
+         * (Z8 Wi-Fi 실측 2026-08-20). 나머지 전 구간을 합쳐도 ~470ms 다.
+         *
+         * 그럼에도 낮추지 않은 이유: 근거가 **Z6(FW V3.80)** 관측이다. 2초로는 1차 init 이
+         * End of stream(-1)으로 거부되는 경우가 잦아 3초로 올렸다. Z8 에 3초가 필요한지는
+         * 검증된 적이 없지만, Z6 실기 없이 낮추면 **확인할 수 없는 회귀**가 된다.
+         * 기종 분기나 단축은 Z6 실기 재현이 가능해진 뒤에 이 상수 하나만 건드린다.
+         */
+        private const val APPROVAL_SETTLE_DELAY_MS = 3000L
+
+        /**
          * PTP/IP InitCommandRequest에 사용하는 고정 GUID(콜론 hex).
          * libgphoto2의 실제 연결도 반드시 이 GUID를 써야 카메라가 페어링된 클라이언트로 인식한다.
          * 불일치 시 카메라가 InitFail(bad type 5)로 거부하므로, [PtpipDataSource]가 인증 성공 직후
@@ -190,10 +203,10 @@ class NikonAuthenticationService @Inject constructor(
 
                     // 0x935a 승인 직후 소켓을 잠시 유지해 카메라가 승인을 세션 내에서 처리하도록 한다.
                     // (너무 빨리 닫으면 승인이 적용되지 않아 다음 연결이 미승인 상태가 될 수 있음)
-                    // Z6(FW V3.80) 관측상 2초로는 1차 init이 End of stream(-1)으로 거부되는 경우가 많아
-                    // 3초로 상향(A-1). ioDispatcher 위에서 실행되므로 UI 블로킹 없음.
+                    // ioDispatcher 위에서 실행되므로 UI 블로킹은 없다. 값의 근거와 단축 조건은
+                    // [APPROVAL_SETTLE_DELAY_MS] 주석 참조.
                     LogcatManager.i(TAG, "⏳ 세션 유지 대기 중... (카메라 내부 처리)")
-                    delay(3000)
+                    delay(APPROVAL_SETTLE_DELAY_MS)
 
                     LogcatManager.d(TAG, "Phase 1 소켓 정리 시작 (인증 상태는 유지됨)")
                     try {

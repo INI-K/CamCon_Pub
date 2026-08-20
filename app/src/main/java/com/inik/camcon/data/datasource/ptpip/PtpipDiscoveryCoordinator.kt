@@ -93,6 +93,12 @@ internal class PtpipDiscoveryCoordinator(
                 cameras.none { it.ipAddress == existing.ipAddress }
         }
         _discoveredCameras.value = cameras + preserved
+        Log.d(
+            TAG,
+            "후보 목록 갱신: " + (cameras + preserved).joinToString {
+                "${LogMask.id(it.ipAddress)}(${it.discoverySource}/${it.connectionProfile})"
+            }
+        )
     }
 
     // 사용자가 직접 입력한 카메라 IP. 폰 핫스팟 모드의 mDNS 폴백용.
@@ -228,12 +234,13 @@ internal class PtpipDiscoveryCoordinator(
                     )
                     publishDiscovered(listOf(apCamera))
                     return listOf(apCamera)
-                } else {
-                    Log.w(TAG, "❌ AP모드이지만 libgphoto2로 연결 가능한 카메라 IP를 찾을 수 없음")
-                    // 빈 리스트 반환하여 사용자에게 상황을 알림
-                    publishDiscovered(emptyList())
-                    return emptyList()
                 }
+                // ⚠️ 여기서 빈 목록으로 끝내지 않는다. AP 판정은 SSID 를 못 읽을 때 게이트웨이
+                // IP 패턴에 기대는 추정이라 오탐이 난다(실측 2026-08-20: 남의 핫스팟을 카메라
+                // AP 로 오판 → 게이트웨이 192.168.137.1 만 찔러보고 0건 종료. 정작 카메라는
+                // 같은 서브넷 .198 에서 15740 을 열고 있었고 mDNS 로도 잡히는 상태였다).
+                // 판정이 틀렸을 수 있으므로 아래 일반 경로(mDNS/SSDP)로 이어서 찾는다.
+                Log.w(TAG, "AP모드 추정이지만 게이트웨이에서 카메라를 못 찾음 - 일반 검색으로 계속")
             }
 
             // STA모드에서는 mDNS 검색 사용. 후보가 잡히는 즉시 목록에 반영한다(증분 방출).
@@ -243,19 +250,23 @@ internal class PtpipDiscoveryCoordinator(
             }
             publishDiscovered(cameras)
 
-            // 소니류(mDNS·SSDP 무광고) 자동 폴백 — Sony A7C 실측: 폰 핫스팟에 정상 접속해 15740을
-            // 열고 있어도 mDNS/SSDP 어느 쪽에도 응답하지 않아 메인 검색이 영영 0건이었다.
-            // 사용자 주도 검색이 0건이고 폰 핫스팟(우리 소유 /24)이면 서브넷 스윕 + Init 프로브까지
-            // 한 번의 '카메라 검색'으로 이어준다. 3중 게이트:
-            // 1. UserInitiated만 — 배경 폴링(4초 tick)이 253호스트×2포트 스윕을 반복하면 안 된다.
-            // 2. 폰 핫스팟만 — 공유기/공용 Wi-Fi는 남의 망이라 자동 스윕하지 않는다(수동 버튼 유지).
-            // 3. mDNS/SSDP 0건일 때만 — 이름 신호로 이미 찾았으면 스윕은 불필요한 트래픽이다.
-            if (cameras.isEmpty() &&
-                budget == DiscoveryBudget.UserInitiated &&
-                wifiHelper.isHotspotEnabled() &&
-                subnetSweepSource.isAvailable()
-            ) {
-                Log.i(TAG, "mDNS/SSDP 0건 - 서브넷 스윕 자동 폴백 (폰 핫스팟)")
+            // 소니류(mDNS·SSDP 무광고) 병행 스윕.
+            //
+            // 소니는 15740 을 열어두고 **이름 신호를 하나도 내지 않는다**(A7C, 그리고 2026-08-20
+            // 실측: 같은 서브넷에 15740·60152 를 열고 있는데 mDNS 0건·SSDP 0건). 이름으로 찾는
+            // 두 축이 원리적으로 무력하므로, 포트를 직접 확인하는 스윕 말고는 발견 수단이 없다.
+            //
+            // 게이트는 **UserInitiated 하나만** 남긴다(사용자 결정 2026-08-20).
+            // 이전엔 두 조건이 더 있었고 둘 다 소니를 영영 못 찾게 만들었다:
+            //  - '폰 핫스팟일 때만' → 공유기에 카메라를 붙이는 구성에서 스윕이 아예 안 돈다.
+            //  - 'mDNS/SSDP 0건일 때만' → 니콘 한 대가 잡히는 순간 소니를 찾을 유일한 수단이 꺼진다.
+            //    "하나라도 찾았으면 됐다"는 전제가 다제조사 환경에서 틀렸다.
+            //
+            // ⚠️ 대가: 사용자가 검색을 누르면 **접속 중인 네트워크가 남의 망이어도** /24 를 훑는다.
+            // 배경 폴링은 여전히 제외되므로 반복 스캔은 아니고, 사용자의 명시적 조작에만 발생한다.
+            // 결과는 병합이라 mDNS 로 얻은 이름·verdict 를 덮어쓰지 않는다.
+            if (budget == DiscoveryBudget.UserInitiated && subnetSweepSource.isAvailable()) {
+                Log.i(TAG, "사용자 주도 검색 - 서브넷 스윕 병행 (이름 무광고 기종 대응)")
                 return sweepSubnetLocked(SubnetSweepDiscoverySource.DEFAULT_BUDGET_MS)
             }
             cameras

@@ -306,6 +306,11 @@ fun CameraControlScreen(
         )
     }
 
+    // ⚠️ 이 화면은 니콘 앱 모드를 **건드리지 않는다**.
+    // 촬영 화면에서는 본체 재생(▶)이 눌려야 한다는 것이 요구사항이고(사용자 결정 2026-08-20),
+    // ▶ 를 여는 유일한 수단이 앱 모드 ON 이다(명세 §2.2 No.3). 앱 셔터를 UI 에서 제거했으므로
+    // 여기서 OFF 를 유지할 이유(카드 라우팅)도 없다. 카드 탐색 점유는 미리보기 탭만 잡는다.
+
     // 라이프사이클 관리 (통합된 버전) - 의존성 최적화
     DisposableEffect(lifecycleOwner, isAutoStartEventListener) {
         val observer = LifecycleEventObserver { _, event ->
@@ -1650,7 +1655,11 @@ private fun FullscreenControlPanel(
             onGalleryClick = onGalleryClick,
             isShutterSoundEnabled = isShutterSoundEnabled,
             isTimelapseRunning = captureState.shootingMode == com.inik.camcon.domain.model.ShootingMode.TIMELAPSE && captureState.isCapturing,
-            onStopTimelapse = onStopTimelapse
+            onStopTimelapse = onStopTimelapse,
+            // 라이브뷰 중 앱 셔터는 노출하지 않는다(사용자 결정 2026-08-20). 이 도크는
+            // 라이브뷰 활성 시에만 뜨므로 여기서 끄면 라이브뷰 구간 앱 셔터가 사라진다.
+            // 촬영 로직·ViewModel 경로는 그대로 보존 — 추후 되살릴 때 이 한 줄만 되돌리면 된다.
+            showShutter = false
         )
 
         // 4) 보조 (가로 미니행) — 라이브뷰 중지(중립색) / 180° 회전

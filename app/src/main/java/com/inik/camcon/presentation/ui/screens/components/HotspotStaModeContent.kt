@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.inik.camcon.R
+import com.inik.camcon.domain.model.NikonConnectionProfile
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
@@ -110,6 +111,11 @@ fun HotspotStaModeContent(
     // 확인 다이얼로그 상태는 LazyColumn 밖에서 소유한다 — item 안에 두면 스크롤로 item이
     // 컴포지션에서 이탈할 때 다이얼로그가 상태와 함께 사라진다.
     var pendingConfirm by remember { mutableStateOf<PtpipCamera?>(null) }
+
+    // 니콘 [사진 전송] 프로파일 후보를 탭했을 때의 안내 대상. 기능 제약(라이브뷰 중 실시간 수신·
+    // 갤러리 불가)을 연결 전에 알리고 [카메라 컨트롤]로의 전환을 권한다. 상세는
+    // ImageTransferProfileDialog 문서 참조.
+    var pendingTransferProfile by remember { mutableStateOf<PtpipCamera?>(null) }
 
     val connect: (PtpipCamera) -> Unit = { camera ->
         ptpipViewModel.selectCamera(camera)
@@ -195,7 +201,14 @@ fun HotspotStaModeContent(
                     connectionState != PtpipConnectionState.CONNECTING,
                 sweepAvailable = sweepAvailable,
                 onCandidateTap = { camera, needsConfirm ->
-                    if (needsConfirm) pendingConfirm = camera else connect(camera)
+                    when {
+                        // 링크 신뢰 확인이 먼저다 — 오탭 시 대상 카메라 세션을 최대 60초 점유하므로
+                        // 기능 안내보다 우선한다. 확인 통과 후 연결 시 프로파일 안내는 생략된다.
+                        needsConfirm -> pendingConfirm = camera
+                        camera.connectionProfile == NikonConnectionProfile.IMAGE_TRANSFER ->
+                            pendingTransferProfile = camera
+                        else -> connect(camera)
+                    }
                 },
                 onRetrySearch = { ptpipViewModel.discoverCamerasHotspot() },
                 onSweepSubnet = { ptpipViewModel.sweepSubnet() }
@@ -214,6 +227,20 @@ fun HotspotStaModeContent(
             onConfirm = {
                 pendingConfirm = null
                 connect(target)
+            }
+        )
+    }
+
+    pendingTransferProfile?.let { target ->
+        ImageTransferProfileDialog(
+            onDismiss = { pendingTransferProfile = null },
+            onConnectAnyway = {
+                pendingTransferProfile = null
+                connect(target)
+            },
+            onRetrySearch = {
+                pendingTransferProfile = null
+                ptpipViewModel.discoverCamerasHotspot()
             }
         )
     }

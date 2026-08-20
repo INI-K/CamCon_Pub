@@ -11,9 +11,13 @@ import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.BuildConfig
+import com.inik.camcon.CameraNative
 import com.inik.camcon.domain.model.CameraDiscoverySource
 import com.inik.camcon.domain.model.CameraVendor
+import com.inik.camcon.domain.model.NikonConnectionProfile
 import com.inik.camcon.domain.model.PtpipCamera
+import com.inik.camcon.domain.model.VendorConfidence
+import com.inik.camcon.domain.model.VendorVerdict
 import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -780,7 +784,8 @@ class PtpipDiscoveryService @Inject constructor(
                 Log.i(
                     TAG,
                     "VENDOR_MDNS_DUMP name=${LogMask.id(serviceName)} " +
-                        "type=${serviceInfo.serviceType} verdict=$verdict txt={$txt}"
+                        "type=${serviceInfo.serviceType} verdict=$verdict " +
+                        "profile=${parseNikonConnectionProfile(serviceInfo.attributes)} txt={$txt}"
                 )
             } else {
                 Log.i(
@@ -806,6 +811,32 @@ class PtpipDiscoveryService @Inject constructor(
                 return null
             }
 
+            // TXT 가 광고하는 USB VID/PID 를 libgphoto2 표(2795개)에 조회한다.
+            // 표에는 제조사 접두어가 붙어 있어("Nikon:Z8") 기종명과 제조사를 한 번에 얻는다 —
+            // 제조사 VID 목록을 우리가 따로 하드코딩할 필요가 없다.
+            // PID 가 표에 없으면(표보다 새로 나온 바디) 제조사만 "Nikon:" 형태로 돌아온다.
+            val lookup = parseUsbIdsFromTxt(serviceInfo.attributes)?.let { (vid, pid) ->
+                runCatching { CameraNative.lookupCameraModelByUsbIds(vid, pid) }
+                    .getOrNull()
+                    ?.takeIf { it.isNotBlank() }
+            }
+            // 네이티브가 `제조사\t전체모델명` 으로 준다. 제조사만 아는 경우 탭 뒤가 비어 있다.
+            // (gp_abilities 의 model 은 "Nikon:Z8" 이 아니라 "Nikon Z8" 이라 콜론으로 못 가른다.)
+            val lookupVendor = lookup?.substringBefore('\t')?.takeIf { it.isNotBlank() }
+            val lookupModel = lookup?.substringAfter('\t', "")?.takeIf { it.isNotBlank() }
+
+            // 이름 패턴은 니콘밖에 못 잡고 그마저 LIKELY 인데, USB VID 는 제조사를 직접
+            // 지목하는 강한 식별자다. 표에서 제조사가 나오면 CONFIRMED 로 승격한다.
+            // 병합 로직이 confidence 순위로 승자를 고르므로 승격이 그대로 반영된다.
+            val resolvedVerdict = lookupVendor
+                ?.let { CameraVendorClassifier.vendorFromLibgphoto2Prefix(it) }
+                ?.let { VendorVerdict(it, VendorConfidence.CONFIRMED) }
+                ?: verdict
+
+            // 표시명은 기종이 확정됐을 때만 바꾼다. 제조사만 아는 상태에서 "Nikon" 이라고
+            // 띄우면 mDNS 인스턴스명(Z_8_5003869)보다 정보가 줄어든다.
+            val resolvedModel = lookupModel   // 이미 제조사를 포함한 전체 이름("Nikon Z8")이다
+
             PtpipCamera(
                 ipAddress = hostAddress,
                 port = port,
@@ -813,9 +844,10 @@ class PtpipDiscoveryService @Inject constructor(
                 name = extractCameraName(serviceName, hostAddress),
                 isOnline = true,
                 discoveredServiceType = serviceInfo.serviceType,
-                vendorVerdict = verdict,
-                displayName = null,
-                discoverySource = CameraDiscoverySource.MDNS
+                vendorVerdict = resolvedVerdict,
+                displayName = resolvedModel,
+                discoverySource = CameraDiscoverySource.MDNS,
+                connectionProfile = parseNikonConnectionProfile(serviceInfo.attributes)
             )
         } catch (e: Exception) {
             Log.w(TAG, "서비스 정보 처리 중 오류: ${e.message}")
@@ -833,13 +865,27 @@ class PtpipDiscoveryService @Inject constructor(
      *
      * 예외: 프린터 계열 타입이라도 **표준 PTP/IP 포트(15740)를 광고하면 카메라로 본다** —
      * 일부 Canon이 `_ipp._tcp`를 쓴다는 기록이 있다.
+     *
+     * 단 하나 더 막는 조합이 있다: **미지 타입 + 비표준 포트**. 메타 쿼리로 네트워크의 모든 서비스
+     * 타입이 유입되므로 순수 블랙리스트만으로는 무관한 기기가 후보로 올라온다(본문 주석 참조).
      */
     private fun isPlausiblePtpipService(serviceType: String?, port: Int): Boolean {
         val type = serviceType?.lowercase().orEmpty()
         if (NON_CAMERA_SERVICE_TYPES.any { type.contains(it) }) {
             return port == PTPIP_PORT
         }
-        return true
+        // 표준 포트(15740)를 광고하면 타입이 무엇이든 통과 — 블랙리스트의 취지(제조사 편향 방지) 유지.
+        if (port == PTPIP_PORT) return true
+
+        // 여기까지 왔다면 "미지 타입 + 비표준 포트"다. 메타 쿼리(RFC 6763 §9)로 네트워크의 모든
+        // 서비스 타입이 유입되므로, 이 조합을 통과시키면 카메라와 무관한 기기가 사용자 선택지에
+        // 그대로 올라간다(실측: MAC 형태 타입 `_FC9F5ED42C8A._tcp` @ :53601 이 "카메라 발견"으로
+        // 표시돼 진짜 Z8 과 함께 2지 선택을 강요했다, 2026-08-20).
+        //
+        // PTP/IP 는 15740 에 정의된 프로토콜이고, 비표준 포트를 쓰면서 우리가 아는 카메라 타입도
+        // 아닌 실기 사례는 아직 없다. 프로브 없이 판정한다(무프로브 규약 유지) — 새 사례가 나오면
+        // PRIORITY_SERVICE_TYPES 에 타입을 추가하는 쪽으로 연다.
+        return PRIORITY_SERVICE_TYPES.any { type.contains(it) }
     }
 
     /**
@@ -966,3 +1012,58 @@ class PtpipDiscoveryService @Inject constructor(
         }
     }
 }
+
+/**
+ * mDNS TXT 의 `apps` 필드로 카메라의 Wi-Fi 연결 프로파일을 판별한다(무프로브·무비용).
+ *
+ * Z8 실측(2026-08-19):
+ * - 바디 [컴퓨터에 연결] → 카메라 컨트롤 → `apps=$DSC`  → 세션 중 본체 재생(▶) 잠김
+ * - 바디 [컴퓨터에 연결] → 사진 전송     → `apps=WT3T` → 본체 조작 자유 + 촬영물 수신 동작
+ *
+ * `WT`(Wireless Transmitter) 접두로 매칭한다 — WT3T 외 변형(WT-7 등)이 올 수 있는데
+ * 정확한 문자열 집합이 미확정이라 알려진 값만 하드코딩하면 신형에서 UNKNOWN 으로 떨어진다.
+ * 판별 실패는 [NikonConnectionProfile.UNKNOWN] 으로 두고 UI 는 아무것도 표시하지 않는다
+ * (틀린 안내보다 무표시가 낫다).
+ */
+internal fun parseNikonConnectionProfile(
+    attributes: Map<String, ByteArray?>
+): NikonConnectionProfile {
+    val apps = attributes.entries
+        .firstOrNull { it.key.equals("apps", ignoreCase = true) }
+        ?.value
+        ?.toString(Charsets.UTF_8)
+        ?.trim()
+        ?: return NikonConnectionProfile.UNKNOWN
+
+    return when {
+        apps.equals("\$DSC", ignoreCase = true) -> NikonConnectionProfile.CAMERA_CONTROL
+        apps.startsWith("WT", ignoreCase = true) -> NikonConnectionProfile.IMAGE_TRANSFER
+        else -> NikonConnectionProfile.UNKNOWN
+    }
+}
+
+/**
+ * mDNS TXT 에서 USB VID/PID 를 뽑는다. 실패하면 null.
+ *
+ * 니콘 실측(Z8): `guid=04b00451-0000-1001-8001-3cbee134e25a`, `pid=451`.
+ * GUID 앞 8자리가 `VID(4) + PID(4)` 라 이쪽이 두 값을 모두 담아 우선한다.
+ * `pid` 단독 필드는 VID 가 없어 니콘(0x04b0)으로 가정해야 하므로 폴백으로만 쓴다
+ * (`vid=A` 로 오는 값은 USB VID 가 아니다 — 실측에서 0x04b0 과 무관했다).
+ */
+internal fun parseUsbIdsFromTxt(attributes: Map<String, ByteArray?>): Pair<Int, Int>? {
+    fun txt(key: String): String? = attributes.entries
+        .firstOrNull { it.key.equals(key, ignoreCase = true) }
+        ?.value?.toString(Charsets.UTF_8)?.trim()?.takeIf { it.isNotEmpty() }
+
+    txt("guid")?.replace("-", "")?.takeIf { it.length >= 8 }?.let { hex ->
+        val vid = hex.substring(0, 4).toIntOrNull(16)
+        val pid = hex.substring(4, 8).toIntOrNull(16)
+        if (vid != null && pid != null && vid != 0) return vid to pid
+    }
+
+    txt("pid")?.toIntOrNull(16)?.let { pid -> return NIKON_USB_VENDOR_ID to pid }
+    return null
+}
+
+/** 니콘 USB 벤더 ID. GUID 가 없을 때 `pid` 단독 필드의 벤더를 보정하는 데만 쓴다. */
+private const val NIKON_USB_VENDOR_ID = 0x04b0

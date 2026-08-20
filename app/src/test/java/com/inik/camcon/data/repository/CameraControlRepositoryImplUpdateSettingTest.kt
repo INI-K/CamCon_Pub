@@ -56,6 +56,7 @@ class CameraControlRepositoryImplUpdateSettingTest {
             connectionManager = mockk<CameraConnectionManager>(relaxed = true),
             eventManager = mockk<CameraEventManager>(relaxed = true),
             downloadManager = mockk<PhotoDownloadManager>(relaxed = true),
+            pluginInstaller = mockk(relaxed = true),
             ioDispatcher = UnconfinedTestDispatcher()
         )
     }

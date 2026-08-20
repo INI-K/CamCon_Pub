@@ -167,8 +167,8 @@ class CameraRepositoryImpl @Inject constructor(
     // ── C3 라운드 1: Native Gateway delegates ──
 
     override suspend fun isNativeLibrariesLoaded(): Boolean = controlRepo.isNativeLibrariesLoaded()
-    override suspend fun setupNativeEnvironment(pluginDir: String): Boolean =
-        controlRepo.setupNativeEnvironment(pluginDir)
+    override suspend fun setupNativeEnvironment(): Boolean =
+        controlRepo.setupNativeEnvironment()
     override suspend fun getLibGphoto2Version(): String = controlRepo.getLibGphoto2Version()
     override suspend fun startNativeLog(logPath: String, level: Int): Boolean =
         controlRepo.startNativeLog(logPath, level)
