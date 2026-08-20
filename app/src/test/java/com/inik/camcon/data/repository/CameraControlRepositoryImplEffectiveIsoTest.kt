@@ -79,6 +79,7 @@ class CameraControlRepositoryImplEffectiveIsoTest {
             connectionManager = connectionManager,
             eventManager = eventManager,
             downloadManager = downloadManager,
+            pluginInstaller = mockk(relaxed = true),
             ioDispatcher = UnconfinedTestDispatcher()
         )
     }
