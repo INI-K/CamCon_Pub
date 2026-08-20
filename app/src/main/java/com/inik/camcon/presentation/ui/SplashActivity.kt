@@ -198,11 +198,10 @@ class SplashActivity : ComponentActivity() {
                     return@launch
                 }
 
-                val pluginDir =
-                    applicationContext.getDir("gphoto2_plugins", MODE_PRIVATE).absolutePath
-                LogcatManager.d("SplashActivity", "플러그인 디렉토리 경로: ${LogMask.path(pluginDir)}")
-
-                val envSetupResult = setupNativeEnvironmentUseCase(pluginDir)
+                // 플러그인 경로는 UseCase 가 스스로 정한다. 예전엔 여기서 베이스 디렉터리를
+                // 넘겼는데, `.so` 는 버전 하위 디렉터리에만 있어서 CAMLIBS/IOLIBS 가 빈 곳을
+                // 가리켰다(앱 시작 직후 올바른 설정을 덮어씀 — 2026-08-20 실측).
+                val envSetupResult = setupNativeEnvironmentUseCase()
                 if (!envSetupResult) {
                     LogcatManager.e("SplashActivity", "❌ 환경변수 설정 실패")
                     withContext(Dispatchers.Main) {
