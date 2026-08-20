@@ -568,12 +568,17 @@ function normalizeCameraKey(input) {
       } catch (e) { /* 손상 캐시는 무시하고 재요청 */ }
     }
     fetch(VERIFIED_URL)
-      .then(function (r) { return r.ok ? r.json() : { cameras: [] }; })
+      /* 실패 응답을 성공처럼 다루면 안 된다. 예전에는 !r.ok 를 { cameras: [] } 로 바꿔 아래 setItem 이
+         "배지 0개"를 6시간 캐시했고, CF 가 1분 뒤 복구돼도 그 사이 페이지를 연 방문자는 6시간 내내
+         배지가 전멸한 화면을 봤다(localStorage 라 새로고침으로도 안 풀린다).
+         이제 실패는 catch 로 보내 캐시에 남기지 않는다 → 다음 방문에 즉시 재시도한다. */
+      .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
       .then(function (v) {
+        if (!v || !Array.isArray(v.cameras)) throw new Error("bad payload"); // 손상 응답도 캐시 금지
         try { localStorage.setItem(VERIFIED_CACHE_KEY, JSON.stringify({ at: Date.now(), data: v })); } catch (e) { /* 저장 실패는 무시 */ }
         done(v);
       })
-      .catch(function () { /* 배지 없이 목록만 */ });
+      .catch(function () { /* 배지 없이 목록만 — 캐시에 남기지 않으므로 다음 로드에서 다시 시도한다 */ });
   }
 
   /* 실사용 확인 수의 최소 표시 임계값. 집계가 한 자릿수인 동안 "드라이버 등재 945 · 실사용 확인 1종"으로
@@ -853,6 +858,8 @@ function normalizeCameraKey(input) {
       renderUnlisted: renderUnlisted,
       renderVerifiedCount: renderVerifiedCount,
       esc: esc,
+      loadVerified: loadVerified,
+      VERIFIED_CACHE_KEY: VERIFIED_CACHE_KEY,
       VERIFIED_MIN: VERIFIED_MIN,
       setCamData: function (d) { camData = d; },
       setVerified: function (m) { verifiedByKey = m; verifiedCount = countVerifiedMatches(); },
