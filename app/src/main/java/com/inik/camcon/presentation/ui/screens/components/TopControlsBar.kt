@@ -19,7 +19,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +30,7 @@ import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.Info
 import com.inik.camcon.presentation.theme.MicroLabel
 import com.inik.camcon.presentation.theme.MonoMicro
 import com.inik.camcon.presentation.theme.Radius
@@ -114,6 +115,24 @@ fun TopControlsBar(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
                 ) {
+                    // 다운로드 속도 헤어라인 칩 — 측정값이 있으면 표시(요구 D). 전송이 끝나도
+                    // 마지막 속도를 유지한다(사용자 요구 2026-08-18: 완료 즉시 사라지면 확인 불가).
+                    // 값은 연결 해제 시 트래커 clear() 가 0 으로 되돌려 칩이 내려간다.
+                    val transfer = uiState.transferQueue
+                    if (transfer.speedBytesPerSec > 0) {
+                        val mbPerSec = transfer.speedBytesPerSec / (1024.0 * 1024.0)
+                        HairlineChip {
+                            Text(
+                                text = stringResource(
+                                    R.string.camera_status_download_speed,
+                                    mbPerSec
+                                ),
+                                color = Info,
+                                style = MonoMicro
+                            )
+                        }
+                    }
+
                     // 배터리 헤어라인 칩 — capabilities.batteryLevel 이 있을 때만
                     uiState.cameraCapabilities?.batteryLevel?.let { level ->
                         HairlineChip {
@@ -160,7 +179,9 @@ fun TopControlsBar(
                         }
                     }
 
-                    // 설정 버튼 — M3 기본 터치 타깃(48dp) 복원
+                    // 카메라 촬영 설정(ISO/셔터/조리개/WB 시트) 버튼 — M3 기본 터치 타깃(48dp).
+                    // 아이콘은 Tune(조절 슬라이더): 하단 탭의 앱 설정(톱니)과 같은 모양이면
+                    // "설정이 왜 두 개냐"는 혼란을 부른다(사용자 지적 2026-08-18).
                     Surface(
                         color = Surface2,
                         shape = CircleShape,
@@ -171,8 +192,8 @@ fun TopControlsBar(
                             modifier = Modifier.size(TouchTarget.lg)
                         ) {
                             Icon(
-                                Icons.Default.Settings,
-                                contentDescription = stringResource(R.string.settings),
+                                Icons.Default.Tune,
+                                contentDescription = stringResource(R.string.camera_settings),
                                 tint = TextPrimaryV2,
                                 modifier = Modifier.size(20.dp)
                             )

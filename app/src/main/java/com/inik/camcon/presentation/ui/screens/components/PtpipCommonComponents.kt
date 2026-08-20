@@ -20,19 +20,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
 import com.inik.camcon.domain.model.PtpipConnectionState
+import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.DisplayM
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.HeadingM
+import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.MonoNumeric
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.SuccessV2
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.WarningV2
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
@@ -80,27 +85,47 @@ fun ConnectionStatusCard(
                         PtpipConnectionState.CONNECTED -> SuccessV2
                         PtpipConnectionState.CONNECTING -> WarningV2
                         PtpipConnectionState.ERROR -> MaterialTheme.colorScheme.error
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        else -> TextSecondaryV2
                     },
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(IconSize.lg)
                 )
                 Spacer(modifier = Modifier.width(Spacing.md))
                 Column(modifier = Modifier.weight(1f)) {
+                    // 연결 완료 시에는 카메라명이 이 화면의 Hero다(히어로 슬롯인 HotspotStatusHero는
+                    // 연결 상태에서 렌더되지 않으므로 화면당 Hero 1개 규칙이 유지된다).
+                    val isConnected = connectionState == PtpipConnectionState.CONNECTED
                     Text(
                         text = selectedCamera?.name ?: stringResource(R.string.ptpip_camera),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
+                        style = if (isConnected) DisplayM else HeadingM,
+                        color = TextPrimaryV2
                     )
-                    Text(
-                        text = when (connectionState) {
-                            PtpipConnectionState.CONNECTED -> stringResource(R.string.ptpip_connected_ip, selectedCamera?.ipAddress ?: "")
-                            PtpipConnectionState.CONNECTING -> stringResource(R.string.ptpip_connecting_status)
-                            PtpipConnectionState.ERROR -> stringResource(R.string.ptpip_connection_error)
-                            else -> stringResource(R.string.ptpip_not_connected)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (isConnected) {
+                        // 상태어(프로포셔널) / IP(모노 tnum) 분리 — 자릿수가 바뀌어도 자리가 흔들리지 않는다.
+                        Spacer(modifier = Modifier.height(Spacing.xs))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(R.string.v3_ptpip_status_connected),
+                                style = BodySmall,
+                                color = TextSecondaryV2
+                            )
+                            Spacer(modifier = Modifier.width(Spacing.sm))
+                            Text(
+                                text = selectedCamera?.ipAddress ?: "",
+                                style = MonoNumeric,
+                                color = TextSecondaryV2
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = when (connectionState) {
+                                PtpipConnectionState.CONNECTING -> stringResource(R.string.ptpip_connecting_status)
+                                PtpipConnectionState.ERROR -> stringResource(R.string.ptpip_connection_error)
+                                else -> stringResource(R.string.ptpip_not_connected)
+                            },
+                            style = BodySmall,
+                            color = TextSecondaryV2
+                        )
+                    }
                 }
             }
 
@@ -108,8 +133,8 @@ fun ConnectionStatusCard(
                 Spacer(modifier = Modifier.height(Spacing.sm))
                 Text(
                     text = "${cameraInfo.manufacturer} ${cameraInfo.model}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = BodySmall,
+                    color = TextSecondaryV2
                 )
             }
 
@@ -142,9 +167,9 @@ private fun ConnectionStatusConnectedPreview() {
         ConnectionStatusCard(
             connectionState = PtpipConnectionState.CONNECTED,
             selectedCamera = PtpipCamera(
-                ipAddress = "192.168.1.100",
+                ipAddress = "192.168.49.137",
                 port = 15740,
-                name = "Canon EOS R5",
+                name = "NIKON Z 8",
                 isOnline = true
             ),
             cameraInfo = null,

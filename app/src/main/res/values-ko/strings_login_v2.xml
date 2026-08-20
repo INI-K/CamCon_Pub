@@ -16,6 +16,8 @@
     <string name="referral_error_self">본인 추천 코드는 사용할 수 없습니다.</string>
     <string name="referral_error_not_grantable">이 계정에는 적용할 수 없는 코드입니다.</string>
     <string name="referral_error_network">네트워크 오류입니다. 잠시 후 다시 시도해주세요.</string>
+    <string name="referral_error_rate_limited">시도가 너무 잦습니다. 잠시 후 다시 시도해주세요.</string>
+    <string name="referral_error_rate_limited_minutes">시도가 너무 잦습니다. 약 %1$d분 후에 다시 시도해주세요.</string>
 
     <!-- 로그아웃 오류 상세 (settings_toast_logout_failed 의 "%s" 자리) -->
     <string name="auth_error_network_detail">네트워크 오류</string>

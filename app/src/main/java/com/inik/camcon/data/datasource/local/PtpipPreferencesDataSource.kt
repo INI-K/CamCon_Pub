@@ -13,6 +13,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.inik.camcon.domain.model.KnownCameraRef
 import com.inik.camcon.domain.model.SavedWifiCredential
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -44,6 +45,16 @@ class PtpipPreferencesDataSource @Inject constructor(
         private val PTPIP_ENABLED = booleanPreferencesKey("ptpip_enabled")
         private val LAST_CONNECTED_IP = stringPreferencesKey("last_connected_ip")
         private val LAST_CONNECTED_NAME = stringPreferencesKey("last_connected_name")
+
+        /** 본체 지문("serial|model"). 연결 후에만 알 수 있어 검증용이다. */
+        private val LAST_CONNECTED_FINGERPRINT =
+            stringPreferencesKey("last_connected_fingerprint")
+
+        /**
+         * 자동 연결 승인. 키가 **없으면 기존 사용자**로 보고 true로 읽는다(그랜드파더링).
+         * 지문 불일치가 관측될 때만 false로 회수한다.
+         */
+        private val AUTO_CONNECT_APPROVED = booleanPreferencesKey("auto_connect_approved")
         private val CONNECTION_TIMEOUT = intPreferencesKey("connection_timeout")
         private val DISCOVERY_TIMEOUT = intPreferencesKey("discovery_timeout")
         private val PTPIP_PORT = intPreferencesKey("ptpip_port")
@@ -250,6 +261,55 @@ class PtpipPreferencesDataSource @Inject constructor(
         context.ptpipDataStore.edit { preferences ->
             preferences[LAST_CONNECTED_IP] = ip
             preferences[LAST_CONNECTED_NAME] = name
+        }
+    }
+
+    /**
+     * 기억된 카메라 조회.
+     *
+     * **그랜드파더링:** 승인 플래그가 없는데 IP/이름이 있으면 기존 사용자다 → `autoConnectApproved=true`.
+     * 소급 승인을 요구하면 업데이트 직후 자동 연결이 무증상 사망한다(배경 폴링에 승인 UI가 없다).
+     */
+    suspend fun getKnownCamera(): KnownCameraRef {
+        val preferences = context.ptpipDataStore.data.first()
+        return KnownCameraRef(
+            ipHint = preferences[LAST_CONNECTED_IP],
+            serviceName = preferences[LAST_CONNECTED_NAME],
+            fingerprint = preferences[LAST_CONNECTED_FINGERPRINT],
+            autoConnectApproved = preferences[AUTO_CONNECT_APPROVED] ?: true
+        )
+    }
+
+    /** 기억된 카메라 Flow(UI/정책 관찰용). 판정 규칙은 [getKnownCamera]와 동일하다. */
+    val knownCamera: Flow<KnownCameraRef> = context.ptpipDataStore.data.map { preferences ->
+        KnownCameraRef(
+            ipHint = preferences[LAST_CONNECTED_IP],
+            serviceName = preferences[LAST_CONNECTED_NAME],
+            fingerprint = preferences[LAST_CONNECTED_FINGERPRINT],
+            autoConnectApproved = preferences[AUTO_CONNECT_APPROVED] ?: true
+        )
+    }
+
+    /**
+     * 연결 성공 후 본체 지문 기록.
+     *
+     * 지문이 없으면(시리얼 미보고·abilities 실패) 키를 지워 "지문 없음"을 명시한다 — 옛 지문을 남기면
+     * 다음 연결에서 엉뚱한 본체 불일치 판정이 난다.
+     */
+    suspend fun saveCameraFingerprint(fingerprint: String?) {
+        context.ptpipDataStore.edit { preferences ->
+            if (fingerprint.isNullOrBlank()) {
+                preferences.remove(LAST_CONNECTED_FINGERPRINT)
+            } else {
+                preferences[LAST_CONNECTED_FINGERPRINT] = fingerprint
+            }
+        }
+    }
+
+    /** 자동 연결 승인 상태 갱신(지문 불일치 시 회수, 사용자 확인 연결 시 재부여). */
+    suspend fun setAutoConnectApproved(approved: Boolean) {
+        context.ptpipDataStore.edit { preferences ->
+            preferences[AUTO_CONNECT_APPROVED] = approved
         }
     }
 

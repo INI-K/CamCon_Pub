@@ -13,12 +13,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -27,11 +27,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
@@ -63,18 +64,21 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.Camera
 import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
+import com.inik.camcon.presentation.theme.Caption
 import com.inik.camcon.presentation.theme.DividerLine
 import com.inik.camcon.presentation.theme.ErrorV2
+import com.inik.camcon.presentation.theme.HeadingL
 import com.inik.camcon.presentation.theme.IconSize
 import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoHero
 import com.inik.camcon.presentation.theme.MonoReadout
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
@@ -166,12 +170,18 @@ fun CameraPreviewArea(
         !connectionState.isConnected -> PreviewContent.Disconnected
         else -> PreviewContent.Connected
     }
+    // 루트 더블탭(전체화면 진입)은 리플 없는 제스처로만 받는다. 단일 탭은 아무 동작이 없으므로
+    // clickable 을 걸지 않는다(전면 리플·role=button 오탐 제거). 라이브뷰일 땐 내부 Image 가
+    // 같은 제스처를 이미 처리하므로 루트에서는 부착하지 않아 이중 소비를 피한다.
+    val onDoubleClickRoot = androidx.compose.runtime.rememberUpdatedState(onDoubleClick)
     Box(
         modifier = modifier
             .fillMaxSize()
-            .combinedClickable(
-                onClick = { /* 단일 클릭 처리 */ },
-                onDoubleClick = { onDoubleClick?.invoke() }
+            .then(
+                if (previewContent == PreviewContent.LiveView) Modifier
+                else Modifier.pointerInput(Unit) {
+                    detectTapGestures(onDoubleTap = { onDoubleClickRoot.value?.invoke() })
+                }
             )
     ) {
         // 상태 전환 컨테이너만 크로스페이드(250ms). 프레임 렌더 내부(디코드/제스처/오버레이) 경로는 불변.
@@ -548,7 +558,7 @@ fun CameraConnectedState(
                 tint = TextSecondaryV2,
                 modifier = Modifier.size(64.dp)
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.lg))
             PrimaryButton(
                 text = if (isLiveViewActive)
                     stringResource(R.string.stop_live_view)
@@ -571,19 +581,20 @@ fun CameraConnectedState(
                 tint = ErrorV2.copy(alpha = 0.5f),
                 modifier = Modifier.size(64.dp)
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Spacing.lg))
             Text(
                 stringResource(R.string.liveview_not_supported),
-                color = TextSecondaryV2,
-                style = MaterialTheme.typography.bodyLarge,
+                color = TextPrimaryV2,
+                style = HeadingL,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(Spacing.sm))
             Text(
                 stringResource(R.string.liveview_not_supported_detail),
-                color = TextSecondaryV2.copy(alpha = 0.7f),
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center
+                color = TextTertiary,
+                style = BodySmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.widthIn(max = 280.dp)
             )
         }
     }
@@ -724,7 +735,7 @@ private fun OverlayLabelChip(
                 shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.sm)
             )
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = Spacing.sm, vertical = 6.dp),
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -732,17 +743,21 @@ private fun OverlayLabelChip(
             imageVector = icon,
             contentDescription = null,
             tint = TextPrimaryV2,
-            modifier = Modifier.size(16.dp)
+            modifier = Modifier.size(IconSize.sm)
         )
         Text(text = label, style = MicroLabel, color = TextPrimaryV2)
     }
 }
 
-/** 노출 스트립 셀 데이터. manual=true 면 값 하단에 2dp 앰버 언더라인. */
+/**
+ * 노출 스트립 셀 데이터. manual=true 면 값 하단에 앰버 언더라인.
+ * hero=true 는 이 화면의 주 판독값(촬영자가 모니터에서 눈을 떼지 않고 읽는 값) 1개에만 붙는다.
+ */
 private data class ExposureCell(
     val label: String,
     val value: String,
-    val manual: Boolean
+    val manual: Boolean,
+    val hero: Boolean = false
 )
 
 /** 값이 수동 오버라이드(비-AUTO/비어있지 않음)인지 — SettingDropdown 관례와 동일. */
@@ -775,15 +790,17 @@ private fun normalizeWhiteBalanceLabel(raw: String): String {
 /**
  * 라이브뷰 노출 텔레메트리 스트립 — CINE 계측기 HUD.
  *
- * 박스 배경 없이 상하 0.5dp 헤어라인 룰 2줄로만 구획한다. 각 칼럼은 대문자 라벨(MicroLabel)과
- * 모노스페이스 판독값(MonoReadout)을 세로로 쌓고, 수동 오버라이드 값(ISO/SS/F/EV의 비-AUTO)에만
- * 하단 2dp 앰버 언더라인을 넣는다. MODE 칼럼은 카메라 판독값(read-only)으로, exposureMode 가 null 이면
- * 칼럼 자체를 렌더하지 않는다. WB·MODE 는 정보용이라 언더라인 없음. 클릭 불가(read-only).
- * 빈 값/EV 0 은 칼럼을 생략한다.
+ * 박스 배경 없이 상하 0.5dp 헤어라인 룰 2줄로만 구획한다. 주 판독값(SHUTTER, 없으면 ISO)은 Hero 로
+ * 승격해 MonoHero(38sp) 한 줄을 단독으로 차지하고, 나머지 칼럼은 그 아래 MonoReadout(16sp) 행으로
+ * 내려간다 — 촬영자가 모니터에서 눈을 떼지 않고 읽어야 하는 값에 2.5배 이상 스케일 대비를 준다.
+ * 각 칼럼은 대문자 라벨(MicroLabel) + 모노 판독값을 좌측 앵커로 쌓고, 수동 오버라이드 값
+ * (ISO/SS/F/EV의 비-AUTO)에만 하단 앰버 언더라인(Hero 3dp / 일반 2dp)을 넣는다. MODE 칼럼은
+ * 카메라 판독값(read-only)으로, exposureMode 가 null 이면 칼럼 자체를 렌더하지 않는다.
+ * WB·MODE 는 정보용이라 언더라인 없음. 클릭 불가(read-only). 빈 값/EV 0 은 칼럼을 생략한다.
  *
  * CINE 세로 모드는 이 스트립을 모니터 '아래' 독립 행으로 배치한다(PortraitCameraLayout). 이때
- * fullWidth=true 로 넘기면 6칼럼을 균등(weight)으로 펼쳐 화면 폭 전체를 채운다. 오버레이(가로/기타)
- * 로 쓸 땐 기본값 false — 내용 폭만 차지한다.
+ * fullWidth=true 로 넘기면 보조 칼럼을 균등(weight)으로 펼쳐 화면 폭 전체를 채운다. 오버레이(가로/기타)
+ * 로 쓸 땐 기본값 false — 내재 폭(IntrinsicSize.Min)으로 묶여 내용 폭만 차지한다.
  */
 @Composable
 fun LiveViewExposureStrip(
@@ -799,7 +816,16 @@ fun LiveViewExposureStrip(
         settings.iso.takeIf { it.isNotBlank() }
             ?.let { add(ExposureCell("ISO", it, manual = isManualExposureValue(it))) }
         settings.shutterSpeed.takeIf { it.isNotBlank() }
-            ?.let { add(ExposureCell("SHUTTER", formatLiveShutterSpeed(it), manual = isManualExposureValue(it))) }
+            ?.let {
+                add(
+                    ExposureCell(
+                        "SHUTTER",
+                        formatLiveShutterSpeed(it),
+                        manual = isManualExposureValue(it),
+                        hero = true
+                    )
+                )
+            }
         settings.aperture.takeIf { it.isNotBlank() }
             ?.let { add(ExposureCell("F", it, manual = isManualExposureValue(it))) }
         settings.exposureCompensation.takeIf { it.isNotBlank() && it != "0" }
@@ -808,44 +834,43 @@ fun LiveViewExposureStrip(
             ?.let { add(ExposureCell("WB", normalizeWhiteBalanceLabel(it), manual = false)) }
     }
     if (cells.isEmpty()) return
-    Column(modifier = modifier) {
+    // Hero 는 SHUTTER 1칼럼. 카메라가 셔터를 판독하지 못하면 ISO 로 승계한다.
+    val heroCell = cells.firstOrNull { it.hero } ?: cells.firstOrNull { it.label == "ISO" }
+    val secondaryCells = cells.filter { it !== heroCell }
+    // 오버레이(fullWidth=false)는 '내용 폭만' 차지해야 한다 — 내재 폭으로 묶어야 자식의
+    // fillMaxWidth(헤어라인 룰 2줄)가 부모 전폭으로 번지지 않는다.
+    Column(
+        modifier = modifier.then(
+            if (fullWidth) Modifier.fillMaxWidth() else Modifier.width(IntrinsicSize.Min)
+        )
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(StrokeWidth.hairline)
                 .background(DividerLine)
         )
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Spacing.sm, vertical = 11.dp),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+                .padding(horizontal = Spacing.sm, vertical = Spacing.md)
         ) {
-            cells.forEach { cell ->
-                Column(
-                    modifier = if (fullWidth) Modifier.weight(1f) else Modifier,
-                    horizontalAlignment = Alignment.CenterHorizontally
+            heroCell?.let { ExposureReadout(cell = it, hero = true) }
+            if (heroCell != null && secondaryCells.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(Spacing.sm))
+            }
+            if (secondaryCells.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md)
                 ) {
-                    Text(text = cell.label, style = MicroLabel, color = TextTertiary)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = cell.value,
-                        style = MonoReadout,
-                        color = TextPrimaryV2,
-                        modifier = Modifier
-                            .padding(bottom = Spacing.xs)
-                            .then(
-                                if (cell.manual) Modifier.drawBehind {
-                                    val stroke = 2.dp.toPx()
-                                    drawLine(
-                                        color = Accent,
-                                        start = androidx.compose.ui.geometry.Offset(0f, size.height - stroke / 2),
-                                        end = androidx.compose.ui.geometry.Offset(size.width, size.height - stroke / 2),
-                                        strokeWidth = stroke
-                                    )
-                                } else Modifier
-                            )
-                    )
+                    secondaryCells.forEach { cell ->
+                        ExposureReadout(
+                            cell = cell,
+                            hero = false,
+                            modifier = if (fullWidth) Modifier.weight(1f) else Modifier
+                        )
+                    }
                 }
             }
         }
@@ -854,6 +879,47 @@ fun LiveViewExposureStrip(
                 .fillMaxWidth()
                 .height(StrokeWidth.hairline)
                 .background(DividerLine)
+        )
+    }
+}
+
+/**
+ * 노출 스트립 단일 칼럼 — 대문자 라벨(eyebrow) 위, 모노 판독값 아래.
+ * 계측 칼럼은 좌측 앵커로 고정해 자릿수가 바뀌어도(1/60→1/1600) 기준선이 흔들리지 않는다.
+ */
+@Composable
+private fun ExposureReadout(
+    cell: ExposureCell,
+    hero: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.Start
+    ) {
+        Text(
+            text = cell.label,
+            style = MicroLabel,
+            color = if (hero) TextSecondaryV2 else TextTertiary
+        )
+        Spacer(modifier = Modifier.height(Spacing.xs))
+        Text(
+            text = cell.value,
+            style = if (hero) MonoHero else MonoReadout,
+            color = TextPrimaryV2,
+            modifier = Modifier
+                .padding(bottom = Spacing.xs)
+                .then(
+                    if (cell.manual) Modifier.drawBehind {
+                        val stroke = if (hero) 3.dp.toPx() else 2.dp.toPx()
+                        drawLine(
+                            color = Accent,
+                            start = androidx.compose.ui.geometry.Offset(0f, size.height - stroke / 2),
+                            end = androidx.compose.ui.geometry.Offset(size.width, size.height - stroke / 2),
+                            strokeWidth = stroke
+                        )
+                    } else Modifier
+                )
         )
     }
 }
@@ -897,17 +963,19 @@ private fun LiveViewStaleBadge(
     }
 
     if (isStale.value) {
-        androidx.compose.material3.Surface(
-            color = WarningV2.copy(alpha = 0.9f),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(Spacing.sm),
+        // 형제 오버레이 칩(Surface0 반투명 + 각형 헤어라인)과 같은 언어. 경고는 솔리드 필이 아니라
+        // WarningV2 엣지 + 텍스트로만 표현해 영상 위 색 판정을 방해하지 않는다.
+        val shape = RoundedCornerShape(Radius.sm)
+        Box(
             modifier = modifier
+                .background(color = Surface0.copy(alpha = 0.72f), shape = shape)
+                .border(width = StrokeWidth.hairline, color = WarningV2.copy(alpha = 0.6f), shape = shape)
+                .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
         ) {
             Text(
                 text = stringResource(R.string.liveview_frame_stalled),
-                color = TextPrimaryV2,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm)
+                color = WarningV2,
+                style = Caption
             )
         }
     }
@@ -954,6 +1022,49 @@ private fun CameraPreviewConnectedPreview() {
                 ),
                 onStartLiveView = {},
                 onStopLiveView = {}
+            )
+        }
+    }
+}
+
+/** 실촬영 판독값(1/160 · f/3.5 · ISO 640 · EV -0.3) 기준 — Hero 스케일 대비 확인용. */
+@Preview(name = "Exposure Strip - fullWidth row", showBackground = true, widthDp = 392)
+@Composable
+private fun LiveViewExposureStripFullWidthPreview() {
+    CamConTheme() {
+        Box(modifier = Modifier.background(Surface0)) {
+            LiveViewExposureStrip(
+                settings = com.inik.camcon.domain.model.CameraSettings(
+                    iso = "640",
+                    shutterSpeed = "0.00625",
+                    aperture = "3.5",
+                    whiteBalance = "Daylight",
+                    focusMode = "AF-C",
+                    exposureCompensation = "-0.3",
+                    exposureMode = "M"
+                ),
+                fullWidth = true
+            )
+        }
+    }
+}
+
+/** 가로 라이브뷰 위 오버레이 변형 — 내재 폭(내용 폭만)으로 묶이는지 확인용. */
+@Preview(name = "Exposure Strip - overlay", showBackground = true, widthDp = 392)
+@Composable
+private fun LiveViewExposureStripOverlayPreview() {
+    CamConTheme() {
+        Box(modifier = Modifier.background(Surface0)) {
+            LiveViewExposureStrip(
+                settings = com.inik.camcon.domain.model.CameraSettings(
+                    iso = "3200",
+                    shutterSpeed = "1/1600",
+                    aperture = "1.8",
+                    whiteBalance = "Automatic",
+                    focusMode = "AF-S",
+                    exposureCompensation = "0",
+                    exposureMode = "S"
+                )
             )
         }
     }

@@ -110,7 +110,7 @@ interface CameraRepository {
     // ── C3 라운드 1 (2026-04-23): Presentation→JNI 직접 호출 래핑용 네이티브 게이트웨이 ──
 
     suspend fun isNativeLibrariesLoaded(): Boolean
-    suspend fun setupNativeEnvironment(pluginDir: String): Boolean
+    suspend fun setupNativeEnvironment(): Boolean
     suspend fun getLibGphoto2Version(): String
     suspend fun startNativeLog(
         logPath: String,

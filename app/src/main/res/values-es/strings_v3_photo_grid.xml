@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="photo_grid_v3_eyebrow">CAMERA ROLL</string>
+    <string name="photo_grid_v3_photos_unit">FOTOS</string>
+    <string name="photo_grid_v3_selected_unit">SELECCIONADAS</string>
+    <string name="photo_grid_v3_page_label">PÁGINA</string>
+
+    <string name="photo_grid_v3_downloading_label">Descargando</string>
+</resources>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Impostazioni Hero (indicatore di connessione) -->
+    <string name="settings_v3_hero_eyebrow">FOTOCAMERA</string>
+    <string name="settings_v3_hero_camera_none">Nessuna fotocamera</string>
+
+    <!-- Spazio sul server — stato prima del collegamento all’API di quota -->
+    <string name="settings_v3_storage_pending">In attesa dei dati di utilizzo</string>
+</resources>

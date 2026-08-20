@@ -2,6 +2,7 @@ package com.inik.camcon.presentation.viewmodel
 
 import android.util.Log
 import com.inik.camcon.R
+import com.inik.camcon.domain.model.CaptureDeferredException
 import com.inik.camcon.domain.model.ShootingMode
 import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.model.TimelapseSettings
@@ -36,6 +37,7 @@ class CameraOperationsManager @Inject constructor(
     private val stopLiveViewUseCase: StopLiveViewUseCase,
     private val performAutoFocusUseCase: PerformAutoFocusUseCase,
     private val startTimelapseUseCase: StartTimelapseUseCase,
+    private val nikonApplicationModeManager: com.inik.camcon.data.datasource.nativesource.NikonApplicationModeManager,
     @ApplicationScope private val appScope: CoroutineScope
 ) {
 
@@ -75,6 +77,11 @@ class CameraOperationsManager @Inject constructor(
                 Log.d(TAG, "사진 촬영 요청 시작")
                 uiStateManager.updateCapturingState(true)
                 uiStateManager.clearError()
+
+                // ⚠️ 앱 셔터 카드 라우팅 안전망(enterCardBrowsing)을 여기에 두지 말 것.
+                // 점유는 반드시 짝을 이뤄 반납해야 하는데 이 경로엔 반납 지점이 없어
+                // 카운트가 새고, 그러면 이후 본체 재생(▶) 해방이 영영 걸리지 않는다.
+                // 앱 셔터를 되살린다면 촬영 완료까지를 try/finally 로 감싸 반납할 것.
 
                 // 라이브뷰 활성 상태면 Job 취소 + UI 상태 업데이트
                 // 네이티브 라이브뷰 중지는 capturePhotoAsync() 내부에서 동기적으로 처리
@@ -119,6 +126,12 @@ class CameraOperationsManager @Inject constructor(
                 uiStateManager.updateCapturingState(false)
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: CaptureDeferredException) {
+                // 촬영은 성공 — 파일만 백그라운드 전송(전송큐 경로)으로 배달된다(0029 관용).
+                // 에러 UI를 띄우지 않는다: 도착하면 기존 외부 셔터 파이프라인이
+                // capturedPhotos 와 전송 카운터를 갱신한다.
+                Log.i(TAG, "촬영 성공 — 파일 배달은 백그라운드 전송 대기: ${e.fileName}")
+                uiStateManager.updateCapturingState(false)
             } catch (e: Exception) {
                 Log.e(TAG, "사진 촬영 중 예외 발생", e)
                 uiStateManager.updateCapturingState(false)

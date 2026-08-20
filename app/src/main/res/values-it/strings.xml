@@ -41,7 +41,7 @@
     <string name="pipeline_film_sim">FILM SIM</string>
     <string name="pipeline_color_transfer">Trasf. colore</string>
     <string name="pipeline_off">OFF</string>
-    <string name="pipeline_none">—</string>
+    <string name="pipeline_none">OFF</string>
     <string name="pipeline_recent_waiting">In attesa</string>
     <string name="pipeline_exposure_mode">MODE</string>
     <string name="cd_toggle_film_sim">Attiva/disattiva simulazione pellicola</string>
@@ -199,6 +199,8 @@
 
     <!-- 빈 상태 -->
     <string name="no_photos">Nessuna foto</string>
+    <string name="preview_card_browse_unsupported_title">Esplorazione della scheda non disponibile</string>
+    <string name="preview_card_browse_unsupported_desc">Questa fotocamera non consente l\'accesso alla scheda di memoria durante il controllo remoto.\nLe foto scattate vengono ricevute automaticamente e salvate nella galleria.\nPer esplorare la scheda, imposta la modalità di connessione USB della fotocamera su MTP e collegala via USB (lo scatto remoto non sarà disponibile).</string>
     <string name="connect_camera_and_capture">Collega la fotocamera tramite USB\ne scatta foto</string>
     <string name="check_camera_connection">• Verifica se la fotocamera è collegata\n• Scorri verso il basso per aggiornare</string>
     <string name="image_load_failed">Impossibile caricare l\'immagine</string>
@@ -344,7 +346,7 @@
     <string name="ptpip_check_scan_conditions">Controlla le condizioni di scansione</string>
     <string name="ptpip_shutter_listen_start">Avvia ricezione wireless dello scatto fisico</string>
     <string name="ptpip_shutter_listen_stop">Arresta ricezione wireless</string>
-    <string name="ptpip_no_camera_search_first">Nessuna fotocamera — cerca prima una fotocamera in modalità STA</string>
+    <string name="ptpip_no_camera_search_first">Nessuna fotocamera - cerca prima una fotocamera in modalità STA</string>
 
     <!-- i18n 누락 보강: 백필 미포함 잔여 (2026-07-13) -->
     <string name="open_source_licenses">Licenze Open Source</string>
@@ -355,8 +357,18 @@
     <string name="gradle_dependencies_desc">Tocca per vedere tutte le licenze delle dipendenze Gradle</string>
     <string name="license_version">Versione:</string>
     <string name="license_type">Licenza:</string>
+    <!-- LGPL 수정본 소스 서면 제공 오퍼 + 상표 면책 -->
+    <string name="licenses_modified_badge">Modificato da CamCon</string>
+    <string name="licenses_lgpl_offer_title">Sorgenti LGPL modificate</string>
+    <string name="licenses_lgpl_offer_body">CamCon include versioni modificate di libgphoto2 e libgphoto2_port, distribuite con licenza LGPL-2.1-or-later. Come richiesto da tale licenza, forniamo il codice sorgente completo corrispondente a queste versioni modificate a chiunque ne faccia richiesta, per tre anni dalla data di distribuzione di questa versione. Indica la versione dell\'app nella richiesta.</string>
+    <string name="licenses_trademark_title">Marchi</string>
+    <string name="licenses_trademark_body">I nomi delle pellicole e dei marchi di fotocamere mostrati nelle simulazioni pellicola sono di proprietà dei rispettivi titolari. CamCon non è affiliata a essi né da essi sponsorizzata o approvata. I nomi sono usati solo per descrivere le caratteristiche cromatiche che ogni preset intende riprodurre.</string>
+    <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->
+    <string name="licenses_contact_click_label">Contatta via e-mail</string>
+    <string name="contact_email_copied">Nessuna app di posta trovata. L\'indirizzo è stato copiato negli appunti: %1$s</string>
     <string name="camera_preview_live_view">Live View</string>
     <string name="photo_capture_failed">Impossibile scattare/ricevere la foto (errore %1$d)</string>
+    <string name="photo_transfer_rejected_by_camera">La fotocamera ha rifiutato il trasferimento di questa foto. Ritrasferiscila dalla fotocamera o riconnettiti.</string>
     <string name="photo_delete_camera_failed">Impossibile eliminare la foto dalla fotocamera</string>
     <string name="notif_channel_status_name">Stato della fotocamera</string>
     <string name="notif_channel_status_desc">Mostra lo stato di connessione e ricezione file della fotocamera</string>
@@ -365,8 +377,8 @@
     <string name="connection_status_sta_connected">Modalità STA connessa (%1$s)</string>
     <string name="connection_status_connecting">Connessione alla fotocamera…</string>
     <string name="connection_status_error">Errore di connessione della fotocamera</string>
-    <string name="connection_status_camera_ap">AP fotocamera connesso — ricerca fotocamera disponibile</string>
-    <string name="connection_status_wifi">Wi-Fi connesso — ricerca fotocamera disponibile</string>
+    <string name="connection_status_camera_ap">AP fotocamera connesso - ricerca fotocamera disponibile</string>
+    <string name="connection_status_wifi">Wi-Fi connesso - ricerca fotocamera disponibile</string>
     <string name="connection_status_disconnected">Non connesso</string>
     <string name="usb_init_connecting_camera">Connessione alla fotocamera USB…</string>
     <string name="usb_init_requesting_permission">Richiesta autorizzazione USB…</string>

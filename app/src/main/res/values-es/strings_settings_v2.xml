@@ -30,7 +30,7 @@
     <string name="settings_v2_camera_controls_on">Mostrar la vista en directo y la interfaz de control de cámara</string>
     <string name="settings_v2_camera_controls_off">Desactivado: se muestra la última foto capturada</string>
     <string name="settings_v2_liveview_title">Activar vista en directo</string>
-    <string name="settings_v2_liveview_subtitle">Mostrar la imagen de la cámara en tiempo real (solo ADMIN)</string>
+    <string name="settings_v2_liveview_subtitle">Mostrar la imagen de la cámara en tiempo real</string>
     <string name="settings_v2_liveview_quality_title">Calidad de Live View</string>
     <string name="settings_v2_liveview_quality_speed">Velocidad</string>
     <string name="settings_v2_liveview_quality_balanced">Equilibrado</string>
@@ -41,7 +41,7 @@
     <string name="settings_v2_auto_event_title">Recepción automática de eventos</string>
     <string name="settings_v2_auto_event_subtitle">Iniciar automáticamente el detector de eventos al entrar en la pestaña de control de cámara</string>
     <string name="settings_v2_liveview_locked_title">Función de vista en directo</string>
-    <string name="settings_v2_liveview_locked_subtitle">Disponible solo en el nivel ADMIN</string>
+    <string name="settings_v2_liveview_locked_subtitle">Disponible con una suscripción PRO o superior</string>
     <string name="settings_v2_latest_photo_title">Mostrar última foto</string>
     <string name="settings_v2_latest_photo_subtitle">Mostrar la foto capturada más reciente cuando los controles de cámara están desactivados</string>
 

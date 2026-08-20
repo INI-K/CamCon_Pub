@@ -79,15 +79,26 @@ class AppSettingsViewModel @Inject constructor(
     fun isRawFile(path: String): Boolean = validateImageFormatUseCase.isRawFile(path)
 
     /**
-     * 카메라 컨트롤 표시 여부
+     * 카메라 컨트롤 표시 여부.
+     *
+     * 저장된 설정만 보면 구독 만료·강등 뒤에도 계속 켜진 채 남는다(월 구독이라 흔한 경로).
+     * 라이브뷰와 같은 방식으로 티어를 함께 확인해 비허용 티어에서는 강제로 꺼진 것으로 본다.
+     * 판정은 기능 게이팅 단일 지점(ValidateFeatureAccessUseCase)에 위임한다.
      */
-    val isCameraControlsEnabled: StateFlow<Boolean> =
-        appSettingsRepository.isCameraControlsEnabled
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
-                initialValue = false
-            )
+    val isCameraControlsEnabled: StateFlow<Boolean> = combine(
+        appSettingsRepository.isCameraControlsEnabled,
+        getSubscriptionUseCase.getSubscriptionTier()
+    ) { settingEnabled, subscriptionTier ->
+        if (!validateFeatureAccessUseCase.isCameraControlAllowed(subscriptionTier)) {
+            false
+        } else {
+            settingEnabled
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
 
     /**
      * 라이브뷰 표시 여부 - ADMIN 티어에서만 활성화 가능
@@ -116,6 +127,21 @@ class AppSettingsViewModel @Inject constructor(
         .map { tier ->
             tier == SubscriptionTier.ADMIN
         }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    /**
+     * 라이브뷰 허용 티어인가. 설정 화면이 라이브뷰 토글을 보여줄지 판단하는 데 쓴다.
+     *
+     * [isLiveViewEnabled] 와는 다르다 — 그쪽은 '지금 켜져 있는가'(설정값 ∧ 티어)이고
+     * 이쪽은 '켤 수 있는가'(티어만)다. 토글 노출을 켜짐 여부로 판단하면 꺼놓은 순간
+     * 토글 자체가 사라져 다시 켤 수 없다.
+     */
+    val isLiveViewAllowed: StateFlow<Boolean> = getSubscriptionUseCase.getSubscriptionTier()
+        .map { tier -> validateFeatureAccessUseCase.isLiveViewAllowed(tier) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -315,14 +341,15 @@ class AppSettingsViewModel @Inject constructor(
             )
 
     /**
-     * 셔터 사운드 활성화 여부 (기본값: true)
+     * 셔터 사운드 활성화 여부 (기본값: false — 저장소 기본값과 일치시킨다).
+     * initialValue 가 저장소 기본값과 다르면 첫 방출 전까지 토글이 켜진 채로 잠깐 보인다.
      */
     val isShutterSoundEnabled: StateFlow<Boolean> =
         appSettingsRepository.isShutterSoundEnabled
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000),
-                initialValue = true
+                initialValue = false
             )
 
     /**

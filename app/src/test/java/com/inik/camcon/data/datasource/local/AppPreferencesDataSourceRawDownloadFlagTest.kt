@@ -31,7 +31,7 @@ import org.robolectric.annotation.Config
  *  - 최초 구독은 암호화 저장소 값을 방출
  *  - set 직후 같은 구독에 새 값이 재방출 (핵심 회귀 — 구버전은 flow 완료로 실패)
  *  - setter 가 암호화 저장소에도 실제 기록
- *  - clearAllSettings 후 기본값 true 재방출
+ *  - clearAllSettings 후 기본값 false 재방출
  *
  * 구현 메모: EncryptedSharedPreferences 는 Robolectric 에서 Keystore 의존이라
  * [EncryptedAppPreferences] 는 backing 변수를 둔 mock 으로 대체한다.
@@ -49,7 +49,7 @@ class AppPreferencesDataSourceRawDownloadFlagTest {
     fun setUp() = runTest {
         val context = RuntimeEnvironment.getApplication()
         // 프로세스 단일 DataStore 인스턴스 → 레거시 키 누수 방지를 위해 선정리하되,
-        // clearAllSettings 가 상태 flow 를 true 로 시드하므로 테스트 대상 인스턴스는 새로 만든다.
+        // clearAllSettings 가 상태 flow 를 기본값으로 시드하므로 테스트 대상 인스턴스는 새로 만든다.
         AppPreferencesDataSource(context, mockk<EncryptedAppPreferences>(relaxed = true), Dispatchers.Unconfined)
             .clearAllSettings()
 
@@ -101,17 +101,34 @@ class AppPreferencesDataSourceRawDownloadFlagTest {
     }
 
     @Test
-    fun `clearAllSettings 후 기본값 true 가 재방출된다`() = runTest {
+    fun `clearAllSettings 후 기본값 false 가 재방출된다`() = runTest {
+        // 저장된 값(true)에서 출발해 켜고 끄고 초기화까지의 재방출을 확인한다.
+        // 기본값은 false 다 — RAW 는 파일이 커서 기본으로 받지 않는다(사용자 결정 2026-08-20).
         dataSource.isRawFileDownloadEnabled.test {
             assertTrue(awaitItem())
 
             dataSource.setRawFileDownloadEnabled(false)
             assertFalse(awaitItem())
 
+            dataSource.setRawFileDownloadEnabled(true)
+            assertTrue(awaitItem())
+
             dataSource.clearAllSettings()
-            assertTrue("초기화 후 기본값 true 로 되돌아와야 한다", awaitItem())
+            assertFalse("초기화 후 기본값 false 로 되돌아와야 한다", awaitItem())
 
             cancelAndConsumeRemainingEvents()
         }
+    }
+
+    @Test
+    fun `저장된 값이 없으면 기본값 false 를 방출한다`() = runTest {
+        // 신규 설치 경로. 저장소에 아무것도 없을 때 켜진 상태로 시작하면 안 된다.
+        val emptyPrefs = mockk<EncryptedAppPreferences>(relaxed = true) {
+            every { getRawFileDownloadEnabled(any()) } answers { firstArg() }
+        }
+        val fresh = AppPreferencesDataSource(
+            RuntimeEnvironment.getApplication(), emptyPrefs, Dispatchers.Unconfined
+        )
+        assertFalse(fresh.isRawFileDownloadEnabled.first())
     }
 }

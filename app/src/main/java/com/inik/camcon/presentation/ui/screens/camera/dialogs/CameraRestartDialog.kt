@@ -29,12 +29,18 @@ fun CameraRestartDialog(
             )
         },
         title = {
-            Text(stringResource(R.string.diag_restart_needed))
+            // M3 AlertDialog 기본 title 스타일은 headlineSmall(16sp)이라 본문과 크기가 겹친다.
+            // 형제 다이얼로그(TimelapseSettingsDialog)와 동일하게 titleLarge(20sp)로 맞춘다.
+            Text(
+                stringResource(R.string.diag_restart_needed),
+                style = MaterialTheme.typography.titleLarge
+            )
         },
         text = {
+            // 리드 문장 → bodyLarge(16sp). 제목 20sp 대비 위계가 크기로 잡힌다.
             Text(
                 stringResource(R.string.diag_restart_message),
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyLarge
             )
         },
         confirmButton = {

@@ -13,8 +13,8 @@ plugins {
 
 // 메이저.마이너.패치 버전 정의 (수동 관리)
 project.ext.majorVersion = 2
-project.ext.minorVersion = 0
-project.ext.patchVersion = 4
+project.ext.minorVersion = 1
+project.ext.patchVersion = 0
 
 // 브랜치별 버전 식별자 생성
 def getBranchVersionSuffix() {
@@ -260,6 +260,18 @@ gradle.taskGraph.whenReady { graph ->
                 "release 서명 미구성: rootProject의 key.properties(keyAlias/keyPassword/storeFile/storePassword)가 없거나 불완전합니다. " +
                         "무서명/디버그 서명 release 빌드를 차단합니다. key.properties를 구성한 뒤 다시 빌드하세요."
         )
+    }
+}
+
+// Compose 컴파일러 리포트 — 안정성 진단의 실측 근거.
+// 기본은 꺼져 있고 -PcomposeReports 로 켠다(상시 켜면 빌드가 느려진다).
+// 사용: ./gradlew :app:assembleRelease -PcomposeReports
+//   → app/build/compose_compiler/{classes,composables}.txt
+// 릴리즈 빌드에서 뽑아야 정확하다(디버그는 추론 결과가 다르다).
+composeCompiler {
+    if (project.hasProperty('composeReports')) {
+        reportsDestination = layout.buildDirectory.dir('compose_compiler')
+        metricsDestination = layout.buildDirectory.dir('compose_compiler')
     }
 }
 

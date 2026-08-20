@@ -499,7 +499,7 @@ open class FakeCameraRepositoryBasic : CameraRepository {
 
     // ── C3 라운드 1 stub (2026-04-23) ──
     override suspend fun isNativeLibrariesLoaded(): Boolean = false
-    override suspend fun setupNativeEnvironment(pluginDir: String): Boolean = false
+    override suspend fun setupNativeEnvironment(): Boolean = false
     override suspend fun getLibGphoto2Version(): String = ""
     override suspend fun startNativeLog(logPath: String, level: Int): Boolean = false
     override suspend fun stopNativeLog(): Boolean = false

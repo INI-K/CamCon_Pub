@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- info-screens (Informations appareil photo / Licences open source) V3 UI strings. Sans emoji ni puces. -->
+<resources>
+    <string name="v3_abilities_grade_full">Contrôle à distance complet</string>
+    <string name="v3_abilities_grade_download">Téléchargement uniquement</string>
+    <string name="v3_abilities_grade_partial">Prise en charge partielle</string>
+
+    <string name="v3_abilities_summary_full">Cet appareil prend en charge toutes les fonctions à distance.</string>
+    <string name="v3_abilities_summary_download">Cet appareil ne prend en charge que le téléchargement de fichiers. La capture à distance et l\'aperçu en direct ne sont pas disponibles. Certains modèles %1$s ont une prise en charge PTP limitée.</string>
+    <string name="v3_abilities_summary_partial">L\'aperçu en direct n\'est pas pris en charge, mais la capture à distance est disponible.</string>
+    <string name="v3_abilities_summary_some">Certaines fonctions de l\'appareil peuvent être limitées.</string>
+
+    <string name="v3_abilities_cap_capture">Capture à distance</string>
+    <string name="v3_abilities_cap_liveview">Aperçu en direct</string>
+    <string name="v3_abilities_cap_config">Contrôle des réglages</string>
+    <string name="v3_abilities_cap_files">Gestion des fichiers</string>
+
+    <string name="v3_diag_section_title">Diagnostic (ADMIN)</string>
+
+    <string name="v3_licenses_native_section">Incluses dans l\'application</string>
+</resources>

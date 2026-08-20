@@ -521,12 +521,13 @@ class AuthRepositoryImpl @Inject constructor(
                 FirebaseFunctionsException.Code.PERMISSION_DENIED -> ReferralRedeemReason.SELF_REFERRAL
                 FirebaseFunctionsException.Code.FAILED_PRECONDITION -> ReferralRedeemReason.NOT_GRANTABLE
                 FirebaseFunctionsException.Code.UNAUTHENTICATED -> ReferralRedeemReason.UNAUTHENTICATED
+                FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED -> ReferralRedeemReason.RATE_LIMITED
                 FirebaseFunctionsException.Code.UNAVAILABLE,
                 FirebaseFunctionsException.Code.DEADLINE_EXCEEDED -> ReferralRedeemReason.NETWORK
                 else -> ReferralRedeemReason.UNKNOWN
             }
             Log.w(TAG, "추천코드 적용 거부: ${maskId(normalized)} (code=${e.code}, reason=$reason)", e)
-            Result.failure(ReferralRedeemException(reason, e))
+            Result.failure(ReferralRedeemException(reason, e, retryAfterMs(e)))
         } catch (e: IOException) {
             Log.e(TAG, "추천코드 적용 네트워크 오류: ${maskId(normalized)}", e)
             Result.failure(ReferralRedeemException(ReferralRedeemReason.NETWORK, e))
@@ -534,6 +535,15 @@ class AuthRepositoryImpl @Inject constructor(
             Log.e(TAG, "추천코드 적용 실패: ${maskId(normalized)}", e)
             Result.failure(ReferralRedeemException(ReferralRedeemReason.UNKNOWN, e))
         }
+    }
+
+    /**
+     * 시도 제한 응답의 남은 대기 시간(ms)을 HttpsError details 에서 꺼낸다.
+     * details 는 서버가 보낸 임의 JSON 이므로 구버전 응답(값 없음)·형식 불일치는 모두 null 로 흘린다.
+     */
+    private fun retryAfterMs(e: FirebaseFunctionsException): Long? {
+        val details = e.details as? Map<*, *> ?: return null
+        return (details["retryAfterMs"] as? Number)?.toLong()?.takeIf { it > 0L }
     }
 
     /**
@@ -602,16 +612,23 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             // 클라이언트는 referral_codes 에 직접 쓸 수 없다(rules: allow write: if false).
             // 관리자 검증·문서 생성은 서버(createReferralCode CF, Admin SDK)가 수행한다.
+            // 코드 문자열도 서버가 난수로 발급하며 요청의 code 인자는 무시된다 —
+            // 따라서 로그에는 응답으로 돌아온 실제 발급 코드를 남긴다(요청값을 찍으면 디버깅이 오도된다).
             val payload = mapOf(
                 "code" to code.trim().uppercase(),
                 "tier" to tier?.name,
                 "description" to description
             )
-            functions.getHttpsCallable(CREATE_REFERRAL_FUNCTION).call(payload).await()
-            Log.i(TAG, "추천 코드 생성 성공: $code")
+            val result = functions.getHttpsCallable(CREATE_REFERRAL_FUNCTION).call(payload).await()
+
+            @Suppress("UNCHECKED_CAST")
+            val issuedCode = (result.data as? Map<String, Any?>)?.get("code") as? String
+            // 발급 코드는 티어를 부여하는 살아있는 크리덴셜이라 마스킹한다.
+            // (release 는 proguard 가 Log.i 를 제거하지만 debug 로그로도 새면 안 된다.)
+            Log.i(TAG, "추천 코드 생성 성공: ${issuedCode?.let(::maskId) ?: "(코드 미반환)"}")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "추천 코드 생성 실패: $code", e)
+            Log.e(TAG, "추천 코드 생성 실패 (tier=${tier?.name ?: "(none)"})", e)
             false
         }
     }

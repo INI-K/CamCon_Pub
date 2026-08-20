@@ -311,10 +311,13 @@ object Constants {
     }
 
     /**
-     * 법적 문서 URL (개인정보처리방침·이용약관)
+     * 법적 문서 URL (개인정보처리방침·이용약관) 및 운영자 연락처
      */
     object Legal {
         const val PRIVACY_POLICY_URL = "https://camcon.inik.kr/privacy.html"
         const val TERMS_OF_SERVICE_URL = "https://camcon.inik.kr/terms.html"
+
+        // LGPL 소스 요청·문의 연락처. website/privacy.html·terms.html에 기재된 운영자 주소와 동일해야 한다.
+        const val CONTACT_EMAIL = "ppp5544@gmail.com"
     }
 }

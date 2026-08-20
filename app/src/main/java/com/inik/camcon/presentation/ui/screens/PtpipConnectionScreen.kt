@@ -235,6 +235,9 @@ fun PtpipConnectionScreen(
     // 이미 연결된 상태로 이 화면에 재진입하면(예: ADMIN 전송목록 테스트 버튼 사용) 자동 이동을 막아
     // 화면이 즉시 닫혀버리지 않도록 한다.
     var sawConnectingThisSession by remember { mutableStateOf(false) }
+    // 취소 요청 후 실제 반영까지의 간격(승인 대기 폴링 주기, 최대 ~1.5s)을 사용자에게 정직하게 보여준다.
+    // 다이얼로그를 즉시 닫으면 뒤에서 연결이 완주해 화면이 카메라 컨트롤로 튄다.
+    var cancelRequested by remember { mutableStateOf(false) }
 
     // === 추가: Wi-Fi 패스워드 입력 다이얼로그 & 상태 ===
     var showPasswordDialog by remember { mutableStateOf(false) }
@@ -541,6 +544,7 @@ fun PtpipConnectionScreen(
         when (connectionState) {
             com.inik.camcon.domain.model.PtpipConnectionState.CONNECTING -> {
                 sawConnectingThisSession = true
+                cancelRequested = false
                 showConnectionProgressDialog = true
             }
             com.inik.camcon.domain.model.PtpipConnectionState.CONNECTED -> {
@@ -771,39 +775,42 @@ fun PtpipConnectionScreen(
                 )
             }
 
-            // 탭 행
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                containerColor = Surface2,
-                contentColor = TextPrimaryV2,
-                indicator = { tabPositions ->
-                    if (pagerState.currentPage < tabPositions.size) {
-                        TabRowDefaults.SecondaryIndicator(
-                            Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                            color = Accent
-                        )
-                    }
-                }
-            ) {
-                tabTitles.forEachIndexed { index, title ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            scope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        text = {
-                            Text(
-                                title,
-                                color = if (pagerState.currentPage == index)
-                                    Accent
-                                else
-                                    TextSecondaryV2,
-                                style = Caption
+            // 탭 행 — 탭이 1개뿐이면(현행 staOnly: 폰 핫스팟 단독) 탭바 자체가 무의미한
+            // 장식이라 그리지 않는다(전면 정리 2026-08-18). 모드가 다시 늘어나면 자동 복원.
+            if (tabTitles.size > 1) {
+                TabRow(
+                    selectedTabIndex = pagerState.currentPage,
+                    containerColor = Surface2,
+                    contentColor = TextPrimaryV2,
+                    indicator = { tabPositions ->
+                        if (pagerState.currentPage < tabPositions.size) {
+                            TabRowDefaults.SecondaryIndicator(
+                                Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
+                                color = Accent
                             )
                         }
-                    )
+                    }
+                ) {
+                    tabTitles.forEachIndexed { index, title ->
+                        Tab(
+                            selected = pagerState.currentPage == index,
+                            onClick = {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
+                            },
+                            text = {
+                                Text(
+                                    title,
+                                    color = if (pagerState.currentPage == index)
+                                        Accent
+                                    else
+                                        TextSecondaryV2,
+                                    style = Caption
+                                )
+                            }
+                        )
+                    }
                 }
             }
 
@@ -820,7 +827,6 @@ fun PtpipConnectionScreen(
                     staOnly -> HotspotStaModeContent(
                         ptpipViewModel = ptpipViewModel,
                         connectionState = connectionState,
-                        discoveredCameras = discoveredCameras,
                         isDiscovering = isDiscovering,
                         isConnecting = isConnecting,
                         selectedCamera = selectedCamera,
@@ -878,7 +884,6 @@ fun PtpipConnectionScreen(
                     page == hotspotTabIndex -> HotspotStaModeContent(
                         ptpipViewModel = ptpipViewModel,
                         connectionState = connectionState,
-                        discoveredCameras = discoveredCameras,
                         isDiscovering = isDiscovering,
                         isConnecting = isConnecting,
                         selectedCamera = selectedCamera,
@@ -906,9 +911,17 @@ fun PtpipConnectionScreen(
                 dismissOnClickOutside = false
             ),
             title = {
+                // 진행 문구가 이 다이얼로그의 주역 — 보조문(BodySmall 13sp)보다 작던 위계 역전을 푼다.
                 Text(
-                    text = connectionProgressMessage.ifEmpty { stringResource(R.string.ptpip_connecting_to_camera) },
-                    style = Caption,
+                    text = if (cancelRequested) {
+                        stringResource(R.string.ptpip_connect_cancelling)
+                    } else {
+                        connectionProgressMessage.ifEmpty {
+                            stringResource(R.string.ptpip_connecting_to_camera)
+                        }
+                    },
+                    style = HeadingM,
+                    color = TextPrimaryV2,
                     textAlign = TextAlign.Center
                 )
             },
@@ -932,9 +945,14 @@ fun PtpipConnectionScreen(
             confirmButton = {
                 SecondaryButton(
                     text = stringResource(R.string.cancel),
+                    enabled = !cancelRequested,
                     onClick = {
-                        ptpipViewModel.disconnect()
-                        showConnectionProgressDialog = false
+                        // disconnect()는 연결이 잡고 있는 mutex를 기다려 취소가 실효하지 않는다.
+                        // cancelConnecting()은 mutex 밖에서 취소 세대 번호만 올리므로 즉시 전달된다.
+                        ptpipViewModel.cancelConnecting()
+                        // 취소 후 늦게 완주한 연결이 자동 화면 이동을 발동시키지 않도록 플래그를 내린다.
+                        sawConnectingThisSession = false
+                        cancelRequested = true
                     }
                 )
             }

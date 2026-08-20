@@ -52,6 +52,8 @@ functions/package-lock.json
 # Android NDK/CMake build files
 app/.cxx/
 app/build/
+# jniLibs 백업 디렉터리 재유입 방지 (공개 미러로 244경로가 샌 전례)
+app/src/main/jniLibs_bak/
 #*.so
 #*.o
 

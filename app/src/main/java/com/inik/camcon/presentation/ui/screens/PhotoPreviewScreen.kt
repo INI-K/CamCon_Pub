@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
@@ -50,6 +51,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -59,12 +62,16 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.inik.camcon.R
+import com.inik.camcon.presentation.theme.Accent
 import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.theme.CameraSpec
 import com.inik.camcon.presentation.theme.Caption
+import com.inik.camcon.presentation.theme.DisplayNum
 import com.inik.camcon.presentation.theme.HeadingM
 import com.inik.camcon.presentation.theme.LocalWindowSizeClass
+import com.inik.camcon.presentation.theme.MicroLabel
+import com.inik.camcon.presentation.theme.MonoNumeric
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
@@ -75,7 +82,6 @@ import com.inik.camcon.presentation.ui.components.v2.IconButtonV2
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.ProgressBarV2
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
-import com.inik.camcon.presentation.ui.components.v2.Section
 import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
 import com.inik.camcon.presentation.ui.components.v2.StatusIndicator
 import com.inik.camcon.presentation.ui.components.v2.StatusKind
@@ -98,7 +104,7 @@ import java.io.File
  *
  * 구조:
  *  - SurfaceV2 tier=0 외곽
- *  - Column: StatusBar(연결 상태) → Section(제목/필터/새로고침) → 그리드/빈/오류 상태 → BottomActionBar(다중 선택)
+ *  - Column: StatusBar(연결 상태) → Header(사진 수 Hero/필터/새로고침) → 그리드/빈/오류 상태 → BottomActionBar(다중 선택)
  *  - 오버레이: UsbInitializationOverlay, FullScreenPhotoViewer, ToastV2(에러)
  *
  * 보존:
@@ -114,6 +120,7 @@ fun PhotoPreviewScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val photos by viewModel.photos.collectAsStateWithLifecycle()
+    val isStorageUnsupported by viewModel.isStorageUnsupported.collectAsStateWithLifecycle()
     val isLoadingPhotos by viewModel.isLoadingPhotos.collectAsStateWithLifecycle()
     val isLoadingMore by viewModel.isLoadingMorePhotos.collectAsStateWithLifecycle()
     val hasNextPage by viewModel.hasNextPage.collectAsStateWithLifecycle()
@@ -135,6 +142,8 @@ fun PhotoPreviewScreen(
 
     DisposableEffect(Unit) {
         LogcatManager.d("PhotoPreviewScreen", "사진 미리보기 탭 진입 - 이벤트 리스너 관리 시작")
+        // 카드 탐색 구간 진입 통지 — 니콘 앱 모드 해제는 진입마다 필요하다(재진입 포함).
+        viewModel.onTabEnter()
         onDispose {
             LogcatManager.d("PhotoPreviewScreen", "사진 미리보기 탭 이탈 - 이벤트 리스너 재시작 신호")
             viewModel.onTabExit()
@@ -156,7 +165,7 @@ fun PhotoPreviewScreen(
                 isUsbConnected = uiState.isConnected
             )
 
-            // === Header (Section) ===
+            // === Header (Hero readout) ===
             if (isMultiSelectMode) {
                 MultiSelectHeader(selectedCount = selectedPhotos.size)
             } else {
@@ -194,6 +203,8 @@ fun PhotoPreviewScreen(
 
                     !uiState.isConnected && !isPtpipConnected -> CameraDisconnectedState()
                     isLoadingPhotos && photos.isEmpty() -> PhotoSkeletonGrid()
+                    // 카드 탐색 미지원 세션(Sony PC리모트) — 일반 빈 상태 대신 이유+해결 경로 상시 안내
+                    photos.isEmpty() && isStorageUnsupported -> CardBrowsingUnsupportedState()
                     photos.isEmpty() -> EmptyPhotosV2()
                     else -> Column(modifier = Modifier.fillMaxSize()) {
                         PhotoGrid(
@@ -396,6 +407,15 @@ fun PhotoPreviewScreen(
 /* ----------------- Helpers / Components ----------------- */
 
 /**
+ * Hero 수치(34sp) 옆 eyebrow 라벨을 광학 베이스라인에 맞추는 인셋.
+ * Compose 에는 Row 안의 서로 다른 폰트 크기를 베이스라인 정렬해 주는 토큰이 없어 고정 인셋으로 맞춘다.
+ */
+private val HeroBaselineInset = 6.dp
+
+/** 장문 토스트가 Expanded(태블릿 4열) 폭에서 한 줄로 늘어지지 않도록 하는 가독 폭 상한. */
+private val ReadableTextMaxWidth = 480.dp
+
+/**
  * 상단 32dp StatusBar — 연결 상태 표시 (USB / PTPIP / 미연결).
  */
 @Composable
@@ -422,7 +442,11 @@ private fun StatusBarRow(
 }
 
 /**
- * 메인 헤더 — Section(title) + trailing(필터/카운트/새로고침).
+ * 메인 헤더 — Hero readout(사진 개수) + eyebrow + 필터/새로고침.
+ *
+ * 이 화면의 존재 이유는 "카메라에 사진이 몇 장 있고 지금 몇 페이지를 보고 있는가"다.
+ * 따라서 photoCount 를 [DisplayNum](34sp tnum) 히어로로 올리고, 기존 최대 슬롯이던
+ * Section 제목(HeadingL 20sp)은 [MicroLabel] eyebrow 로 강등한다.
  */
 @Composable
 private fun PhotoListHeader(
@@ -437,10 +461,39 @@ private fun PhotoListHeader(
 ) {
     var lastClickTime by remember { mutableStateOf(0L) }
 
-    Section(
-        title = stringResource(R.string.camera_photo_list),
-        modifier = Modifier.padding(horizontal = Spacing.base, vertical = Spacing.sm),
-        trailing = {
+    // 스크린리더에는 히어로 분해 조각이 아니라 로컬라이즈된 문장을 그대로 읽힌다.
+    val countText = pluralStringResource(
+        R.plurals.gallery_v2_photo_count,
+        photoCount,
+        photoCount
+    )
+    val countA11yText = if (totalPages > 0) {
+        stringResource(
+            R.string.gallery_v2_photo_count_with_page,
+            countText,
+            currentPage + 1,
+            totalPages
+        )
+    } else {
+        countText
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.base, vertical = Spacing.sm)
+    ) {
+        // eyebrow(강등된 제목) + 새로고침
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.photo_grid_v3_eyebrow),
+                style = MicroLabel,
+                color = TextTertiary
+            )
+            Spacer(Modifier.weight(1f))
             IconButtonV2(
                 icon = Icons.Default.Refresh,
                 contentDescription = stringResource(R.string.cd_refresh),
@@ -456,31 +509,45 @@ private fun PhotoListHeader(
                 }
             )
         }
-    ) {
-        // 사진 개수 / 페이지 표시 (필수2: i18n + plurals + 숫자 포맷)
-        if (photoCount > 0) {
-            val countText = pluralStringResource(
-                R.plurals.gallery_v2_photo_count,
-                photoCount,
-                photoCount
-            )
-            val headerText = if (totalPages > 0) {
-                stringResource(
-                    R.string.gallery_v2_photo_count_with_page,
-                    countText,
-                    currentPage + 1,
-                    totalPages
-                )
-            } else {
-                countText
-            }
+
+        // === Hero readout: 사진 개수(34sp tnum) + 페이지(mono) ===
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics(mergeDescendants = true) { contentDescription = countA11yText },
+            verticalAlignment = Alignment.Bottom
+        ) {
             Text(
-                text = headerText,
-                style = Caption,
-                color = TextSecondaryV2
+                text = photoCount.toString(),
+                style = DisplayNum,
+                color = TextPrimaryV2
             )
-            Spacer(Modifier.height(Spacing.sm))
+            Spacer(Modifier.width(Spacing.xs))
+            Text(
+                text = stringResource(R.string.photo_grid_v3_photos_unit),
+                style = MicroLabel,
+                color = TextTertiary,
+                modifier = Modifier.padding(bottom = HeroBaselineInset)
+            )
+            Spacer(Modifier.weight(1f))
+            if (totalPages > 0) {
+                Text(
+                    text = stringResource(R.string.photo_grid_v3_page_label),
+                    style = MicroLabel,
+                    color = TextTertiary,
+                    modifier = Modifier.padding(bottom = HeroBaselineInset)
+                )
+                Spacer(Modifier.width(Spacing.xs))
+                Text(
+                    text = "${currentPage + 1}/$totalPages",
+                    style = MonoNumeric,
+                    color = TextSecondaryV2,
+                    modifier = Modifier.padding(bottom = HeroBaselineInset)
+                )
+            }
         }
+
+        Spacer(Modifier.height(Spacing.md))
 
         // 필터 라벨 + Chip 행
         Row(
@@ -517,15 +584,33 @@ private fun PhotoListHeader(
 }
 
 /**
- * 멀티 선택 모드 헤더 — Section title에 선택 개수.
+ * 멀티 선택 모드 헤더 — 선택 개수를 Accent 히어로로.
+ *
+ * Section 을 쓰지 않는다. Section 은 제목 뒤에 항상 [Spacing.lg] 를 넣는데
+ * 여기 content 는 비어 있어 헤더-그리드 사이에 죽은 여백만 남았다.
  */
 @Composable
 private fun MultiSelectHeader(selectedCount: Int) {
-    Section(
-        title = stringResource(R.string.photo_preview_selected_count, selectedCount),
-        modifier = Modifier.padding(horizontal = Spacing.base, vertical = Spacing.sm)
+    val a11yText = stringResource(R.string.photo_preview_selected_count, selectedCount)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.base, vertical = Spacing.sm)
+            .semantics(mergeDescendants = true) { contentDescription = a11yText },
+        verticalAlignment = Alignment.Bottom
     ) {
-        Spacer(Modifier.height(Spacing.xs))
+        Text(
+            text = selectedCount.toString(),
+            style = DisplayNum,
+            color = Accent
+        )
+        Spacer(Modifier.width(Spacing.xs))
+        Text(
+            text = stringResource(R.string.photo_grid_v3_selected_unit),
+            style = MicroLabel,
+            color = TextTertiary,
+            modifier = Modifier.padding(bottom = HeroBaselineInset)
+        )
     }
 }
 
@@ -596,6 +681,24 @@ private fun CameraDisconnectedState() {
             icon = Icons.Outlined.CameraAlt,
             title = stringResource(R.string.photo_preview_camera_not_connected),
             description = stringResource(R.string.photo_preview_connect_usb)
+        )
+    }
+}
+
+/**
+ * 카드 탐색 미지원 세션 안내 (Sony PC리모트: 원격 중 카드 접근이 펌웨어 설계상 불가).
+ * 토스트는 놓치기 쉬워 빈 화면 자리에 이유와 해결 경로(USB+MTP)를 상시 표시한다.
+ */
+@Composable
+private fun CardBrowsingUnsupportedState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        EmptyState(
+            icon = Icons.Outlined.PhotoLibrary,
+            title = stringResource(R.string.preview_card_browse_unsupported_title),
+            description = stringResource(R.string.preview_card_browse_unsupported_desc)
         )
     }
 }
@@ -816,6 +919,7 @@ private fun ErrorToastOverlay(
     ) {
         Column(
             modifier = Modifier
+                .widthIn(max = ReadableTextMaxWidth)
                 .fillMaxWidth()
                 .padding(Spacing.base),
             horizontalAlignment = Alignment.End
@@ -854,15 +958,24 @@ private fun MultiDownloadProgressRow(
                 .fillMaxWidth()
                 .padding(horizontal = Spacing.base, vertical = Spacing.sm)
         ) {
-            Text(
-                text = stringResource(
-                    R.string.gallery_v2_download_progress,
-                    completed,
-                    total
-                ),
-                style = Caption,
-                color = TextSecondaryV2
-            )
+            // 라벨과 수치를 분리한다. 완료 수가 9→10 으로 넘어갈 때 비례폭 텍스트는
+            // 폭이 흔들리므로 수치만 MonoNumeric(tnum) 으로 우측 고정한다.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.photo_grid_v3_downloading_label),
+                    style = Caption,
+                    color = TextSecondaryV2
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = "$completed/$total",
+                    style = MonoNumeric,
+                    color = TextPrimaryV2
+                )
+            }
             Spacer(Modifier.height(Spacing.xs))
             ProgressBarV2(progress = null, modifier = Modifier.fillMaxWidth())
         }
@@ -882,6 +995,7 @@ private fun InfoToastOverlay(message: String) {
             message = message,
             kind = StatusKind.Connected,
             modifier = Modifier
+                .widthIn(max = ReadableTextMaxWidth)
                 .fillMaxWidth()
                 .padding(Spacing.base)
         )
@@ -903,6 +1017,7 @@ private fun FreeTierNoticeOverlay(
     ) {
         Column(
             modifier = Modifier
+                .widthIn(max = ReadableTextMaxWidth)
                 .fillMaxWidth()
                 .padding(Spacing.base),
             horizontalAlignment = Alignment.End
@@ -955,15 +1070,25 @@ private fun PhotoListHeader_WithPhotos_Preview() {
     CamConTheme {
         SurfaceV2(tier = 0) {
             PhotoListHeader(
-                photoCount = 42,
+                photoCount = 247,
                 currentPage = 1,
-                totalPages = 3,
-                currentFilter = FileTypeFilter.JPG,
-                canAccessRaw = true,
+                totalPages = 13,
+                currentFilter = FileTypeFilter.RAW,
+                canAccessRaw = false,
                 onFilterChange = {},
                 onRefresh = {},
                 onForceLoadNext = {}
             )
+        }
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF1A1A1A)
+@Composable
+private fun MultiSelectHeaderPreview() {
+    CamConTheme {
+        SurfaceV2(tier = 0) {
+            MultiSelectHeader(selectedCount = 18)
         }
     }
 }
@@ -1000,7 +1125,7 @@ private fun ErrorToastOverlayPreview() {
     CamConTheme {
         SurfaceV2(tier = 0) {
             ErrorToastOverlay(
-                error = "Failed to load photos.",
+                error = "PTP timeout while listing /store_00010001/DCIM/103ND850 (0x2019)",
                 onRetry = {},
                 onDismiss = {}
             )

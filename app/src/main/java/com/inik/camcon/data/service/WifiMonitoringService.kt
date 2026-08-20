@@ -14,8 +14,11 @@ import com.inik.camcon.CameraNative
 import com.inik.camcon.R
 import com.inik.camcon.data.datasource.local.PtpipPreferencesDataSource
 import com.inik.camcon.data.datasource.ptpip.PtpipDataSource
+import com.inik.camcon.data.network.ptpip.discovery.DiscoveryBudget
 import com.inik.camcon.data.network.ptpip.wifi.WifiNetworkHelper
 import com.inik.camcon.di.IoDispatcher
+import com.inik.camcon.domain.model.CameraProtocol
+import com.inik.camcon.domain.model.CameraSelectionPolicy
 import com.inik.camcon.domain.model.ConnectionMethod
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.repository.CameraRepository
@@ -178,12 +181,29 @@ class WifiMonitoringService : Service() {
                         && ptpipDataSource.connectionState.value == PtpipConnectionState.DISCONNECTED
                         && remembered != null
                         && !isCameraBusy()
+                        && !ptpipDataSource.isAutoConnectBlocked()
                     ) {
                         withContext(ioDispatcher) {
-                            val cameras = ptpipDataSource.discoverCameras(forceApMode = false)
+                            // 배경 예산: 1.5s + 기지 IP 조기 확정 허용 — 다중 후보 누적으로
+                            // 늘어난 검색 시간이 4초 폴링의 응답성을 깨지 않도록 한다.
+                            val cameras = ptpipDataSource.discoverCameras(
+                                forceApMode = false,
+                                budget = DiscoveryBudget.BackgroundReconnect
+                            )
                             // 기억된 직전 카메라와 IP가 일치하는 발견 카메라만 자동 연결 대상.
+                            //
+                            // ⚠️ IP만 보면 두 구멍이 뚫린다(전경 정책 CameraSelectionPolicy와 동일 기준 필요):
+                            // ① 엔드포인트 키가 IP:port라 같은 본체가 15740/55740 두 후보로 잡힐 수 있는데,
+                            //    55740(후지 포크)은 현재 연결 불가라 4초마다 실패를 반복한다.
+                            // ② 전경 검색과 tick이 겹쳐 tryLock이 실패하면 기존 목록(스윕 병합분 포함)이
+                            //    그대로 돌아온다. SUBNET_SCAN 후보는 name이 IP 문자열이라 isLikelyNikon이
+                            //    false → STA 인증 생략 → InitFail 0x1이고, 연결 성공 시 아래 저장이
+                            //    기억된 이름을 IP로 영구 오염시킨다.
                             val camera = cameras.firstOrNull {
-                                it.ipAddress == remembered.ipAddress
+                                it.ipAddress == remembered.ipAddress &&
+                                    CameraProtocol.ofPort(it.port).isConnectable &&
+                                    it.discoverySource !in
+                                    CameraSelectionPolicy.AUTO_CONNECT_EXCLUDED_SOURCES
                             }
                             // discover 사이 상태 변화/촬영 진입에 대비해 connect 직전 재확인
                             if (camera != null
@@ -224,9 +244,12 @@ class WifiMonitoringService : Service() {
             // J8: 살아있는 USB 세션(공유 네이티브 핸들)이 있으면 폴링 연결 시도를 스킵한다.
             // discoverCameras→connectToCamera가 mDNS 발견 순간 initCameraWithPtpip로 USB 핸들을
             // 무경고 파괴하기 때문. USB가 소유 중이면 PTP/IP 상태가 DISCONNECTED여도 손대지 않는다.
-            ptpipDataSource.isUsbCameraActive()
-                || CameraNative.isVideoRecording()
-                || CameraNative.isLiveViewStopping()
+            //
+            // USB 활성 / 영상녹화 / 라이브뷰 종료전이 / 세션 점유 / 취소 쿨다운의 **조건 정의는
+            // PtpipDataSource.isAutoConnectBlocked() 한 곳**에 있다(복제 금지 — 조건이 갈리면
+            // 전경과 배경이 같은 상황에서 다르게 행동한다). 프리뷰 탭만 여기 남는데, 판정 원천이
+            // CameraRepository(도메인)라 data 파사드로 끌어올리면 의존 방향이 역전된다.
+            ptpipDataSource.isAutoConnectBlocked()
                 || cameraRepository.isPhotoPreviewMode().first()
         }.getOrDefault(false)
     }

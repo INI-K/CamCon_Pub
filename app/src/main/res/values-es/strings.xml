@@ -40,7 +40,7 @@
     <string name="pipeline_film_sim">FILM SIM</string>
     <string name="pipeline_color_transfer">Transf. de color</string>
     <string name="pipeline_off">OFF</string>
-    <string name="pipeline_none">—</string>
+    <string name="pipeline_none">OFF</string>
     <string name="pipeline_recent_waiting">Esperando</string>
     <string name="pipeline_exposure_mode">MODE</string>
     <string name="cd_toggle_film_sim">Activar/desactivar simulación de película</string>
@@ -199,6 +199,8 @@
 
     <!-- 빈 상태 -->
     <string name="no_photos">Sin fotos</string>
+    <string name="preview_card_browse_unsupported_title">Exploración de tarjeta no disponible</string>
+    <string name="preview_card_browse_unsupported_desc">Esta cámara no permite acceder a la tarjeta de memoria durante el control remoto.\nLas fotos que tomes se reciben automáticamente y se guardan en la galería.\nPara explorar la tarjeta, cambia el modo de conexión USB de la cámara a MTP y conéctala por USB (el disparo remoto no estará disponible).</string>
     <string name="connect_camera_and_capture">Conecta tu cámara via USB\ny captura fotos</string>
     <string name="check_camera_connection">• Verifica si la cámara está conectada\n• Desliza hacia abajo para actualizar</string>
     <string name="image_load_failed">No se puede cargar la imagen</string>
@@ -342,7 +344,7 @@
     <string name="ptpip_check_scan_conditions">Comprueba las condiciones de escaneo</string>
     <string name="ptpip_shutter_listen_start">Iniciar recepción inalámbrica del obturador físico</string>
     <string name="ptpip_shutter_listen_stop">Detener recepción inalámbrica</string>
-    <string name="ptpip_no_camera_search_first">No hay cámara — busca primero una cámara en modo STA</string>
+    <string name="ptpip_no_camera_search_first">No hay cámara - busca primero una cámara en modo STA</string>
 
     <!-- i18n 누락 보강: 백필 미포함 잔여 (2026-07-13) -->
     <string name="open_source_licenses">Licencias de Código Abierto</string>
@@ -353,10 +355,20 @@
     <string name="gradle_dependencies_desc">Toca para ver todas las licencias de dependencias de Gradle</string>
     <string name="license_version">Versión:</string>
     <string name="license_type">Licencia:</string>
+    <!-- LGPL 수정본 소스 서면 제공 오퍼 + 상표 면책 -->
+    <string name="licenses_modified_badge">Modificado por CamCon</string>
+    <string name="licenses_lgpl_offer_title">Código fuente LGPL modificado</string>
+    <string name="licenses_lgpl_offer_body">CamCon incluye versiones modificadas de libgphoto2 y libgphoto2_port, distribuidas bajo LGPL-2.1-or-later. Tal como exige esa licencia, entregamos el código fuente completo correspondiente a esas versiones modificadas a quien lo solicite, durante tres años desde la fecha en que se distribuyó esta versión. Indica la versión de la app en tu solicitud.</string>
+    <string name="licenses_trademark_title">Marcas registradas</string>
+    <string name="licenses_trademark_body">Los nombres de películas y marcas de cámaras que aparecen en las simulaciones de película son propiedad de sus respectivos titulares. CamCon no está afiliada a ellos ni cuenta con su patrocinio o respaldo. Los nombres se usan únicamente para describir las características de color que cada preajuste intenta reproducir.</string>
+    <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->
+    <string name="licenses_contact_click_label">Contactar por correo</string>
+    <string name="contact_email_copied">No se encontró ninguna aplicación de correo. La dirección se copió al portapapeles: %1$s</string>
     <string name="refresh_usb">Actualizar USB</string>
     <string name="request_usb_permission">Solicitar Permiso USB</string>
     <string name="camera_preview_live_view">Vista en vivo</string>
     <string name="photo_capture_failed">No se pudo capturar/recibir la foto (error %1$d)</string>
+    <string name="photo_transfer_rejected_by_camera">La cámara rechazó la transferencia de esta foto. Vuelve a transferirla desde la cámara o reconecta.</string>
     <string name="photo_delete_camera_failed">No se pudo eliminar la foto de la cámara</string>
     <string name="notif_channel_status_name">Estado de la cámara</string>
     <string name="notif_channel_status_desc">Muestra el estado de conexión y de recepción de archivos de la cámara</string>

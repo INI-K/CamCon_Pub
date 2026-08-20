@@ -33,7 +33,6 @@ import com.inik.camcon.domain.model.SavedWifiCredential
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,12 +47,20 @@ import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
+import com.inik.camcon.presentation.theme.BodyLarge
+import com.inik.camcon.presentation.theme.BodySmall
 import com.inik.camcon.presentation.theme.DividerLine
+import com.inik.camcon.presentation.theme.HeadingM
+import com.inik.camcon.presentation.theme.HeadingS
 import com.inik.camcon.presentation.theme.IconSize
+import com.inik.camcon.presentation.theme.MonoNumeric
 import com.inik.camcon.presentation.theme.Radius
 import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.StrokeWidth
 import com.inik.camcon.presentation.theme.SuccessV2
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
 import com.inik.camcon.domain.model.ThemeMode
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -190,8 +197,8 @@ private fun ApNetworkStatusCard(
                 Spacer(modifier = Modifier.width(Spacing.sm))
                 Text(
                     text = if (isWifiConnected) stringResource(R.string.ap_mode_wifi_connected) else stringResource(R.string.ap_mode_wifi_disconnected),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                    style = HeadingM,
+                    color = TextPrimaryV2,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -208,9 +215,8 @@ private fun ApNetworkStatusCard(
 
             Text(
                 text = ptpipViewModel.getNetworkStatusMessage(),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (wifiNetworkState.isConnected) SuccessV2 else MaterialTheme.colorScheme.error,
-                fontWeight = FontWeight.Medium
+                style = BodySmall,
+                color = if (wifiNetworkState.isConnected) SuccessV2 else MaterialTheme.colorScheme.error
             )
 
             if (wifiNetworkState.isConnectedToCameraAP && wifiNetworkState.detectedCameraIP != null) {
@@ -280,15 +286,15 @@ private fun ScanPromptCard(
             Spacer(modifier = Modifier.height(Spacing.md))
             Text(
                 text = stringResource(R.string.ap_mode_search_camera_wifi),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = BodyLarge,
+                color = TextPrimaryV2,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(Spacing.xs))
             Text(
                 text = stringResource(R.string.ap_mode_turn_on_camera_wifi),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                style = BodySmall,
+                color = TextTertiary,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(Spacing.lg))
@@ -334,8 +340,8 @@ private fun SavedWifiNetworksCard(
                 Spacer(modifier = Modifier.width(Spacing.sm))
                 Text(
                     text = stringResource(R.string.ap_mode_saved_networks, credentials.size),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    style = HeadingM,
+                    color = TextPrimaryV2
                 )
             }
             Spacer(modifier = Modifier.height(Spacing.md))
@@ -350,16 +356,17 @@ private fun SavedWifiNetworksCard(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = credential.ssid,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                            style = HeadingS,
+                            color = TextPrimaryV2
                         )
+                        // 보안규격 + 최근 접속 시각 = 변동 수치 readout → 모노 탭형으로 자릿수를 고정한다.
                         Text(
                             text = "${credential.security} · ${
                                 java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
                                     .format(java.util.Date(credential.lastConnectedAt))
                             }",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = MonoNumeric,
+                            color = TextSecondaryV2
                         )
                     }
                     IconButton(onClick = { ssidToDelete = credential.ssid }) {

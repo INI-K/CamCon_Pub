@@ -8,17 +8,14 @@ object PtpipConstants {
     const val DISCOVERY_TIMEOUT = 5000L // 5초 (빠른 검색)
     const val CONNECTION_TIMEOUT = 10000 // 10초
 
-    // mDNS 서비스 타입 (여러 타입 지원)
+    // mDNS 서비스 타입
     const val SERVICE_TYPE = "_ptp._tcp" // 기본 PTP 서비스
-    val SERVICE_TYPES = listOf(
-        "_ptp._tcp",            // 표준 PTP over IP
-        "_ptpip._tcp",          // PTP/IP (일부 카메라)
-        "_axis-video._tcp",     // Axis 네트워크 카메라
-        "_ipp._tcp",            // 일부 Canon 카메라
-        "_pdl-datastream._tcp", // 일부 카메라가 사용
-        "_nikon._tcp",          // Nikon 일부 모델 자체 광고
-        "_dpsoffer._tcp"        // 일부 Canon (DPS over IP)
-    )
+    //
+    // ⚠️ 과거의 하드코딩 목록(`SERVICE_TYPES` 7종)은 제거됐다.
+    // `PtpipDiscoveryService`가 RFC 6763 메타 쿼리(`_services._dns-sd._udp`)로 네트워크가 실제로
+    // 광고하는 타입을 열거하고, 근거가 확인된 3종(`_ptp._tcp`/`_ptpip._tcp`/`_nikon._tcp`)만
+    // 시드로 쓴다. 근거 없이 추측했던 4종(`_axis-video`/`_ipp`/`_pdl-datastream`/`_dpsoffer`)은
+    // 실제로 광고되면 메타 쿼리가 동적으로 잡아 오므로 미리 나열할 필요가 없다.
 
     // 캐시된 IP 시도를 위한 타임아웃 (매우 빠름)
     const val CACHED_IP_TIMEOUT = 1000L // 1초

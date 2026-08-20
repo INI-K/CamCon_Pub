@@ -29,7 +29,7 @@
     <string name="gallery_v2_flash_off">已关闭</string>
 
     <!-- EXIF 비어 있음 / 미다운로드 상태 -->
-    <string name="gallery_v2_exif_unavailable">暂无信息 — 请先下载照片</string>
+    <string name="gallery_v2_exif_unavailable">暂无信息 - 请先下载照片</string>
     <string name="gallery_v2_date_unknown">拍摄日期未知</string>
     <string name="gallery_v2_internal_storage">/内部存储</string>
 

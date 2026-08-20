@@ -16,6 +16,9 @@
     <string name="referral_error_self">You can\'t use your own referral code.</string>
     <string name="referral_error_not_grantable">This code can\'t be applied to this account.</string>
     <string name="referral_error_network">Network error. Please try again in a moment.</string>
+    <string name="referral_error_rate_limited">Too many attempts. Please try again in a moment.</string>
+    <!-- 시도 제한: 서버(details.retryAfterMs)가 남은 시간을 준 경우. %1$d = 남은 대기 시간(분, 올림) -->
+    <string name="referral_error_rate_limited_minutes">Too many attempts. Please try again in about %1$d min.</string>
 
     <!-- 인증(로그아웃) 오류 상세, settings_toast_logout_failed의 "%s"로 사용됨 -->
     <string name="auth_error_network_detail">network error</string>

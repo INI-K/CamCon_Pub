@@ -38,6 +38,7 @@ class CameraControlRepositoryImpl @Inject constructor(
     private val connectionManager: CameraConnectionManager,
     private val eventManager: CameraEventManager,
     private val downloadManager: PhotoDownloadManager,
+    private val pluginInstaller: com.inik.camcon.data.datasource.Libgphoto2PluginInstaller,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     companion object {
@@ -427,8 +428,16 @@ class CameraControlRepositoryImpl @Inject constructor(
 
     suspend fun isNativeLibrariesLoaded(): Boolean = nativeDataSource.isLibrariesLoaded()
 
-    suspend fun setupNativeEnvironment(pluginDir: String): Boolean =
-        nativeDataSource.setupEnvironmentPaths(pluginDir)
+    /**
+     * libgphoto2 의 `CAMLIBS`/`IOLIBS` 를 설정한다.
+     *
+     * ⚠️ 경로를 **호출자가 정하지 않는다**. 이 값은 `.so` 가 실제로 있는 버전 하위 디렉터리를
+     * 콜론으로 이어 붙인 것이어야 하는데(`gp_port_info_list_load` 는 하위를 재귀 탐색하지 않는다),
+     * 예전엔 파라미터라서 SplashActivity 가 베이스 디렉터리를 넘겨 앱 시작 직후 올바른 설정을
+     * 덮어썼다. 그 결과 `gp_abilities_list_load` 가 camlib 을 하나도 못 찾았다(2026-08-20 실측).
+     */
+    suspend fun setupNativeEnvironment(): Boolean =
+        nativeDataSource.setupEnvironmentPaths(pluginInstaller.pluginDirArg())
 
     suspend fun getLibGphoto2Version(): String =
         withContext(ioDispatcher) { nativeDataSource.getLibGphoto2Version() }

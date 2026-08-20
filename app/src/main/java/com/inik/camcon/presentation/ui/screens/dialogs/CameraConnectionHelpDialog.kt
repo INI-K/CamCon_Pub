@@ -7,27 +7,34 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import com.inik.camcon.presentation.theme.Surface2
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import com.inik.camcon.R
-import com.inik.camcon.presentation.ui.components.v2.AppDialog
+import com.inik.camcon.presentation.theme.Body
+import com.inik.camcon.presentation.theme.BodyLarge
 import com.inik.camcon.presentation.theme.CamConTheme
-import com.inik.camcon.domain.model.ThemeMode
+import com.inik.camcon.presentation.theme.Caption
+import com.inik.camcon.presentation.theme.HeadingL
+import com.inik.camcon.presentation.theme.HeadingM
+import com.inik.camcon.presentation.theme.MonoNumeric
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.TextPrimaryV2
+import com.inik.camcon.presentation.theme.TextSecondaryV2
+import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
+import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
+import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
+import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 
 /**
- * 카메라 연결 문제 해결 도움말 다이얼로그
+ * 카메라 연결 문제 해결 도움말 다이얼로그.
+ *
+ * 타이포 위계: 타이틀 20sp → 리드 16sp → 체크리스트 14sp → 브랜드 주석 12sp.
+ * 체크리스트는 다이얼로그 컨테이너(Surface2)보다 한 단 위인 tier 3 패널에 얹어
+ * alpha 감광이 아니라 표면 단차로 깊이를 만든다.
  */
 @Composable
 fun CameraConnectionHelpDialog(
@@ -38,55 +45,67 @@ fun CameraConnectionHelpDialog(
 
     AppDialog(
         onDismissRequest = onDismiss,
-        title = { Text(context.getString(R.string.camera_connection_help_title)) },
+        title = {
+            Text(
+                text = context.getString(R.string.camera_connection_help_title),
+                style = HeadingL,
+                color = TextPrimaryV2
+            )
+        },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(Spacing.md)
             ) {
                 Text(
-                    context.getString(R.string.camera_connection_help_message),
-                    style = MaterialTheme.typography.bodyLarge
+                    text = context.getString(R.string.camera_connection_help_message),
+                    style = BodyLarge,
+                    color = TextSecondaryV2
                 )
 
-                Card(
+                SurfaceV2(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Surface2)
+                    tier = 3
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.padding(Spacing.md),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
                     ) {
-                        HelpRow("1. ", context.getString(R.string.check_camera_pc_mode))
-                        HelpRow("2. ", context.getString(R.string.check_usb_cable))
-                        HelpRow("3. ", context.getString(R.string.check_camera_power))
+                        HelpRow("01", context.getString(R.string.check_camera_pc_mode))
+                        HelpRow("02", context.getString(R.string.check_usb_cable))
+                        HelpRow("03", context.getString(R.string.check_camera_power))
                         HelpRow(
-                            "4. ",
+                            "04",
                             context.getString(R.string.check_other_apps_not_using_camera)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                // 섹션 분리 — 위 블록 간격(12) + 8 = 20dp 브레이크
+                Spacer(modifier = Modifier.height(Spacing.sm))
 
-                Text(
-                    context.getString(R.string.camera_specific_settings),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    Text(
+                        text = context.getString(R.string.camera_specific_settings),
+                        style = HeadingM,
+                        color = TextPrimaryV2
+                    )
 
-                CameraBrandInstructions()
+                    CameraBrandInstructions()
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = onRetry) {
-                Text(context.getString(R.string.retry))
-            }
+            PrimaryButton(
+                text = context.getString(R.string.retry),
+                onClick = onRetry
+            )
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(context.getString(R.string.close))
-            }
+            SecondaryButton(
+                text = context.getString(R.string.close),
+                onClick = onDismiss
+            )
         }
     )
 }
@@ -96,9 +115,19 @@ private fun HelpRow(
     number: String,
     instruction: String
 ) {
-    Row(verticalAlignment = Alignment.Top) {
-        Text(number, fontWeight = FontWeight.Bold)
-        Text(instruction)
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Text(
+            text = number,
+            style = MonoNumeric,
+            color = TextTertiary,
+            modifier = Modifier.alignByBaseline()
+        )
+        Text(
+            text = instruction,
+            style = Body,
+            color = TextPrimaryV2,
+            modifier = Modifier.alignByBaseline()
+        )
     }
 }
 
@@ -107,22 +136,22 @@ private fun CameraBrandInstructions() {
     val context = LocalContext.current
 
     Column(
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs)
     ) {
         Text(
-            context.getString(R.string.canon_camera_settings),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            text = context.getString(R.string.canon_camera_settings),
+            style = Caption,
+            color = TextTertiary
         )
         Text(
-            context.getString(R.string.nikon_camera_settings),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            text = context.getString(R.string.nikon_camera_settings),
+            style = Caption,
+            color = TextTertiary
         )
         Text(
-            context.getString(R.string.sony_camera_settings),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            text = context.getString(R.string.sony_camera_settings),
+            style = Caption,
+            color = TextTertiary
         )
     }
 }

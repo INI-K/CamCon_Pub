@@ -4,8 +4,9 @@ import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.ColorSpace
 import android.graphics.Matrix
-import android.media.ExifInterface
+import androidx.exifinterface.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -43,8 +44,10 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
-import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.max
@@ -66,6 +69,73 @@ class PhotoDownloadManager @Inject constructor(
 
     companion object {
         private const val TAG = "사진다운로드매니저"
+
+        /**
+         * libgphoto2 가 합성한 가짜 파일명(capt####.ext) 판별용 정규식.
+         *
+         * Sony PC-remote 등은 이미지가 카메라 RAM 에만 있어 실제 DSC 파일명이 프로토콜상 없을 수 있고,
+         * 이때 libgphoto2 는 `capt0001.jpg` 같은 이름을 지어낸다. 이런 합성명만 EXIF 촬영시각 기반
+         * 실이름으로 대체하고, 카드 저장분(DSC0xxxx.JPG 등)의 실이름은 절대 건드리지 않는다.
+         *
+         * 확장자 목록은 [Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS] 단일 소스에서
+         * 파생한다(수동 화이트리스트 드리프트 방지 — 리뷰 HIGH 지적 반영).
+         */
+        private val SYNTHETIC_CAPT_REGEX =
+            Regex(
+                "^capt\\d+\\.(?:${Constants.ImageProcessing.SUPPORTED_IMAGE_EXTENSIONS.joinToString("|")})\$",
+                RegexOption.IGNORE_CASE
+            )
+
+        /** EXIF 시각 기반 파일명 타임스탬프 포맷(YYYYMMDD_HHMMSS). */
+        private const val EXIF_NAME_TIMESTAMP_PATTERN = "yyyyMMdd_HHmmss"
+
+        /** capt 대체명 동일-초 충돌 카운터 상한(메모리 보호). 초과 시 가장 오래된 항목부터 제거. */
+        private const val CAPT_NAME_COUNTER_MAX = 512
+
+        /**
+         * 파일명이 libgphoto2 합성 capt 이름인지 판정(순수 함수, 단위 테스트 대상).
+         *
+         * 이 판정이 참일 때만 EXIF 촬영시각 기반 실이름으로 대체한다. 카메라가 준 진짜 파일명
+         * (카드 저장분 DSC/KY6/ILCE 등)은 여기서 false 가 되어 원본 이름이 그대로 보존된다.
+         */
+        @JvmStatic
+        @androidx.annotation.VisibleForTesting
+        fun isSyntheticCaptName(fileName: String): Boolean =
+            SYNTHETIC_CAPT_REGEX.matches(fileName)
+
+        /**
+         * libgphoto2 소니 경로가 실파일명 앞에 강제로 붙이는 `capt_` 접두를 벗겨 실제 카메라
+         * 파일명을 복원한다(순수 함수, 단위 테스트 대상). 예: `capt_JUN01569.JPG` → `JUN01569.JPG`.
+         *
+         * 업스트림 library.c 소니 분기는 ObjectInfo.Filename 이 있으면 `capt_%s` 로 감싼다
+         * ("capt prefix is mandatory when deleting file" — 카메라측 가상 fs 삭제 키 용도라
+         * 앱 저장 표시명과는 무관하다). 접두 뒤가 `이름.확장자` 꼴이 아니면 실명이 아니므로 null.
+         */
+        @JvmStatic
+        @androidx.annotation.VisibleForTesting
+        fun stripCaptRealNamePrefix(fileName: String): String? {
+            if (!fileName.startsWith("capt_", ignoreCase = true)) return null
+            val real = fileName.substring(5)
+            val stem = real.substringBeforeLast('.', "")
+            val ext = real.substringAfterLast('.', "")
+            return real.takeIf { stem.isNotBlank() && ext.isNotBlank() }
+        }
+
+        /**
+         * EXIF 촬영시각(millis)과 확장자로 `YYYYMMDD_HHMMSS.<ext>` 실이름을 만든다(순수 함수, 단위 테스트 대상).
+         *
+         * 동일 초 충돌 시 접미(_NN)는 [resolveCaptDisplayName] 가 붙인다. 여기서는 접미 없는 기본명만 만든다.
+         * 시각은 로컬 타임존으로 포맷해 사용자가 보는 촬영 시각과 일치시킨다.
+         *
+         * @param extension 확장자(점 제외, capt 원본 그대로 소문자). 비어 있으면 "jpg" 로 폴백.
+         */
+        @JvmStatic
+        @androidx.annotation.VisibleForTesting
+        fun buildExifTimestampName(captureMillis: Long, extension: String): String {
+            val ext = extension.ifBlank { "jpg" }
+            val stamp = SimpleDateFormat(EXIF_NAME_TIMESTAMP_PATTERN, Locale.US).format(Date(captureMillis))
+            return "$stamp.$ext"
+        }
 
         /**
          * FREE 티어 리사이즈 목표 치수 계산(순수 함수, 단위 테스트 대상).
@@ -132,6 +202,61 @@ class PhotoDownloadManager @Inject constructor(
      * 한 번에 한 건만 처리하도록 직렬화한다.
      */
     private val colorTransferSemaphore = Semaphore(1)
+
+    /**
+     * capt 대체명(YYYYMMDD_HHMMSS.ext)의 동일-초 충돌 카운터.
+     *
+     * 연사 등으로 같은 초에 서로 다른 컷이 두 장 이상 오면 같은 기본명이 만들어진다.
+     * 키=기본명(소문자), 값=이미 배정된 횟수. 최초는 접미 없음, 이후 `_01`, `_02` … 로 안정화한다.
+     * (듀얼슬롯 동일 fileName 중복은 상류 processedFileCache 가 이미 걸러 이 카운터까지 오지 않는다.)
+     * [captNameLock] 으로 동시 다운로드에서도 유일·결정적 배정을 보장한다.
+     */
+    private val captNameLock = Any()
+    private val captNameCounts = LinkedHashMap<String, Int>()
+
+    /**
+     * capt 합성 파일명이면 EXIF 촬영시각 기반 실이름으로 대체하고, 아니면 원본을 그대로 돌려준다.
+     *
+     * 카메라 실이름(카드 저장분 등)은 절대 변경하지 않는다. 동일 초 충돌은 `_NN` 접미로 안정화하되
+     * 시간순 정렬(captureTime → basename)이 보존되도록 최초 컷은 접미 없이 둔다.
+     *
+     * @param safeFileName 경로 정제된 basename(capt 판정 대상).
+     * @param captureMillis EXIF 촬영시각(없으면 호출부가 수신 시각을 폴백으로 넘긴다).
+     * @return capt 이면 대체 실이름, 아니면 [safeFileName] 그대로.
+     */
+    private fun resolveCaptDisplayName(safeFileName: String, captureMillis: Long): String {
+        // capt_<실명>(A7C 실측: capt_JUN01569.JPG)은 접두만 벗기면 실제 카메라 파일명이므로
+        // EXIF 시각명보다 우선해 그대로 복원한다.
+        stripCaptRealNamePrefix(safeFileName)?.let { return it }
+        if (!isSyntheticCaptName(safeFileName)) return safeFileName
+
+        val extension = safeFileName.substringAfterLast('.', "").lowercase()
+        val baseName = buildExifTimestampName(captureMillis, extension)
+
+        synchronized(captNameLock) {
+            val key = baseName.lowercase()
+            val used = captNameCounts[key] ?: 0
+            captNameCounts[key] = used + 1
+
+            // 메모리 보호: 상한 초과 시 가장 오래 전 배정된 키부터 제거(세션 내 단조 증가 방지).
+            if (captNameCounts.size > CAPT_NAME_COUNTER_MAX) {
+                val eldest = captNameCounts.keys.iterator()
+                if (eldest.hasNext()) {
+                    eldest.next()
+                    eldest.remove()
+                }
+            }
+
+            return if (used == 0) {
+                baseName
+            } else {
+                val dot = baseName.lastIndexOf('.')
+                val stem = baseName.substring(0, dot)
+                val ext = baseName.substring(dot) // 점 포함
+                "${stem}_%02d%s".format(used, ext)
+            }
+        }
+    }
 
     /**
      * 필름 시뮬레이션·색감 전송의 무거운 디코드/LUT/재인코딩 전용 워커 디스패처.
@@ -266,7 +391,12 @@ class PhotoDownloadManager @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("사진다운로드매니저", "페이징 카메라 사진 목록 가져오기 실패", e)
+                if (e is UnsupportedOperationException) {
+                    // 카드 탐색 미지원 세션 — 안내성, 스택트레이스 중복 출력 방지.
+                    Log.i("사진다운로드매니저", "카드 탐색 미지원 세션 — 상위 안내 처리로 위임")
+                } else {
+                    Log.e("사진다운로드매니저", "페이징 카메라 사진 목록 가져오기 실패", e)
+                }
                 Result.failure(e)
             }
         }
@@ -510,10 +640,20 @@ class PhotoDownloadManager @Inject constructor(
                     return@withContext null
                 }
 
+                // 실이름 규칙(요구 C): 원본 바이트의 EXIF 촬영시각을 1회만 파싱해 아래 두 곳에서 재사용한다.
+                //  (1) capt 합성명이면 YYYYMMDD_HHMMSS.ext 실이름으로 대체 (2) CapturedPhoto.captureTime 정렬 기준.
+                // EXIF 가 없으면 수신 시각으로 폴백한다. capt 가 아닌 카메라 실이름은 절대 대체하지 않는다.
+                val captureMillis = ExifCaptureTime.parseMillis(imageData) ?: System.currentTimeMillis()
+                val displayFileName = resolveCaptDisplayName(safeFileName, captureMillis)
+                if (displayFileName != safeFileName) {
+                    Log.d(TAG, "🔤 capt 합성명 대체: $safeFileName → $displayFileName")
+                }
+
                 // 전송 진행 카운트(요구 E3): 후처리·저장 단계 시작. 동일 fileName 이 DOWNLOADING 이었다면 PROCESSING 으로 전이.
+                // 두 번째 인자(요구 D): 방금 수신 완료한 바이트 수 → markDownloading~지금 소요시간으로 per-file 처리율 산출.
                 // markProcessing 과 아래 finally 의 markDone 을 동일 try/finally 경계에 두어
                 // 디스패치 취소 시에도 markDone 이 반드시 짝지어지게 한다(누수 방지).
-                transferProgressTracker.markProcessing(fileName)
+                transferProgressTracker.markProcessing(fileName, imageData.size.toLong())
 
                 Log.d(TAG, "📦 Native 다운로드 데이터 처리 시작: $fileName")
                 // Log.d(TAG, "   데이터 크기: ${imageData.size / 1024}KB")
@@ -717,11 +857,13 @@ class PhotoDownloadManager @Inject constructor(
                     }
                 }
 
-                // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동)
+                // SAF를 사용한 후처리 (Android 10+에서 MediaStore로 이동).
+                // 저장 표시명은 displayFileName(capt 이면 EXIF 실이름, 아니면 원본) 사용 —
+                // 이 값이 MediaStore DISPLAY_NAME → 반환 filePath basename 으로 흘러가 미리보기/정렬/중복제거에 일관 반영된다.
                 val fileNameWithFolder = if (cameraSubFolder.isNotEmpty()) {
-                    "$cameraSubFolder/$safeFileName"
+                    "$cameraSubFolder/$displayFileName"
                 } else {
-                    safeFileName
+                    displayFileName
                 }
                 // Log.d(TAG, "📂 후처리 전 파일명 정보:")
                 // Log.d(TAG, "   원본 파일명: $fileName")
@@ -742,8 +884,9 @@ class PhotoDownloadManager @Inject constructor(
                     id = UUID.randomUUID().toString(),
                     filePath = finalPath,
                     thumbnailPath = null,
-                    // 정렬 기준 안정화: 원본 바이트(재인코딩 이전)의 EXIF 촬영 시각 사용, 실패 시 현재 시각 폴백
-                    captureTime = ExifCaptureTime.parseMillis(imageData) ?: System.currentTimeMillis(),
+                    // 정렬 기준 안정화: 위에서 1회 파싱한 EXIF 촬영시각(실패 시 수신 시각 폴백) 재사용 —
+                    // capt 대체 실이름과 동일 기준이라 파일명·정렬이 정합한다.
+                    captureTime = captureMillis,
                     cameraModel = cameraCapabilities?.model ?: "알 수 없음",
                     settings = cameraSettings,
                     size = imageData.size.toLong(),
@@ -1127,18 +1270,6 @@ class PhotoDownloadManager @Inject constructor(
             try {
                 Log.d(TAG, "🔧 FREE 티어 이미지 리사이즈 시작: ${LogMask.path(inputPath)}")
 
-                // 메모리 상태 확인 (간소화)
-                val runtime = Runtime.getRuntime()
-                val availableMemory =
-                    runtime.maxMemory() - (runtime.totalMemory() - runtime.freeMemory())
-
-                // 메모리 부족 시: 원본을 그대로 복사하면 FREE 2000px 제한이 우회되므로 실패 처리한다.
-                // (호출부는 false 를 받으면 원본 대신 다운로드 자체를 실패로 간주해야 함)
-                if (availableMemory < 30 * 1024 * 1024) { // 30MB 미만
-                    Log.w(TAG, "메모리 부족으로 리사이즈 불가 — 원본 저장 방지: 사용가능 ${availableMemory / 1024 / 1024}MB")
-                    return@withContext false
-                }
-
                 // 원본 이미지 크기 확인
                 val options = BitmapFactory.Options().apply {
                     inJustDecodeBounds = true
@@ -1149,6 +1280,18 @@ class PhotoDownloadManager @Inject constructor(
                 val originalHeight = options.outHeight
 
                 Log.d(TAG, "원본 이미지 크기: ${originalWidth}x${originalHeight}")
+
+                // 헤더 손상·미지원 포맷 등으로 치수를 못 읽으면 outWidth/outHeight 가 -1 이 된다.
+                // 이 경우를 아래 "이미 상한 이하" 분기와 섞으면 2000px 초과 원본이 그대로 복사되어
+                // FREE 티어 게이팅이 우회되므로, 여기서 명시적으로 실패 처리한다.
+                if (originalWidth <= 0 || originalHeight <= 0) {
+                    Log.w(
+                        TAG,
+                        "원본 치수를 읽지 못해 리사이즈 불가 — 원본 저장 방지: " +
+                                "${originalWidth}x${originalHeight}, ${LogMask.path(inputPath)}"
+                    )
+                    return@withContext false
+                }
 
                 // FREE 티어 리사이즈 목표 치수 판정(순수 함수). null 이면 이미 상한 이하 → 복사만.
                 val target = computeFreeTierTargetSize(originalWidth, originalHeight)
@@ -1168,7 +1311,17 @@ class PhotoDownloadManager @Inject constructor(
                 options.apply {
                     inJustDecodeBounds = false
                     inSampleSize = sampleSize
-                    inPreferredConfig = Bitmap.Config.RGB_565 // 메모리 절약 - ARGB_8888에서 RGB_565로 변경
+                    // 채널당 8비트 유지. RGB_565 는 채널당 5·6·5비트로 떨어뜨려 하늘·피부 같은
+                    // 완만한 그라데이션에 밴딩을 만들었다. 픽셀당 바이트가 2 배로 늘지만
+                    // calculateInSampleSize 가 디코딩본 장축을 항상 4000px 미만으로 묶으므로
+                    // 원본이 아무리 커도 디코딩 메모리는 유계다(추정 피크 약 120MB 이내).
+                    // 그래도 부족한 경우는 아래 catch (OutOfMemoryError) 가 잡아 false 를 반환하며,
+                    // 그 경로가 유일한 방어선이자 fail-closed 보장 지점이다.
+                    // (호출부는 false 를 받으면 원본 대신 다운로드 자체를 실패로 간주해야 함)
+                    inPreferredConfig = Bitmap.Config.ARGB_8888
+                    // 결과 색공간을 sRGB 로 고정한다. AdobeRGB 등 다른 색공간 원본이 들어와도
+                    // sRGB 로 변환해 저장하므로 뷰어마다 색이 달라지지 않는다.
+                    inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
                 }
 
                 originalBitmap = BitmapFactory.decodeFile(inputPath, options)
@@ -1209,7 +1362,9 @@ class PhotoDownloadManager @Inject constructor(
                     // 파일로 저장
                     FileOutputStream(outputPath).use { out ->
                         val compressFormat = Bitmap.CompressFormat.JPEG
-                        val compressQuality = 92 // 품질을 약간 낮춰서 메모리 절약
+                        // 재압축 손실을 줄이기 위한 품질값. 파일 크기에만 영향을 주고
+                        // 힙 사용량과는 무관하므로, 리사이즈 결과물 화질을 우선해 95 로 둔다.
+                        val compressQuality = 95
                         rotatedBitmap.compress(compressFormat, compressQuality, out)
                     }
 
@@ -1333,17 +1488,13 @@ class PhotoDownloadManager @Inject constructor(
                 ExifInterface.TAG_ARTIST,
                 ExifInterface.TAG_COPYRIGHT,
                 ExifInterface.TAG_IMAGE_DESCRIPTION,
-                ExifInterface.TAG_USER_COMMENT,
-
-                // 색상 공간 및 렌더링
-                ExifInterface.TAG_COLOR_SPACE,
-                ExifInterface.TAG_PHOTOMETRIC_INTERPRETATION,
-                ExifInterface.TAG_REFERENCE_BLACK_WHITE,
-                ExifInterface.TAG_WHITE_POINT,
-                ExifInterface.TAG_PRIMARY_CHROMATICITIES,
-                ExifInterface.TAG_Y_CB_CR_COEFFICIENTS,
-                ExifInterface.TAG_Y_CB_CR_POSITIONING,
-                ExifInterface.TAG_Y_CB_CR_SUB_SAMPLING
+                ExifInterface.TAG_USER_COMMENT
+                // 색상 공간·인코딩 특성 태그(TAG_COLOR_SPACE, TAG_PHOTOMETRIC_INTERPRETATION,
+                // TAG_REFERENCE_BLACK_WHITE, TAG_WHITE_POINT, TAG_PRIMARY_CHROMATICITIES,
+                // TAG_Y_CB_CR_* )는 복사하지 않는다. 리사이즈 픽셀은 inPreferredColorSpace 로 이미
+                // sRGB 로 변환됐고 JPEG 도 새로 인코딩하므로, 원본(예: AdobeRGB) 값을 그대로 베끼면
+                // 픽셀과 태그가 어긋나 EXIF 를 존중하는 뷰어에서 색이 틀어진다.
+                // TAG_COLOR_SPACE 는 아래에서 sRGB 로 명시 설정한다.
                 // 방향(TAG_ORIENTATION)은 아래에서 회전 적용 여부에 따라 별도 처리 — 원본값 그대로 복사 금지(이중 회전 방지)
             )
 
@@ -1356,6 +1507,13 @@ class PhotoDownloadManager @Inject constructor(
                     copiedCount++
                 }
             }
+
+            // 색공간 태그: 리사이즈 픽셀이 sRGB 로 변환된 상태이므로 원본값을 물려받지 않고 sRGB 로 고정한다.
+            // CamCon 은 결과물 색공간을 sRGB 하나로 통일하기로 했고, 그래야 뷰어마다 색이 달라지지 않는다.
+            newExif.setAttribute(
+                ExifInterface.TAG_COLOR_SPACE,
+                ExifInterface.COLOR_SPACE_S_RGB.toString()
+            )
 
             // 방향 태그: 픽셀 회전을 실제로 적용했으면 NORMAL 로 재설정해 뷰어·후속 색감/필름 단계의 이중 회전을 막는다.
             // 회전을 건너뛴 경우(NORMAL·메모리 부족·OOM)엔 원본 orientation 을 보존해 뷰어 자동 회전에 맡긴다.

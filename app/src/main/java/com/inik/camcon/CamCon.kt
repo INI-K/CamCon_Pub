@@ -117,15 +117,18 @@ class CamCon : Application() {
         // 메인스레드 onCreate에서 동기 실행하면 콜드 스타트/업데이트 직후 ANR이 발생하므로
         // IO 디스패처로 옮기고, 완료 신호는 pluginExtractionDeferred로 노출한다.
         applicationScope.launch(ioDispatcher) {
-            try {
+            val pluginPath = try {
                 createLibgphoto2PluginDirs()
             } finally {
                 _pluginExtractionDeferred.complete(Unit)
             }
+            // ⚠️ 자가진단은 반드시 **추출 + 환경변수 설정 뒤**에 돌린다.
+            // 이전에는 onCreate 에서 곧바로 호출해 IOLIBS 가 설정되기 596ms 전에 실행됐고,
+            // 그 결과 매 콜드스타트마다 빌드 호스트 경로로 "No iolibs found" 가 찍혔다.
+            // 그 문자열은 AAB split 누락으로 설치본이 전멸했을 때와 **동일**해서,
+            // 상시 오탐이 깔려 있으면 진짜 사고를 구분할 수 없다.
+            checkNativeLibraryStatus(pluginPath)
         }
-
-        // 네이티브 라이브러리 로딩 상태 확인
-        checkNativeLibraryStatus()
 
         try {
             FirebaseApp.initializeApp(this)
@@ -158,7 +161,12 @@ class CamCon : Application() {
      * APK 빌드 시 하위 디렉토리는 포함되지 않으므로 런타임에 생성합니다.
      * nativeLibDir는 read-only이므로 앱의 private 디렉토리에 복사합니다.
      */
-    private fun createLibgphoto2PluginDirs() {
+    /**
+     * @return libgphoto2 가 그대로 쓸 수 있는 `IOLIBS`/`CAMLIBS` 경로(콜론 결합). 실패 시 null.
+     *   ⚠️ 베이스 디렉터리를 그대로 넘기면 안 된다 — `.so` 는 버전 하위 디렉터리에만 있고
+     *   `gp_port_info_list_load` 는 하위를 재귀 탐색하지 않는다.
+     */
+    private fun createLibgphoto2PluginDirs(): String? {
         try {
             // 앱의 private 디렉토리에 플러그인 저장
             val gphoto2BaseDir = getDir("gphoto2_plugins", Context.MODE_PRIVATE)
@@ -249,12 +257,15 @@ class CamCon : Application() {
                     TAG,
                     "❌ 플러그인 추출 결과 부재: iolib=$iolibPresent, camlib=$camlibPresent (AAB split 누락 또는 설치본 손상)"
                 )
+                return null
             }
+            return "${portVersionDir.absolutePath}:${gphoto2VersionDir.absolutePath}"
         } catch (e: kotlinx.coroutines.CancellationException) {
             // 코루틴 취소는 항상 재던지기
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "❌ 플러그인 디렉토리 생성 실패", e)
+            return null
         }
     }
 
@@ -283,12 +294,20 @@ class CamCon : Application() {
     /**
      * 네이티브 라이브러리 로딩 상태 확인
      */
-    private fun checkNativeLibraryStatus() {
+    private fun checkNativeLibraryStatus(pluginPath: String?) {
         try {
             Log.d(TAG, "🔍 네이티브 라이브러리 상태 확인 중...")
 
             if (CameraNative.isLibrariesLoaded()) {
                 Log.d(TAG, "✅ 네이티브 라이브러리 정상 로딩됨")
+
+                // 포트 목록 조회는 IOLIBS 가 가리키는 디렉터리를 읽는다. 설정 전에 조회하면
+                // 빌드 시각에 박힌 호스트 기본 경로를 보고 무조건 실패한다 — 진단이 아니라 잡음이 된다.
+                if (pluginPath == null) {
+                    Log.w(TAG, "⚠️ 플러그인 경로 없음 - 라이브러리 자가진단 생략")
+                    return
+                }
+                CameraNative.setupEnvironmentPaths(pluginPath)
 
                 // 라이브러리 로딩 테스트
                 try {
@@ -386,11 +405,22 @@ class CamCon : Application() {
      * ProcessLifecycleOwner.get()은 메인 스레드 전용이라 onCreate(메인)에서 등록한다.
      * onStart(포그라운드 진입)마다 refreshOnForeground()를 호출하되, 실제 재조회 빈도는
      * UseCase 내부 15분 스로틀이 제어한다(무한 폴링 방지).
+     *
+     * ⚠️ **첫 onStart 는 건너뛴다.** 앱 시작 시점의 onStart 는 GetSubscriptionUseCase.init 의
+     * 최초 refresh 와 목적이 겹쳐 같은 문서를 두 번 읽는다. 둘의 실행 순서는 seedFromCache
+     * (DataStore 읽기) 지연에 따라 뒤바뀌므로 스로틀만으로는 막을 수 없다 — init 경로는
+     * 명시적 refresh 라 설계상 스로틀을 통과하기 때문이다. 이 옵저버가 목적하는 것은
+     * '복귀' 재조회이므로 최초 진입을 건너뛰는 게 의미상으로도 맞다.
      */
     private fun registerSubscriptionForegroundRefresh() {
         try {
+            var isFirstStart = true
             ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
                 override fun onStart(owner: LifecycleOwner) {
+                    if (isFirstStart) {
+                        isFirstStart = false
+                        return
+                    }
                     getSubscriptionUseCase.refreshOnForeground()
                 }
             })

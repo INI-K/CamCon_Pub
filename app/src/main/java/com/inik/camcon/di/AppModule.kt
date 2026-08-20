@@ -160,8 +160,14 @@ object AppModule {
     fun providePtpipDiscoveryService(
         @ApplicationContext context: Context,
         wifiHelper: WifiNetworkHelper,
-        ssdpDiscoveryService: SsdpDiscoveryService
-    ) = PtpipDiscoveryService(context, wifiHelper, ssdpDiscoveryService)
+        ssdpDiscoveryService: SsdpDiscoveryService,
+        ptpipPreferencesDataSource: PtpipPreferencesDataSource
+    ) = PtpipDiscoveryService(
+        context,
+        wifiHelper,
+        ssdpDiscoveryService,
+        ptpipPreferencesDataSource
+    )
 
     @Provides
     @Singleton
@@ -194,6 +200,8 @@ object AppModule {
         cameraStateObserver: CameraStateObserver,
         errorNotifier: com.inik.camcon.domain.manager.ErrorNotifier,
         photoDownloadManager: PhotoDownloadManager,
+        nikonApplicationModeManager: com.inik.camcon.data.datasource.nativesource.NikonApplicationModeManager,
+        nikonLinkDiagnostics: com.inik.camcon.data.datasource.nativesource.NikonLinkDiagnostics,
         autoConnectManager: AutoConnectManager,
         autoConnectTaskRunner: Lazy<AutoConnectTaskRunner>,
         ptpipPreferencesDataSource: PtpipPreferencesDataSource,
@@ -213,6 +221,8 @@ object AppModule {
             cameraStateObserver,
             errorNotifier,
             photoDownloadManager,
+            nikonApplicationModeManager,
+            nikonLinkDiagnostics,
             autoConnectManager,
             autoConnectTaskRunner,
             ptpipPreferencesDataSource,

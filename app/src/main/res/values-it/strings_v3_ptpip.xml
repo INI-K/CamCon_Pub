@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="v3_ptpip_status_connected">Connesso</string>
+    <string name="v3_ptpip_scan_nearby_wifi_label">Wi-Fi nelle vicinanze</string>
+    <string name="v3_ptpip_scan_nearby_camera_wifi_label">Wi-Fi delle fotocamere nelle vicinanze</string>
+</resources>

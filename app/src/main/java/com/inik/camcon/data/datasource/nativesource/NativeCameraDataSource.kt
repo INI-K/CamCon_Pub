@@ -83,9 +83,22 @@ class NativeCameraDataSource @Inject constructor(
         }
 
         Log.d(TAG, "카메라 초기화 시작")
+        invalidateDeviceInfoSnapshot()
         val result = CameraNative.initCamera()
         Log.d(TAG, "카메라 초기화 완료: 결과=$result")
         return result
+    }
+
+    /**
+     * 동기 getter용 DeviceInfo/Abilities 스냅샷을 버린다.
+     *
+     * 이 스냅샷은 직전 세션의 카메라를 가리키므로 세션이 바뀌면 반드시 폐기해야 한다
+     * (남으면 USB→Wi-Fi 교차 연결에서 이전 기종명이 그대로 보고된다).
+     * 네이티브 캐시 무효화(invalidateCameraSummaryCache)와 짝을 이루는 Kotlin 쪽 지점이다.
+     */
+    private fun invalidateDeviceInfoSnapshot() {
+        usbCameraDeviceInfo = null
+        usbCameraAbilities = null
     }
 
     /**
@@ -199,6 +212,7 @@ class NativeCameraDataSource @Inject constructor(
                 withContext(ioDispatcher) {
                     Log.d(TAG, "카메라 종료")
                     CameraNative.closeCamera()
+                    invalidateDeviceInfoSnapshot()
                     Log.d(TAG, "카메라 종료 완료")
                 }
             } catch (e: CancellationException) {
@@ -318,6 +332,13 @@ class NativeCameraDataSource @Inject constructor(
 
             if (json.has("error")) {
                 val error = json.getString("error")
+                // 저장소 미노출(Sony PC리모트 무선 등)은 재시도 무의미한 구조적 미지원 —
+                // 전용 예외로 구분해 상위(PhotoListManager)가 오류 토스트 대신 조용한
+                // 빈 상태로 처리하게 한다(에러 스팸 방지, A7C 실측 2026-08-18).
+                if (error == "storage_not_supported") {
+                    Log.w(TAG, "카메라가 저장소를 노출하지 않음 — 카드 탐색 미지원 세션")
+                    throw UnsupportedOperationException("storage_not_supported")
+                }
                 Log.e(TAG, "카메라 사진 목록 가져오기 오류: $error")
                 throw IllegalStateException("카메라 사진 목록 오류: $error")
             }
@@ -373,6 +394,10 @@ class NativeCameraDataSource @Inject constructor(
             )
 
         } catch (e: CancellationException) {
+            throw e
+        } catch (e: UnsupportedOperationException) {
+            // 구조적 미지원(카드 탐색 불가 세션) — 안내성이라 스택트레이스 없이 전파만.
+            // (스택 포함 E 로그가 계층마다 중복되어 로그 폭탄이 되던 것 정리, 2026-08-18)
             throw e
         } catch (e: Exception) {
             // 인프라 오류를 빈 목록으로 위장하면 갤러리가 무음으로 빈 화면이 된다 —
@@ -488,32 +513,30 @@ class NativeCameraDataSource @Inject constructor(
             val supportsObj = json.optJSONObject("supports")
 
             // Abilities의 모델명은 제네릭 드라이버명("PTP/IP Camera")이므로
-            // 캐시된 DeviceInfo에서 실제 카메라 모델명을 가져와 우선 사용
-            val cachedDeviceInfo = usbCameraDeviceInfo
-            if (cachedDeviceInfo != null && cachedDeviceInfo.model.isNotEmpty()) {
-                model = if (cachedDeviceInfo.manufacturer.isNotEmpty()) {
-                    "${cachedDeviceInfo.manufacturer} ${cachedDeviceInfo.model}"
-                } else {
-                    cachedDeviceInfo.model
-                }
-            } else {
-                // 캐시 없으면 한 번만 조회
-                try {
-                    val deviceInfoJson = CameraNative.getCameraDeviceInfo()
-                    if (deviceInfoJson != null) {
-                        val parsed = parseDeviceInfo(deviceInfoJson)
-                        usbCameraDeviceInfo = parsed
-                        if (parsed.model.isNotEmpty()) {
-                            model = if (parsed.manufacturer.isNotEmpty()) {
-                                "${parsed.manufacturer} ${parsed.model}"
-                            } else {
-                                parsed.model
-                            }
+            // DeviceInfo의 실제 카메라 모델명을 우선 사용한다.
+            //
+            // ⚠️ 여기서 Kotlin 캐시(usbCameraDeviceInfo)를 먼저 보면 안 된다. 그 필드에는 무효화 지점이
+            // 없어서 한 프로세스 안에서 USB로 A기종 → 해제 → Wi-Fi로 B기종을 연결하면 A의 모델명이
+            // 그대로 살아남고, 그 값이 연결 검증 집계(ConnectionReportObserver)로 흘러가 홈페이지
+            // "사용 확인됨" 배지를 엉뚱한 기종에 달아버린다(집계는 관리자 삭제 외 정정 수단이 없다).
+            // 네이티브는 같은 성격의 캐시를 세션 경계마다 비우므로(camera_common.cpp
+            // invalidateCameraSummaryCache, init/close 12곳) 그쪽을 정본으로 삼고 매번 조회한다.
+            // 네이티브 세션 캐시가 받아주므로 와이어 왕복은 세션당 1회뿐이다.
+            try {
+                val deviceInfoJson = CameraNative.getCameraDeviceInfo()
+                if (deviceInfoJson != null) {
+                    val parsed = parseDeviceInfo(deviceInfoJson)
+                    usbCameraDeviceInfo = parsed   // 동기 getter(getUsbCameraDeviceInfo)용 스냅샷 갱신
+                    if (parsed.model.isNotEmpty()) {
+                        model = if (parsed.manufacturer.isNotEmpty()) {
+                            "${parsed.manufacturer} ${parsed.model}"
+                        } else {
+                            parsed.model
                         }
                     }
-                } catch (e: Exception) {
-                    Log.w(TAG, "DeviceInfo 조회 실패, Abilities 모델명 사용: $model")
                 }
+            } catch (e: Exception) {
+                Log.w(TAG, "DeviceInfo 조회 실패, Abilities 모델명 사용: $model")
             }
 
             if (supportsObj == null) {

@@ -68,9 +68,13 @@ class ConnectionReportRepositoryImplTest {
         }
     }
 
-    private fun stubCallSuccess() {
-        every { callableRef.call(any()) } returns
-            Tasks.forResult(mockk<HttpsCallableResult>(relaxed = true))
+    /**
+     * 서버가 실제로 기록했을 때의 응답. 앱은 `recorded == true` 일 때만 로컬에 마킹한다.
+     */
+    private fun stubCallSuccess(recorded: Boolean = true) {
+        val result = mockk<HttpsCallableResult>(relaxed = true)
+        every { result.data } returns mapOf("ok" to true, "key" to "nikon:z8", "recorded" to recorded)
+        every { callableRef.call(any()) } returns Tasks.forResult(result)
     }
 
     @Test
@@ -168,5 +172,20 @@ class ConnectionReportRepositoryImplTest {
     private fun coVerifyLocalNeverTouched() {
         io.mockk.coVerify(exactly = 0) { local.isReported(any()) }
         io.mockk.coVerify(exactly = 0) { local.markReported(any()) }
+    }
+
+    @Test
+    fun `서버가 이미 등재됐다고 답하면 로컬에 마킹하지 않는다`() = runTest {
+        // 조기 반환(recorded=false)까지 "보고 완료"로 새기면, 서버 데이터가 지워졌을 때
+        // 이 기기에서 다시는 보고가 올라오지 않는다(2026-08-20 실측 결함).
+        stubCallSuccess(recorded = false)
+
+        repo().reportConnection("Nikon Z 8", ConnectionReportMethod.USB)
+
+        assertTrue("로컬 마킹이 남으면 안 된다", reported.isEmpty())
+
+        // 다음 연결에서 다시 호출된다.
+        repo().reportConnection("Nikon Z 8", ConnectionReportMethod.USB)
+        verify(exactly = 2) { callableRef.call(any()) }
     }
 }

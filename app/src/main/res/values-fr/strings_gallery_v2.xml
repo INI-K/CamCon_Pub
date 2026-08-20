@@ -30,7 +30,7 @@
     <string name="gallery_v2_flash_off">Désactivé</string>
 
     <!-- EXIF 비어 있음 / 미다운로드 -->
-    <string name="gallery_v2_exif_unavailable">Aucune information — téléchargez d\'abord la photo</string>
+    <string name="gallery_v2_exif_unavailable">Aucune information - téléchargez d\'abord la photo</string>
     <string name="gallery_v2_date_unknown">Date de prise de vue inconnue</string>
     <string name="gallery_v2_internal_storage">/Stockage interne</string>
 

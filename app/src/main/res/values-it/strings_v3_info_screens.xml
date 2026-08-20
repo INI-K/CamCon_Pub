@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- info-screens (Informazioni fotocamera / Licenze open source) V3 UI strings. Senza emoji ed elenchi puntati. -->
+<resources>
+    <string name="v3_abilities_grade_full">Controllo remoto completo</string>
+    <string name="v3_abilities_grade_download">Solo download</string>
+    <string name="v3_abilities_grade_partial">Supporto parziale</string>
+
+    <string name="v3_abilities_summary_full">Questa fotocamera supporta tutte le funzioni remote.</string>
+    <string name="v3_abilities_summary_download">Questa fotocamera supporta solo il download dei file. Lo scatto da remoto e la Live View non sono disponibili. Alcuni modelli %1$s hanno un supporto PTP limitato.</string>
+    <string name="v3_abilities_summary_partial">La Live View non è supportata, ma lo scatto da remoto è disponibile.</string>
+    <string name="v3_abilities_summary_some">Alcune funzioni della fotocamera potrebbero essere limitate.</string>
+
+    <string name="v3_abilities_cap_capture">Scatto da remoto</string>
+    <string name="v3_abilities_cap_liveview">Live View</string>
+    <string name="v3_abilities_cap_config">Controllo impostazioni</string>
+    <string name="v3_abilities_cap_files">Gestione file</string>
+
+    <string name="v3_diag_section_title">Diagnostica (ADMIN)</string>
+
+    <string name="v3_licenses_native_section">Incluse nell\'app</string>
+</resources>

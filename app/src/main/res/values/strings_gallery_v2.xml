@@ -29,7 +29,7 @@
     <string name="gallery_v2_flash_off">Off</string>
 
     <!-- EXIF 빈/미다운로드 상태 -->
-    <string name="gallery_v2_exif_unavailable">No info — download the photo first</string>
+    <string name="gallery_v2_exif_unavailable">No info - download the photo first</string>
     <string name="gallery_v2_date_unknown">Capture date unknown</string>
     <string name="gallery_v2_internal_storage">/Internal storage</string>
 

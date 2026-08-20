@@ -24,6 +24,7 @@ import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.domain.model.BracketingSettings
 import com.inik.camcon.domain.model.CameraSettings
+import com.inik.camcon.domain.model.CaptureDeferredException
 import com.inik.camcon.domain.model.CapturedPhoto
 import com.inik.camcon.domain.model.LiveViewFrame
 import com.inik.camcon.domain.model.ShootingMode
@@ -95,7 +96,17 @@ class CameraCaptureRepositoryImpl @Inject constructor(
         private const val MAX_CAPTURED_PHOTOS = 1000
 
         /** 라이브뷰 첫 프레임 대기 상한 — 초과 시 네이티브 무응답으로 보고 재시도 가능한 에러로 종료 */
+        /** 펌프 진입 이후 첫 프레임을 기다리는 예산. 이 구간은 온전히 카메라 응답 시간이다. */
         private const val LIVEVIEW_FIRST_FRAME_TIMEOUT_MS = 5000L
+
+        /**
+         * 펌프가 루프에 진입조차 못 할 때의 백스톱 예산.
+         *
+         * 커맨드 큐 대기(유휴 이벤트 롱폴 ~5초 × 설정 조회 몇 회)를 덮어야 하므로 넉넉해야 한다.
+         * Z8 실측 최악값이 요청→펌프 진입 12.5초(11:02:50)였다. 이 예산은 "무한 로딩 방지"가
+         * 목적이지 카메라 응답성 판정이 아니다 — 실제 판정은 [LIVEVIEW_FIRST_FRAME_TIMEOUT_MS].
+         */
+        private const val LIVEVIEW_STARTUP_TIMEOUT_MS = 20_000L
 
         /** capturedPhotos 정렬 기준 — captureTime 오름차순, 동률이면 basename·확장자 순 */
         private val PHOTO_ORDER_COMPARATOR = compareBy<CapturedPhoto>(
@@ -427,6 +438,16 @@ class CameraCaptureRepositoryImpl @Inject constructor(
                 }
             }
 
+            override fun onCaptureDeferred(fileName: String) {
+                // 셔터는 성공 — 파일은 이벤트 리스너의 전송큐 경로로 배달된다(0029 관용).
+                // 실패 예외가 아니라 지연 마커로 코루틴을 끝내고, 에러 UI 처리는
+                // CameraOperationsManager 가 이 타입만 골라 무음 처리한다.
+                Log.i(TAG, "촬영 성공 — 파일 배달은 백그라운드 전송에 위임: $fileName")
+                if (continuation.isActive) {
+                    continuation.resumeWithException(CaptureDeferredException(fileName))
+                }
+            }
+
             override fun onUsbDisconnected() {
                 Log.e(TAG, "USB 디바이스 분리 감지 - 촬영 실패 처리")
                 if (continuation.isActive) {
@@ -567,8 +588,17 @@ class CameraCaptureRepositoryImpl @Inject constructor(
         }
 
         // 네이티브 startLiveView는 미지원·활성화 실패 시에도 void로 조용히 끝나 프레임이 안 온다.
-        // 첫 프레임 워치독으로 무한 로딩을 막고 재시도 가능한 에러로 종료시킨다.
+        // 워치독으로 무한 로딩을 막고 재시도 가능한 에러로 종료시킨다.
+        //
+        // 워치독은 2단이다. 1단 예산을 "시작 요청" 시점부터 재면 커맨드 큐 대기가 예산을 먹어
+        // 멀쩡한 카메라를 죽인다 — PTP/IP 는 커맨드 채널이 하나뿐이라 유휴 이벤트 롱폴(~5초)이
+        // 채널을 잡고 있으면 라이브뷰 시작 명령이 그 뒤에 줄을 서기 때문이다(Z8 실측 2026-08-19:
+        // 유휴 3회 전부 실패 / 촬영 직후 2회 전부 성공, 유일한 차이가 채널 점유였다).
+        //  - [startupWatchdog]  : 펌프가 루프에 진입조차 못 하는 경우의 백스톱(넉넉한 예산).
+        //  - [firstFrameWatchdog]: 펌프 진입(onLiveViewStarted) 이후 프레임이 안 오는 진짜 실패.
         val firstFrameReceived = AtomicBoolean(false)
+        val pumpStarted = AtomicBoolean(false)
+        var startupWatchdog: Job? = null
         var firstFrameWatchdog: Job? = null
 
         // 카메라가 끊기면(껐다 켜기 등) 네이티브 프레임 펌프는 죽지만 이 flow는 awaitClose에서
@@ -590,14 +620,35 @@ class CameraCaptureRepositoryImpl @Inject constructor(
 
         try {
             com.inik.camcon.utils.LogcatManager.d(TAG, "네이티브 startLiveView 호출 시작 (자동초점 생략)")
-            firstFrameWatchdog = launch {
-                delay(LIVEVIEW_FIRST_FRAME_TIMEOUT_MS)
-                if (!firstFrameReceived.get()) {
-                    Log.e(TAG, "라이브뷰 첫 프레임 타임아웃(${LIVEVIEW_FIRST_FRAME_TIMEOUT_MS}ms) — 시작 실패로 종료")
+            startupWatchdog = launch {
+                delay(LIVEVIEW_STARTUP_TIMEOUT_MS)
+                if (!pumpStarted.get() && !firstFrameReceived.get()) {
+                    Log.e(TAG, "라이브뷰 시작 타임아웃(${LIVEVIEW_STARTUP_TIMEOUT_MS}ms) — 펌프 미진입, 종료")
                     close(IllegalStateException("라이브뷰 시작 실패(응답 없음)"))
                 }
             }
             nativeDataSource.startLiveView(object : LiveViewCallback {
+                override fun onLiveViewStarted() {
+                    // 네이티브 펌프 스레드에서 온다. 큐 대기가 끝나고 이제부터 카메라 차례이므로
+                    // 백스톱을 끄고 첫 프레임 예산을 여기서부터 새로 잰다.
+                    if (!pumpStarted.compareAndSet(false, true)) return
+                    startupWatchdog?.cancel()
+                    com.inik.camcon.utils.LogcatManager.d(
+                        TAG,
+                        "라이브뷰 펌프 진입 — 첫 프레임 워치독 시작(${LIVEVIEW_FIRST_FRAME_TIMEOUT_MS}ms)"
+                    )
+                    firstFrameWatchdog = launch {
+                        delay(LIVEVIEW_FIRST_FRAME_TIMEOUT_MS)
+                        if (!firstFrameReceived.get()) {
+                            Log.e(
+                                TAG,
+                                "라이브뷰 첫 프레임 타임아웃(${LIVEVIEW_FIRST_FRAME_TIMEOUT_MS}ms) — 펌프는 돌지만 프레임 없음"
+                            )
+                            close(IllegalStateException("라이브뷰 시작 실패(응답 없음)"))
+                        }
+                    }
+                }
+
                 override fun onLiveViewFrame(frame: ByteArray) {
                     firstFrameReceived.set(true)
                     try {
@@ -647,6 +698,7 @@ class CameraCaptureRepositoryImpl @Inject constructor(
 
         awaitClose {
             com.inik.camcon.utils.LogcatManager.d(TAG, "라이브뷰 중지 (awaitClose)")
+            startupWatchdog?.cancel()
             firstFrameWatchdog?.cancel()
             connectionWatcher.cancel()
             try {
@@ -913,15 +965,30 @@ class CameraCaptureRepositoryImpl @Inject constructor(
      * [updatePhotoDownloadFailed] 수렴점을 탈 수 없다. 대신 앱 셔터 실패와 동일한 UI 에러 채널
      * (ErrorNotifier→errorEvent→setError→Snackbar)로 통지해 무음 유실을 방지한다.
      */
-    private fun notifyCaptureFailed(errorCode: Int) {
+    @VisibleForTesting
+    internal fun notifyCaptureFailed(errorCode: Int) {
         try {
             errorNotifier.emitError(
                 type = ErrorType.OPERATION,
-                message = context.getString(R.string.photo_capture_failed, errorCode),
+                message = captureFailureMessage(errorCode),
                 severity = ErrorSeverity.HIGH
             )
         } catch (e: Exception) {
             Log.w(TAG, "촬영 실패 통지 방출 실패: $errorCode", e)
         }
     }
+
+    /**
+     * 실패 코드를 사용자 문구로 옮긴다.
+     *
+     * -6(GP_ERROR_NOT_SUPPORTED)은 카메라가 그 객체의 전송 자체를 거부한 경우로, 재시도해도
+     * 결과가 같다(네이티브가 3회에서 자동 중단한다). "오류 -6" 대신 사용자가 실제로 할 수 있는
+     * 행동을 안내한다. 그 외 코드는 종전 문구를 유지한다.
+     */
+    private fun captureFailureMessage(errorCode: Int): String =
+        if (errorCode == -6) {
+            context.getString(R.string.photo_transfer_rejected_by_camera)
+        } else {
+            context.getString(R.string.photo_capture_failed, errorCode)
+        }
 }

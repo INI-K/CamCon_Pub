@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 設定 Hero (接続ステータスヘッダー) -->
+    <string name="settings_v3_hero_eyebrow">CAMERA</string>
+    <string name="settings_v3_hero_camera_none">カメラなし</string>
+
+    <!-- サーバーストレージ — quota API 接続前の状態表示 -->
+    <string name="settings_v3_storage_pending">使用量の集計待ち</string>
+</resources>

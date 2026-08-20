@@ -29,7 +29,7 @@
     <string name="gallery_v2_flash_off">非発光</string>
 
     <!-- EXIF 비어 있음 / 미다운로드 상태 -->
-    <string name="gallery_v2_exif_unavailable">情報なし — 先に写真をダウンロードしてください</string>
+    <string name="gallery_v2_exif_unavailable">情報なし - 先に写真をダウンロードしてください</string>
     <string name="gallery_v2_date_unknown">撮影日時が不明です</string>
     <string name="gallery_v2_internal_storage">/内部ストレージ</string>
 

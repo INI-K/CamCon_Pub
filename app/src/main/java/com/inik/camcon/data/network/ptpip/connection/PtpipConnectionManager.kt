@@ -10,6 +10,7 @@ import com.inik.camcon.utils.LogMask
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -22,6 +23,21 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/**
+ * 경량 Init 프로브 결과.
+ *
+ * 서브넷 스윕으로 발견됐지만 이름·제조사 신호가 없는 후보를 PTP/IP InitCommandRequest 1왕복으로
+ * 식별한 결과를 표현한다.
+ * - [Identified]: InitCommandAck 수신 → friendly name 확보(빈 문자열일 수도 있음).
+ * - [NeedsPairing]: InitFail(type 5) 수신 → 이 호스트 GUID로 아직 페어링되지 않음(reason 동봉).
+ * - [NotCamera]: 무응답/타임아웃/비표준 응답 → PTP/IP 카메라로 볼 수 없음.
+ */
+sealed interface InitProbeResult {
+    data class Identified(val friendlyName: String) : InitProbeResult
+    data class NeedsPairing(val reason: Int) : InitProbeResult
+    data object NotCamera : InitProbeResult
+}
 
 /**
  * PTPIP 연결 관리자
@@ -47,6 +63,14 @@ class PtpipConnectionManager @Inject constructor(
         private const val TAG = "PtpipConnectionManager"
         private val SESSION_ID_COUNTER = AtomicInteger(1)
         private const val MAX_PACKET_SIZE = 64 * 1024 * 1024 // 64MB
+
+        // 경량 Init 프로브 파라미터
+        private const val PROBE_CONNECT_TIMEOUT_MS = 3000
+        private const val PROBE_READ_TIMEOUT_MS = 4000
+        private const val PROBE_MAX_ACK_SIZE = 8 * 1024 // ACK/Fail 패킷은 작다 — 상한으로 폭주 방지
+        private const val PROBE_MAX_NAME_LEN = 64
+        // InitCommandAck: length(4)+type(4)+connectionNumber(4)+GUID(16) 다음이 friendly name
+        private const val INIT_ACK_NAME_OFFSET = 28
     }
 
     // region 상태 전이 헬퍼
@@ -366,6 +390,129 @@ class PtpipConnectionManager @Inject constructor(
      */
     fun isConnected(): Boolean {
         return commandSocket?.isConnected == true && eventSocket?.isConnected == true
+    }
+
+    /**
+     * 경량 Init 프로브 — 서브넷 스윕으로 발견됐지만 제조사 신호가 없는 후보를 식별한다.
+     *
+     * command 소켓 **1개만** 열어 [createInitCommandRequest]를 보내고 InitCommandAck의 friendly name까지
+     * 읽는다. 페어링된 카메라는 이름을 돌려주고([InitProbeResult.Identified]), 미페어링 카메라는
+     * InitFail(type 5)로 응답한다([InitProbeResult.NeedsPairing]). 무응답/타임아웃은
+     * [InitProbeResult.NotCamera].
+     *
+     * ⚠️ 이 함수는 싱글톤의 활성 세션 필드([commandSocket]/[eventSocket]/[sessionState])를 **절대**
+     * 건드리지 않는다 — 전용 로컬 소켓만 쓴다. event 소켓은 열지 않는다(command만).
+     * 소켓은 취소·예외 경로에서도 finally + [NonCancellable]로 반드시 닫는다. 고아 소켓이 남으면
+     * 카메라가 새 TCP를 -7/End-of-stream으로 거부해 앱 재시작까지 연결 불가가 된다
+     * (SubnetSweepDiscoverySource KDoc 참조).
+     *
+     * ⚠️ Nikon에는 쓰지 않는다 — 호출부([PtpipDiscoveryCoordinator])가 mDNS로 식별된 Nikon을
+     * 프로브 대상에서 제외한다. InitCommandRequest 후 abrupt close는 Nikon 세션락을 유발하므로,
+     * 여기서는 ACK/Fail을 끝까지 읽고 정상 close 한다.
+     */
+    suspend fun probeInitCommand(
+        ipAddress: String,
+        port: Int,
+        connectTimeoutMs: Int = PROBE_CONNECT_TIMEOUT_MS,
+        readTimeoutMs: Int = PROBE_READ_TIMEOUT_MS
+    ): InitProbeResult = withContext(ioDispatcher) {
+        // 활성 세션과 무관한 전용 소켓만 쓰지만, 입력 IP는 동일 화이트리스트로 검증한다.
+        if (!IpAddressValidator.isAllowedCameraIp(ipAddress) || port !in 1..65535) {
+            return@withContext InitProbeResult.NotCamera
+        }
+
+        var socket: Socket? = null
+        try {
+            socket = Socket()
+            socket.connect(InetSocketAddress(ipAddress, port), connectTimeoutMs)
+            socket.soTimeout = readTimeoutMs
+
+            val output = socket.getOutputStream()
+            output.write(createInitCommandRequest())
+            output.flush()
+
+            val packet = readSingleProbePacket(socket.getInputStream())
+                ?: return@withContext InitProbeResult.NotCamera
+            parseInitProbeResponse(packet)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (com.inik.camcon.BuildConfig.DEBUG) {
+                Log.d(TAG, "Init 프로브 무응답/실패: ${LogMask.id(ipAddress)} - ${e.message}")
+            }
+            InitProbeResult.NotCamera
+        } finally {
+            // 취소돼도 반드시 닫는다 — 고아 소켓 방지.
+            withContext(NonCancellable) { runCatching { socket?.close() } }
+        }
+    }
+
+    /**
+     * 프로브 응답 1패킷(길이 헤더 4B + 본문)만 정확히 읽는다.
+     * ACK/Fail은 작으므로 [PROBE_MAX_ACK_SIZE] 상한을 둔다. TCP 단편화에 대비해 부분 read를 처리한다.
+     */
+    private fun readSingleProbePacket(input: java.io.InputStream): ByteArray? {
+        val lengthBytes = ByteArray(4)
+        var read = 0
+        while (read < 4) {
+            val n = input.read(lengthBytes, read, 4 - read)
+            if (n < 0) return null
+            read += n
+        }
+        val packetLength = ByteBuffer.wrap(lengthBytes).order(ByteOrder.LITTLE_ENDIAN).int
+        if (packetLength < 8 || packetLength > PROBE_MAX_ACK_SIZE) return null
+
+        val full = ByteArray(packetLength)
+        System.arraycopy(lengthBytes, 0, full, 0, 4)
+        var total = 4
+        while (total < packetLength) {
+            val n = input.read(full, total, packetLength - total)
+            if (n < 0) return null
+            total += n
+        }
+        return full
+    }
+
+    /**
+     * InitCommandAck면 friendly name까지, InitFail(type 5)이면 reason 코드를 뽑는다.
+     */
+    private fun parseInitProbeResponse(packet: ByteArray): InitProbeResult {
+        if (packet.size < 8) return InitProbeResult.NotCamera
+        val buffer = ByteBuffer.wrap(packet).order(ByteOrder.LITTLE_ENDIAN)
+        buffer.position(4)
+        return when (buffer.int) {
+            PtpipConstants.PTPIP_INIT_COMMAND_ACK ->
+                InitProbeResult.Identified(parseFriendlyName(packet, INIT_ACK_NAME_OFFSET))
+
+            PtpipConstants.PTPIP_INIT_FAIL -> {
+                val reason = if (packet.size >= 12) {
+                    buffer.position(8)
+                    buffer.int
+                } else {
+                    -1
+                }
+                InitProbeResult.NeedsPairing(reason)
+            }
+
+            else -> InitProbeResult.NotCamera
+        }
+    }
+
+    /**
+     * InitCommandAck의 friendly name(UTF-16LE, NUL 종료)을 [offset]부터 읽는다.
+     */
+    private fun parseFriendlyName(packet: ByteArray, offset: Int): String {
+        if (offset >= packet.size) return ""
+        val sb = StringBuilder()
+        var i = offset
+        while (i + 1 < packet.size) {
+            val code = (packet[i].toInt() and 0xFF) or ((packet[i + 1].toInt() and 0xFF) shl 8)
+            if (code == 0) break // NUL 종료
+            sb.append(code.toChar())
+            if (sb.length >= PROBE_MAX_NAME_LEN) break
+            i += 2
+        }
+        return sb.toString().trim()
     }
 
     /**
