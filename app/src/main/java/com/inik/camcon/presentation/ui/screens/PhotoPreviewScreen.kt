@@ -142,6 +142,8 @@ fun PhotoPreviewScreen(
 
     DisposableEffect(Unit) {
         LogcatManager.d("PhotoPreviewScreen", "사진 미리보기 탭 진입 - 이벤트 리스너 관리 시작")
+        // 카드 탐색 구간 진입 통지 — 니콘 앱 모드 해제는 진입마다 필요하다(재진입 포함).
+        viewModel.onTabEnter()
         onDispose {
             LogcatManager.d("PhotoPreviewScreen", "사진 미리보기 탭 이탈 - 이벤트 리스너 재시작 신호")
             viewModel.onTabExit()

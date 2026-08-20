@@ -29,6 +29,13 @@
     <string name="ptpip_source_manual">Inserita manualmente</string>
     <string name="ptpip_vendor_confirmed_fmt">%1$s confermata</string>
     <string name="ptpip_vendor_likely_fmt">%1$s (probabile)</string>
+    <string name="ptpip_profile_transfer_notice">Modalità trasferimento immagini: le foto scattate durante il live view arrivano solo dopo averlo disattivato e la scheda di memoria non è esplorabile. Imposta la connessione al computer della fotocamera su controllo fotocamera per tutte le funzioni.</string>
+    <string name="ptpip_profile_transfer_dialog_title">Passare al controllo fotocamera?</string>
+    <string name="ptpip_profile_transfer_dialog_body">Questa fotocamera è in modalità trasferimento immagini. La connessione funziona, ma le foto scattate durante il live view arrivano solo dopo averlo disattivato e la scheda di memoria non è esplorabile.\n\nImposta la connessione al computer su controllo fotocamera, poi cerca di nuovo. Alcuni modelli meno recenti supportano solo il trasferimento immagini.</string>
+    <string name="ptpip_profile_transfer_dialog_research">Cerca di nuovo</string>
+    <string name="ptpip_profile_transfer_dialog_connect_anyway">Connetti comunque</string>
+    <string name="ptpip_profile_control">Controllo remoto</string>
+    <string name="ptpip_profile_transfer">Trasferimento immagini</string>
     <string name="ptpip_vendor_unknown">Produttore sconosciuto</string>
     <string name="ptpip_discovery_empty_title">Nessuna fotocamera trovata</string>
     <string name="ptpip_discovery_empty_camera_first">Controlla prima la fotocamera: 1) che si sia collegata all\'hotspot del telefono, 2) che il menu di connessione ai dispositivi smart (Wi-Fi) sia attivo, 3) che il risparmio energetico non abbia disattivato il Wi-Fi. Poi ripeti la ricerca.</string>

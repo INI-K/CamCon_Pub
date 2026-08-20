@@ -97,6 +97,7 @@
     <string name="photo_saved">Photo saved</string>
     <string name="photo_save_failed">Failed to save photo</string>
     <string name="photo_capture_failed">Failed to capture/receive photo (error %1$d)</string>
+    <string name="photo_transfer_rejected_by_camera">The camera refused to transfer this photo. Retry the transfer on the camera, or reconnect.</string>
     <string name="photo_delete_camera_failed">Couldn\'t delete the photo from the camera</string>
     <string name="delete_photo">Delete Photo</string>
     <string name="delete_photo_confirm">Are you sure you want to delete this photo?</string>

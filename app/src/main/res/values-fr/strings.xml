@@ -369,6 +369,7 @@
     <string name="contact_email_copied">Aucune application e-mail trouvée. L\'adresse a été copiée dans le presse-papiers : %1$s</string>
     <string name="camera_preview_live_view">Visée en direct</string>
     <string name="photo_capture_failed">Échec de la capture/réception de la photo (erreur %1$d)</string>
+    <string name="photo_transfer_rejected_by_camera">L’appareil photo a refusé le transfert de cette photo. Relancez le transfert sur l’appareil ou reconnectez-vous.</string>
     <string name="photo_delete_camera_failed">Impossible de supprimer la photo de l\'appareil</string>
     <string name="notif_channel_status_name">État de l\'appareil</string>
     <string name="notif_channel_status_desc">Affiche l\'état de connexion et de réception de fichiers de l\'appareil</string>
