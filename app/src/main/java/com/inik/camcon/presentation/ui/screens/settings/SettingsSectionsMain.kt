@@ -18,13 +18,16 @@ import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.utils.resolve
 
 /**
- * 카메라 제어 설정 섹션 — 개발 빌드 또는 ADMIN 티어에서만 노출(게이팅은 호출자 책임).
- * ADMIN 이면 라이브뷰/화질/자동 이벤트를, 비ADMIN 이면 잠금 안내 + 자동 이벤트를 표시한다.
+ * 카메라 제어 설정 섹션 — 노출 여부 판정은 호출자 책임.
+ *
+ * [isLiveViewAllowed] 가 true 면 라이브뷰/화질/자동 이벤트를, false 면 잠금 안내 + 자동
+ * 이벤트를 표시한다. 예전엔 이 판정이 `isAdminTier` 였는데, 라이브뷰를 PRO 이상에 열면서
+ * (2026-08-20) 판정만 바뀌고 UI 가 ADMIN 에 묶여 있어 REFERRER·PRO 가 토글을 볼 수 없었다.
  */
 @Composable
 internal fun CameraControlSection(
     isCameraControlsEnabled: Boolean,
-    isAdminTier: Boolean,
+    isLiveViewAllowed: Boolean,
     isLiveViewEnabled: Boolean,
     liveViewQuality: LiveViewQuality,
     isAutoStartEventListener: Boolean,
@@ -48,7 +51,7 @@ internal fun CameraControlSection(
             onCheckedChange = onCameraControlsChange
         )
 
-        if (isCameraControlsEnabled && isAdminTier) {
+        if (isCameraControlsEnabled && isLiveViewAllowed) {
             SwitchRowV2(
                 icon = Icons.Default.Visibility,
                 title = stringResource(R.string.settings_v2_liveview_title),
@@ -69,8 +72,8 @@ internal fun CameraControlSection(
                 checked = isAutoStartEventListener,
                 onCheckedChange = onAutoStartEventChange
             )
-        } else if (isCameraControlsEnabled && !isAdminTier) {
-            // ADMIN 전용 기능이라 구매로 열리지 않는다 → 페이월 진입 없이 잠금 표시만.
+        } else if (isCameraControlsEnabled) {
+            // 비허용 티어 → 잠금 표시. 구독으로 열리는 기능이므로 문구는 업그레이드를 안내한다.
             LockedRowV2(
                 icon = Icons.Default.Visibility,
                 title = stringResource(R.string.settings_v2_liveview_locked_title),

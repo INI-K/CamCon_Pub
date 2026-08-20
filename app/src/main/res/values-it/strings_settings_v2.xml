@@ -41,7 +41,7 @@
     <string name="settings_v2_auto_event_title">Ricezione automatica eventi</string>
     <string name="settings_v2_auto_event_subtitle">Avvia automaticamente il listener di eventi all\'apertura della scheda di controllo fotocamera</string>
     <string name="settings_v2_liveview_locked_title">Funzione visualizzazione live</string>
-    <string name="settings_v2_liveview_locked_subtitle">Disponibile solo con il livello ADMIN</string>
+    <string name="settings_v2_liveview_locked_subtitle">Disponibile con un abbonamento PRO o superiore</string>
     <string name="settings_v2_latest_photo_title">Mostra ultima foto</string>
     <string name="settings_v2_latest_photo_subtitle">Mostra la foto più recente quando i controlli della fotocamera sono disattivati</string>
 

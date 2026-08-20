@@ -134,6 +134,21 @@ class AppSettingsViewModel @Inject constructor(
         )
 
     /**
+     * 라이브뷰 허용 티어인가. 설정 화면이 라이브뷰 토글을 보여줄지 판단하는 데 쓴다.
+     *
+     * [isLiveViewEnabled] 와는 다르다 — 그쪽은 '지금 켜져 있는가'(설정값 ∧ 티어)이고
+     * 이쪽은 '켤 수 있는가'(티어만)다. 토글 노출을 켜짐 여부로 판단하면 꺼놓은 순간
+     * 토글 자체가 사라져 다시 켤 수 없다.
+     */
+    val isLiveViewAllowed: StateFlow<Boolean> = getSubscriptionUseCase.getSubscriptionTier()
+        .map { tier -> validateFeatureAccessUseCase.isLiveViewAllowed(tier) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
+
+    /**
      * RAW 다운로드 토글 노출 허용 여부 — 포맷/RAW 축 단일 지점([ValidateImageFormatUseCase])에 위임.
      * (UI 에서 티어 집합을 직접 나열하는 분기 대신 이 파생 상태를 소비한다.)
      * subscriptionTier StateFlow 의 초기값(FREE) 오염(잠금 플래시)을 피하려 effectiveTierFlow 를 쓴다.

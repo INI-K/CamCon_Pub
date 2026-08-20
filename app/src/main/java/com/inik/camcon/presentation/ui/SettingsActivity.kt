@@ -225,6 +225,7 @@ fun SettingsScreen(
     val isLiveViewEnabled by appSettingsViewModel.isLiveViewEnabled.collectAsStateWithLifecycle()
     val liveViewQuality by appSettingsViewModel.liveViewQuality.collectAsStateWithLifecycle()
     val isAdminTier by appSettingsViewModel.isAdminTier.collectAsStateWithLifecycle()
+    val isLiveViewAllowed by appSettingsViewModel.isLiveViewAllowed.collectAsStateWithLifecycle()
     val isAutoStartEventListener by appSettingsViewModel.isAutoStartEventListenerEnabled.collectAsStateWithLifecycle()
     val isShowLatestPhotoWhenDisabled by appSettingsViewModel.isShowLatestPhotoWhenDisabled.collectAsStateWithLifecycle()
 
@@ -389,12 +390,14 @@ fun SettingsScreen(
                 connectedCameraManufacturer = cameraUiState.connectedCameraManufacturer
             )
 
-            // 카메라 제어 설정 — 개발 빌드 또는 ADMIN 티어에 노출.
-            // (빌드 타입만으로 게이트하면 릴리즈에서 관리자에게도 안 보인다)
-            if (BuildConfig.SHOW_DEVELOPER_FEATURES || isAdminTier) {
+            // 카메라 제어 설정 — 허용 티어(PRO 이상) 또는 개발 빌드에 노출.
+            // 라이브뷰가 이 섹션 안에 있으므로 ADMIN 으로 묶어 두면 구독자가 라이브뷰를
+            // 켤 방법이 없다(2026-08-20 실측: 추천인 등록 후에도 토글이 안 보였다).
+            // 빌드 타입만으로 게이트하면 릴리즈에서 관리자에게도 안 보이므로 OR 로 유지한다.
+            if (BuildConfig.SHOW_DEVELOPER_FEATURES || isLiveViewAllowed) {
                 CameraControlSection(
                     isCameraControlsEnabled = isCameraControlsEnabled,
-                    isAdminTier = isAdminTier,
+                    isLiveViewAllowed = isLiveViewAllowed,
                     isLiveViewEnabled = isLiveViewEnabled,
                     liveViewQuality = liveViewQuality,
                     isAutoStartEventListener = isAutoStartEventListener,
