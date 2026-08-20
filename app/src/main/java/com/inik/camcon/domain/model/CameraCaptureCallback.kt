@@ -38,6 +38,16 @@ interface CameraCaptureCallback {
      */
     fun onCaptureFailed(errorCode: Int)
 
+    /**
+     * 셔터는 동작했지만 파일을 그 자리에서 가져올 수 없어 백그라운드 전송(이벤트 리스너의
+     * 전송큐 경로)에 배달을 위임했을 때 호출된다. **촬영 실패가 아니다** — Nikon Wi-Fi
+     * (WT3T 프로파일)에서 촬영 직후 객체 조회가 잠기는 경우(GetObjectInfo 0x200F, 패치
+     * 0029 관용 경로)와 RAW 필터로 즉시 수신분이 없는 경우가 여기에 해당한다.
+     * 기본 구현 무동작 — 캡처 코루틴을 실패로 끝내지 않으려는 구현만 override.
+     * @param fileName 카메라가 보고한 원본 파일명(비어 있을 수 있음)
+     */
+    fun onCaptureDeferred(fileName: String) {}
+
     /** USB 디바이스가 분리되었을 때 호출 */
     fun onUsbDisconnected()
 
