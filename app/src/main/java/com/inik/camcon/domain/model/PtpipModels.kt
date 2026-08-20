@@ -86,6 +86,20 @@ data class VendorVerdict(
 }
 
 /**
+ * 카메라가 광고하는 Wi-Fi 연결 프로파일(니콘 실측 확정, Z8 2026-08-19).
+ *
+ * 니콘 바디의 네트워크 메뉴 [컴퓨터에 연결]에서 고른 연결 유형이 mDNS TXT 의 `apps` 필드로 나온다.
+ * 이 값이 **바디 조작 가능 여부를 결정**한다 — 앱이 보내는 명령과 무관하며, 우리가 바꿀 수 없다.
+ * (해당 벤더 명령으로는 잠금이 풀리지 않음을 실기로 확인했다.)
+ *
+ * - [CAMERA_CONTROL] (`$DSC`): 원격 촬영·라이브뷰용. 세션 동안 바디 UI 가 호스트로 넘어가
+ *   본체 재생(▶) 버튼이 먹지 않는다.
+ * - [IMAGE_TRANSFER] (`WT3T`): 무선 전송용. 바디를 그대로 쓸 수 있고, 촬영물 자동 수신도 동작한다.
+ * - [UNKNOWN]: mDNS 로 발견되지 않았거나(SSDP·캐시 IP·수동 입력) TXT 에 `apps` 가 없는 경우.
+ */
+enum class NikonConnectionProfile { CAMERA_CONTROL, IMAGE_TRANSFER, UNKNOWN }
+
+/**
  * PTPIP 카메라 정보
  *
  * ⚠️ 불변식 — [name]과 [displayName]의 역할을 절대 섞지 않는다:
@@ -109,7 +123,9 @@ data class PtpipCamera(
     val discoveredServiceType: String? = null,  // mDNS 서비스 타입: "_ptp._tcp" 또는 "_ptpip._tcp"
     val vendorVerdict: VendorVerdict = VendorVerdict.unknown(),  // 디스커버리 신호 기반 제조사 판별
     val displayName: String? = null,  // 표시 전용(게이트 입력 아님). null이면 UI가 폴백 체인 적용
-    val discoverySource: CameraDiscoverySource = CameraDiscoverySource.UNKNOWN
+    val discoverySource: CameraDiscoverySource = CameraDiscoverySource.UNKNOWN,
+    // mDNS TXT `apps` 로 읽은 연결 프로파일. 바디 조작 가능 여부를 좌우한다(NikonConnectionProfile 참조).
+    val connectionProfile: NikonConnectionProfile = NikonConnectionProfile.UNKNOWN
 )
 
 /**
