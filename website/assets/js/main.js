@@ -9,7 +9,7 @@
 
   // 정적 자산 캐시 버스터. index.html 의 css/js ?v= 와 같은 값을 유지한다
   // (main.js 자체가 ?v= 로 받아지므로 stale main.js 가 stale ASSET_V 를 들고 있을 수 없다).
-  var ASSET_V = "20260817a";
+  var ASSET_V = "20260821a";
 
   var VERIFIED_URL = "https://asia-northeast3-camcon-67ad7.cloudfunctions.net/getVerifiedCameras";
   var verifiedByKey = {};
@@ -189,14 +189,17 @@ function normalizeCameraKey(input) {
     /* 0 은 렌더하지 않는다 — 강도 0 = 원본 그대로라서 ct-target 을 그대로 쓰면 된다.
        이 배열과 단계값은 render_color_transfer.py 의 INTENSITIES 와 짝이다. */
     var STEPS = [0, 35, 70, 100];
-    var TARGET = "assets/color/ct-target.webp";
+    /* 절대경로여야 한다 — /es/ 같은 언어 페이지에서 상대경로는 /es/assets/… 로 풀려 404 가 된다.
+       왼쪽 참조 이미지는 HTML 에 있어 빌드 스크립트가 절대경로로 바꿔 주지만, 여기서 만드는
+       결과 이미지 경로는 JS 안에 있어서 그 변환을 받지 못한다. */
+    var TARGET = "/assets/color/ct-target.webp";
     var ref = "fjord";
     var swatches = document.querySelectorAll(".ct-swatch[data-ref]");
     var paletteEl = document.getElementById("ctPalette");
     var palettes = null;
 
     function srcFor(step) {
-      return step === 0 ? TARGET : "assets/color/ct-after-" + ref + "-" + step + ".webp";
+      return step === 0 ? TARGET : "/assets/color/ct-after-" + ref + "-" + step + ".webp";
     }
 
     function render() {
@@ -217,7 +220,7 @@ function normalizeCameraKey(input) {
       });
     }
 
-    fetch("assets/color/palette.json")
+    fetch("/assets/color/palette.json")
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) { palettes = d; paintPalette(); })
       .catch(function () { /* 팔레트는 부가 정보다 — 실패해도 섹션은 온전히 동작한다 */ });
@@ -228,7 +231,7 @@ function normalizeCameraKey(input) {
       (function (sw) {
         sw.addEventListener("click", function () {
           ref = sw.getAttribute("data-ref");
-          refImg.src = "assets/color/ct-ref-" + ref + ".webp";
+          refImg.src = "/assets/color/ct-ref-" + ref + ".webp";
           for (var j = 0; j < swatches.length; j++) {
             var on = swatches[j] === sw;
             swatches[j].classList.toggle("is-active", on);
