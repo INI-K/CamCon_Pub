@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="guide.meta.title">如何通过 Wi-Fi 连接尼康相机 | CamCon</title>
+  <meta name="description" data-i18n-attr="content" data-i18n="guide.meta.desc" content="无需路由器，仅用手机热点即可将尼康 Z 相机无线连接到 CamCon，共五个步骤。同时整理了连接失败时的排查要点。">
+  <meta name="theme-color" content="#0A0A0C">
+
+  <meta property="og:type" content="article">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:site_name" content="CamCon">
+  <meta property="og:url" content="https://camcon.inik.kr/zh/guide.html">
+  <meta property="og:title" content="如何通过 Wi-Fi 连接尼康相机 | CamCon">
+  <meta property="og:description" content="无需路由器，仅用手机热点即可将尼康 Z 相机无线连接到 CamCon，共五个步骤。同时整理了连接失败时的排查要点。">
+  <meta property="og:image" content="https://camcon.inik.kr/assets/img/og-card-en.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:alt" content="CamCon Cinema Camera Controller">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="如何通过 Wi-Fi 连接尼康相机 | CamCon">
+  <meta name="twitter:description" content="无需路由器，仅用手机热点即可将尼康 Z 相机无线连接到 CamCon，共五个步骤。同时整理了连接失败时的排查要点。">
+  <meta name="twitter:image" content="https://camcon.inik.kr/assets/img/og-card-en.png">
+
+  <link rel="canonical" href="https://camcon.inik.kr/zh/guide.html">
+  <link rel="alternate" hreflang="ko" href="https://camcon.inik.kr/guide.html">
+  <link rel="alternate" hreflang="en" href="https://camcon.inik.kr/en/guide.html">
+  <link rel="alternate" hreflang="ja" href="https://camcon.inik.kr/ja/guide.html">
+  <link rel="alternate" hreflang="zh" href="https://camcon.inik.kr/zh/guide.html">
+  <link rel="alternate" hreflang="de" href="https://camcon.inik.kr/de/guide.html">
+  <link rel="alternate" hreflang="es" href="https://camcon.inik.kr/es/guide.html">
+  <link rel="alternate" hreflang="fr" href="https://camcon.inik.kr/fr/guide.html">
+  <link rel="alternate" hreflang="it" href="https://camcon.inik.kr/it/guide.html">
+  <link rel="alternate" hreflang="x-default" href="https://camcon.inik.kr/en/guide.html">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="/assets/css/style.css?v=20260818b">
+  <link rel="stylesheet" href="/assets/css/guide.css?v=20260821a">
+  <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap"></noscript>
+
+  <script type="application/ld+json">
+  {
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "如何通过 Wi-Fi 连接尼康相机",
+  "description": "无需路由器，仅用手机热点即可将尼康 Z 相机无线连接到 CamCon，共五个步骤。同时整理了连接失败时的排查要点。",
+  "url": "https://camcon.inik.kr/zh/guide.html",
+  "image": "https://camcon.inik.kr/assets/img/og-card-en.png",
+  "totalTime": "PT5M"
+}
+  </script>
+<script>window.__I18N__={"meta.title":"CamCon | 按下快门的瞬间，胶片风格照片就到手机","meta.desc":"CamCon 将单反·微单相机通过 USB·Wi-Fi 连接到 Android，在拍摄的同时把应用了胶片模拟的照片传到手机。一款影院级相机控制器。","a11y.skip":"跳到正文","a11y.navMain":"主菜单","a11y.navMobile":"移动端菜单","a11y.navFooter":"页脚菜单","a11y.langSelect":"选择语言 / Language","a11y.bannerClose":"关闭语言提示","a11y.tablist":"连接方式","a11y.showcase":"胶片模拟示例","a11y.showcaseAlt":"应用了 CamCon 胶片模拟的照片","nav.features":"功能","nav.films":"胶片","nav.cameras":"支持的相机","nav.connect":"连接","nav.pricing":"价格","nav.faq":"常见问题","nav.menuOpen":"打开菜单","nav.menuClose":"关闭菜单","hero.eyebrow":"Cinema Camera Controller","hero.title":"按下快门，<span class=\"accent\">胶片风格照片<\/span>随即到达手机","hero.sub":"用 USB·Wi-Fi 把相机连接起来，在拍摄的同时接收已叠加胶片模拟的照片。","hero.cta":"在 Google Play 下载","hero.explore":"查看功能","hero.specRaw":"原始保留","features.eyebrow":"Features","features.title":"从拍摄到调色，在相机与手机之间一步到位","feat.wifi.t":"Wi-Fi 无线联机","feat.wifi.d":"通过 PTP/IP 无需线缆即可即时接收拍摄的照片。断开也会自动重连，并在后台持续接收。","feat.usb.t":"USB OTG 有线控制","feat.usb.d":"基于标准 PTP 的稳定有线连接。插上 USB-C(OTG) 线缆即可立即识别相机。","feat.film.t":"296 种胶片模拟","feat.film.d":"基于真实胶片建模的 3D LUT 会自动应用到照片上。接收的同时就得到已叠加胶片风格的照片。","feat.color.t":"色调迁移","feat.color.d":"从一张喜爱的参考照片中提取色调，原样应用到自己的照片上。","feat.live.t":"实时取景远程控制","feat.live.d":"边看实时预览边调整 ISO·快门·光圈·白平衡。画质分速度·平衡·质量三档。","feat.timelapse.t":"延时摄影","feat.timelapse.badge":"筹备中","feat.timelapse.d":"设定间隔无人值守长时间拍摄的功能正在筹备中。目前通过远程快门逐张拍摄。","feat.raw.t":"RAW 工作流","feat.raw.d":"无损下载 RAW(如 NEF) 原始文件。胶片风格仅应用于 JPG 副本，原始文件保持不变。","feat.auto.t":"智能自动连接","feat.auto.d":"只需打开相机电源，即可通过 mDNS·SSDP 搜索自动发现并重连，无需每次设置。","films.eyebrow":"Film Library","films.title":"9 个系列，<span class=\"accent\">296 种<\/span>胶片模拟","films.lead":"从黑白到拍立得、彩色负片。以 3D LUT 还原真实胶片的色调曲线与色彩。","film.bw":"黑白","film.slide":"彩色反转片","film.xtrans":"富士 X-Trans III","film.instantc":"拍立得 消费级","film.instantp":"拍立得 专业级","film.colorneg":"彩色负片","film.negnew":"负片 新版","film.negold":"负片 旧版","film.print":"冲印","films.freeLabel":"Free Signature：5 款免费招牌胶片","films.note":"胶片在拍摄后的接收流程中即时应用，RAW 原始文件不做任何改动。<strong>PRO<\/strong> 开放完整片库，并可同时应用胶片与色调。","films.baBefore":"原图","films.afterAlt":"应用胶片后","films.baHint":"点按胶片即可切换，拖动滑块对比应用前后的效果。","films.showcaseCap":"所用胶片：Classic Chrome","color.title":"一张照片，就是一套<span class=\"accent\">预设<\/span>","color.lead":"从你喜欢的照片中以统计方式提取色彩分布，再迁移到自己的照片上。片库里没有的色调，一张参考图也能还原。","color.stepRef":"参考图","color.stepTarget":"原图","color.stepResult":"结果","color.refAlt":"用于提取色彩的参考照片","color.targetAlt":"应用色彩前的原始照片","color.resultAlt":"迁移参考色彩后的结果照片","color.refPick":"选择参考照片","color.refFjord":"峡湾","color.refForest":"森林","color.intensity":"强度","color.palette":"迁移过来的色彩","color.dragHint":"拖动滑块对比应用前后的效果。","color.note":"强度 0% 保持原图不变，100% 则完全匹配参考图的色彩分布。与胶片一样，只作用于 JPG 副本，RAW 原始文件不做任何改动。<strong>PRO<\/strong> 可同时应用胶片与色调。","cameras.eyebrow":"Supported Cameras","cameras.title":"我的相机能用吗?","cameras.lead":"支持 USB(PTP) 或 Wi-Fi STA(路由器) 模式的相机即可使用。","cameras.colConn":"连接方式","cameras.colScope":"支持范围","cameras.colStatus":"状态","cameras.usbRow":"USB 有线","cameras.usbDesc":"通过 USB-C(OTG) 线缆连接的 PTP 兼容相机。支持 Nikon、Canon、Sony、Fujifilm、Panasonic、OM System(Olympus)、Pentax、Ricoh、Leica 等主流厂商。","cameras.badgeBroad":"广泛支持","cameras.wifiRow":"Wi-Fi 无线","cameras.wifiDesc":"无线（Wi-Fi）连接目前支持<strong>尼康 Z 系列<\/strong>（Z6·Z8 已实机验证）。<strong>佳能、索尼、富士的无线支持正在验证中<\/strong>，将逐步扩展。其他品牌可直接通过 USB 有线连接。","cameras.badgeNikon":"Nikon 已验证","cameras.badgeExpand":"其余 扩展中","cameras.badgeSta":"支持 STA 即可连接","cameras.unified":"无论通过 USB 还是 Wi-Fi 连接，拍摄·接收·胶片应用等全部功能都完全相同。","cameras.listToggle":"查看全部支持型号","cameras.modelsSuffix":"已收录驱动的型号","cameras.listNote":"以下列表为 PTP（USB）兼容机型。带有 Wi-Fi 徽章的机型支持无线连接。","cameras.wifiBadge":"Wi-Fi","cameras.searchPh":"按品牌或型号搜索(例如 Nikon Z8)","cameras.allVendors":"全部","cameras.otherVendor":"其他","cameras.countTpl":"在 {total} 个型号中显示 {shown} 个","cameras.noResults":"没有匹配的型号。","cameras.loadError":"无法加载列表。请稍后刷新页面。","cameras.help":"支持 PTP/MTP USB 连接的相机大多都能使用。若不确定，欢迎<a href=\"#contact\">联系我们<\/a>，我们会为您确认。","cameras.verified":"已确认可用","cameras.verifiedTpl":"实机确认 {n} 款","cameras.unlistedTitle":"列表外实机确认","cameras.unlistedNote":"不在驱动列表中，但 CamCon 用户已实际连接成功的机型。","connect.eyebrow":"How to Connect","connect.title":"两种连接方式","connect.tabUsb":"USB OTG","connect.tabSta":"Wi-Fi · 路由器(STA)","connect.usb1Label":"连接线缆","connect.usb1":"用 USB-C(OTG) 线缆连接手机与相机。","connect.usb2Label":"允许访问","connect.usb2":"在应用中允许 USB 连接权限。","connect.usb3Label":"开始拍摄","connect.usb3":"自动识别并连接完成后，立即开始拍摄。","connect.usbPerm":"所需权限：USB 设备访问权限(连接时授权一次)","connect.sta1Label":"同一网络","connect.sta1":"将相机与手机连接到同一路由器。","connect.sta2Label":"选择相机","connect.sta2":"在应用中搜索并选择相机。","connect.sta3Label":"确认连接","connect.sta3":"首次连接时，<strong>在相机机身上确认「允许连接」<\/strong>。之后会自动重连。","connect.staPerm":"所需权限：位置(用于搜索网络)、通知(用于后台接收)","pricing.eyebrow":"Pricing","pricing.title":"免费开始，需要时升级 PRO","pricing.lead":"免费开始使用。PRO 付费方案即将推出。","pricing.planLabel":"Plan","pricing.flag":"推荐","pricing.freePrice":"免费","pricing.free1":"Wi-Fi · USB 相机连接","pricing.free2":"接收 JPG(长边 2000px)","pricing.free3":"5 款招牌胶片","pricing.free4":"胶片·色调二选一启用","pricing.proPrice":"即将推出","pricing.pro1":"<strong>RAW 原始文件下载<\/strong>","pricing.pro2":"全部 <strong>296 种胶片模拟<\/strong>","pricing.pro3":"胶片 + 色调同时应用","pricing.pro4":"以原始分辨率接收","pricing.pro5":"照片预览标签页","faq.eyebrow":"FAQ","faq.title":"常见问题","faq.q1":"如何确认我的相机是否受支持?","faq.a1":"支持 USB(PTP) 或 Wi-Fi STA(路由器) 模式的相机即可使用。连接方式不同不会造成功能差异。可在上方「查看全部支持型号」中搜索机型进行确认。","faq.q2":"RAW 文件会受损吗?","faq.a2":"RAW 原始文件原样保留。胶片模拟与色调仅应用于 JPG 副本，对 RAW(如 NEF) 文件不做任何更改。","faq.q3":"后台也能接收照片吗?","faq.a3":"以前台服务方式运行，因此在使用其他应用时也会持续接收。只有在完全关闭应用后才会停止接收。","faq.q4":"需要哪个 Android 版本?","faq.a4":"需要 Android 10 及以上、64 位(arm64) 设备。","faq.q5":"推荐码在哪里输入?","faq.a5":"可在登录界面，或在 设置 → 注册推荐码 中输入。","faq.q6":"Wi-Fi 无法连接怎么办？","faq.a6":"尼康 Z 系列首次连接时，需要在相机机身屏幕上确认\"允许连接\"。请打开手机热点，或确保相机和手机连接同一个 Wi-Fi 路由器。若仍无法连接，请关闭再打开相机的 Wi-Fi 功能，然后在应用中重新搜索。","faq.q7":"免费版可以做什么？","faq.a7":"相机连接（USB·Wi-Fi）、拍摄与照片传输、5 款代表性胶片签名均免费。免费版照片以长边 2000px 保存。PRO 解锁全部 296 款胶片模拟、原始分辨率保存、RAW 下载和实时取景高级控制。","faq.q8":"用相机快门拍摄也会传输吗？","faq.a8":"会。在受支持的相机上，不仅是应用远程拍摄的照片，用相机机身快门拍摄的照片也会自动传输到手机，实时取景开启时同样有效。","faq.q9":"支持 iPhone（iOS）吗？","faq.a9":"目前仅支持 Android（Android 10 及以上、64 位 arm64 设备），暂无 iOS 版本。","cta.title":"让拍摄本身即成品的工作流","cta.sub":"按下快门的那一刻，胶片风格照片便到达手机。","cta.badgeSrc":"/assets/img/play/badge-zh.png","footer.privacy":"隐私政策","footer.terms":"使用条款","footer.contact":"联系我们","footer.rights":"© 2026 CamCon. 保留所有权利。","guide.meta.title":"如何通过 Wi-Fi 连接尼康相机 | CamCon","guide.meta.desc":"无需路由器，仅用手机热点即可将尼康 Z 相机无线连接到 CamCon，共五个步骤。同时整理了连接失败时的排查要点。","guide.h1":"通过 Wi-Fi 连接尼康相机","guide.lead":"不需要路由器。相机直接连接手机热点，因此在户外同样可用。只需首次设置一次，之后开启相机即可自动连接。","guide.toc.title":"本页内容","guide.toc.prep":"所需物品","guide.toc.steps":"连接步骤","guide.toc.models":"已验证的机型","guide.toc.trouble":"无法连接时","guide.prep.title":"所需物品","guide.prep.body":"一部能开启热点的 Android 手机、一台尼康 Z 系列相机，以及 CamCon 应用。不需要数据线，也不需要路由器。","guide.prep.note.title":"如果您使用的不是尼康相机","guide.prep.note.body":"目前已验证无线连接的是尼康 Z 系列。佳能、索尼、富士等其他品牌的相机请使用 USB 数据线连接。有线方式支持的机型要多得多。","guide.steps.title":"连接步骤","guide.steps.body":"共五个步骤。大多数人卡在第三步和第五步，请特别留意这两处。","guide.s1.title":"在手机上开启热点","guide.s1.body":"相机直接连接手机，不经过路由器。在 CamCon 的 Wi-Fi 连接界面点击打开热点设置，即可直接跳转。","guide.s1.tip":"开启热点后，手机的 Wi-Fi 通常会自动关闭。这是正常现象，保持原样即可。","guide.s1.shot.bar":"手机设置","guide.s1.shot.a":"移动热点","guide.s1.shot.b":"记下名称和密码","guide.s1.cap":"下一步需要在相机上输入这里显示的名称和密码。","guide.s2.title":"让相机连接该热点","guide.s2.body":"在相机菜单中进入网络设置，选择刚刚开启的热点并输入密码。不同机型的菜单名称略有差异。","guide.s2.path":"MENU ▸ 网络 ▸ 连接至计算机 ▸ 网络设置","guide.s2.shot.bar":"相机屏幕","guide.s2.shot.row1":"我的手机热点名称","guide.s2.shot.row2":"附近的其他 Wi-Fi","guide.s2.cap":"各机型的具体菜单位置可在尼康官方说明书中查看。","guide.s2.manual":"尼康在线说明书","guide.s3.title":"将连接类型设为相机控制","guide.s3.body":"同一网络菜单中有一项用于选择连接类型。请务必选择相机控制。","guide.s3.note.title":"若设为图像传输，虽能连接但功能不完整","guide.s3.note.body":"实时取景期间拍摄的照片不会立即传入，也无法浏览存储卡中的照片。CamCon 会检测并提示该状态，但必须在相机上更改设置。","guide.s3.shot.bar":"连接类型","guide.s3.shot.on":"相机控制","guide.s3.shot.off":"图像传输","guide.s3.cap":"选择上面一项，拍摄、实时取景和浏览存储卡才能全部可用。","guide.s4.title":"在 CamCon 中搜索相机","guide.s4.body":"在应用中打开 Wi-Fi 连接，选择手机热点标签页并点击搜索。如果相机已连上热点，几秒内就会出现机型名称。","guide.s4.shot.bar":"已发现的相机","guide.s4.shot.row1":"Nikon Z8","guide.s4.shot.row2":"自动发现 · 已确认尼康","guide.s4.cap":"机型名称和厂商在连接前即可确认。请先确认是自己的相机再选择。","guide.s5.title":"在相机屏幕上允许连接","guide.s5.body":"从列表中选择相机后不会立即连接。相机屏幕上会出现是否允许连接的提示，需要在机身上确认后才算完成。","guide.s5.note.title":"如果应用看起来卡住了，请查看相机","guide.s5.note.body":"此时应用正在等待相机响应。屏幕没有变化，感觉像是失败了，但多数情况下只是相机在等待您的许可。","guide.s5.shot.bar":"相机屏幕","guide.s5.shot.body":"要连接到智能设备吗?\n按确定即可连接。","guide.s5.cap":"允许一次之后，以后无需此步骤即可自动连接。","guide.done.title":"连接成功后","guide.done.body":"按下快门的瞬间，照片就会传到手机上。若已开启胶片模拟，照片抵达时已应用效果。实时取景和拍摄设置也可在手机上操作。","guide.models.title":"已验证无线连接的机型","guide.models.body":"这些机型已在实机上验证过连接。","guide.models.note":"未列出的尼康机型也可能可以连接，只是尚未在实机上验证，因此没有列出。","guide.trouble.title":"无法连接时","guide.trouble.body":"请从上往下依次检查。大多数问题在前三项就能解决。","guide.t1.title":"相机屏幕上是否有等待允许的提示?","guide.t1.body":"这是最常见的原因。在应用等待期间，请查看相机屏幕并按下确认按钮。","guide.t2.title":"连接类型是否被设为图像传输?","guide.t2.body":"如果能连接但照片不传入或看不到存储卡，就是这个设置。请回到第三步确认。","guide.t3.title":"相机是否真的已连上热点?","guide.t3.body":"请确认相机的 Wi-Fi 列表中已选中手机热点。密码错一个字符都无法连接。","guide.t4.title":"是否因省电导致相机无线关闭?","guide.t4.body":"尼康相机在一段时间无操作后会关闭无线。请半按快门唤醒相机，然后重新搜索。","guide.t5.title":"手机热点是否仍处于开启状态?","guide.t5.body":"省电功能有时会自动关闭热点。另外请检查无设备连接时定时关闭的选项。","guide.t6.title":"仍然不行的话，请重启相机电源","guide.t6.body":"此前的连接可能残留在相机中，阻碍新连接。重启电源即可清除。","guide.end.title":"也可以使用数据线连接","guide.end.body":"只需一根 USB 数据线，且支持的机型远多于无线方式。如果不是尼康相机，请选择这种方式。","guide.end.cta":"查看支持的相机","footer.guide":"连接指南","guide.router":"如果室内有路由器，将相机和手机连接到同一路由器同样可行。这种情况下可跳过第一步，从第二步开始。"};</script>
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <a class="skip-link" href="#main" data-i18n="a11y.skip">跳到正文</a>
+
+  <header class="site-header" id="top">
+    <div class="wrap header-inner">
+      <a class="brand" href="/" aria-label="CamCon">
+        <svg class="brand-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+          <circle cx="24" cy="24" r="16.5" stroke="#EBA23C" stroke-width="2.4"></circle>
+          <path class="iris" d="M35 24 L29.5 33.5 L18.5 33.5 L13 24 L18.5 14.5 L29.5 14.5 Z" stroke="#F7C266" stroke-width="1.4" stroke-linejoin="round" opacity="0.85"></path>
+          <circle cx="24" cy="24" r="3.4" fill="#EBA23C"></circle>
+        </svg>
+        <span class="brand-name">Cam<b>Con</b></span>
+      </a>
+
+      <nav class="nav" aria-label="主菜单" data-i18n-attr="aria-label" data-i18n="a11y.navMain">
+        <a href="/#features" data-i18n="nav.features">功能</a>
+        <a href="/#films" data-i18n="nav.films">胶片</a>
+        <a href="/#cameras" data-i18n="nav.cameras">支持的相机</a>
+        <a href="/#connect" data-i18n="nav.connect">连接</a>
+        <a href="/#pricing" data-i18n="nav.pricing">价格</a>
+        <a href="/#faq" data-i18n="nav.faq">常见问题</a>
+      </nav>
+
+      <div class="header-right">
+        <div class="lang-select">
+          <svg class="lang-globe" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18"></path></svg>
+          <select id="lang" aria-label="选择语言 / Language" data-i18n-attr="aria-label" data-i18n="a11y.langSelect">
+            <option value="ko">한국어</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="zh" selected>中文</option>
+            <option value="de">Deutsch</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="it">Italiano</option>
+          </select>
+        </div>
+        <button class="nav-toggle" aria-expanded="false" aria-controls="mobile-nav" aria-label="打开菜单" data-i18n-attr="aria-label" data-i18n="nav.menuOpen">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+    <nav class="mobile-nav" id="mobile-nav" aria-label="移动端菜单" data-i18n-attr="aria-label" data-i18n="a11y.navMobile" hidden>
+      <a href="/#features" data-i18n="nav.features">功能</a>
+      <a href="/#films" data-i18n="nav.films">胶片</a>
+      <a href="/#cameras" data-i18n="nav.cameras">支持的相机</a>
+      <a href="/#connect" data-i18n="nav.connect">连接</a>
+      <a href="/#pricing" data-i18n="nav.pricing">价格</a>
+      <a href="/#faq" data-i18n="nav.faq">常见问题</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <div class="wrap">
+      <div class="guide-hero">
+        <h1 data-i18n="guide.h1">通过 Wi-Fi 连接尼康相机</h1>
+        <p class="lead" data-i18n="guide.lead">不需要路由器。相机直接连接手机热点，因此在户外同样可用。只需首次设置一次，之后开启相机即可自动连接。</p>
+      </div>
+
+      <div class="guide-layout">
+        <nav class="guide-toc" aria-labelledby="toc-title">
+          <h2 id="toc-title" data-i18n="guide.toc.title">本页内容</h2>
+          <ol>
+            <li><a href="#prep" data-i18n="guide.toc.prep">所需物品</a></li>
+            <li><a href="#steps" data-i18n="guide.toc.steps">连接步骤</a></li>
+            <li><a href="#models" data-i18n="guide.toc.models">已验证的机型</a></li>
+            <li><a href="#trouble" data-i18n="guide.toc.trouble">无法连接时</a></li>
+          </ol>
+        </nav>
+
+        <div class="guide-body">
+
+          <section class="guide-sec" id="prep">
+            <h2 data-i18n="guide.prep.title">所需物品</h2>
+            <p data-i18n="guide.prep.body">一部能开启热点的 Android 手机、一台尼康 Z 系列相机，以及 CamCon 应用。不需要数据线，也不需要路由器。</p>
+            <p data-i18n="guide.router">如果室内有路由器，将相机和手机连接到同一路由器同样可行。这种情况下可跳过第一步，从第二步开始。</p>
+            <div class="note">
+              <b data-i18n="guide.prep.note.title">如果您使用的不是尼康相机</b>
+              <p data-i18n="guide.prep.note.body">目前已验证无线连接的是尼康 Z 系列。佳能、索尼、富士等其他品牌的相机请使用 USB 数据线连接。有线方式支持的机型要多得多。</p>
+            </div>
+          </section>
+
+          <section class="guide-sec" id="steps">
+            <h2 data-i18n="guide.steps.title">连接步骤</h2>
+            <p data-i18n="guide.steps.body">共五个步骤。大多数人卡在第三步和第五步，请特别留意这两处。</p>
+
+            <div class="step">
+              <div class="step-no" aria-hidden="true">1</div>
+              <h3 data-i18n="guide.s1.title">在手机上开启热点</h3>
+              <div>
+                <p data-i18n="guide.s1.body">相机直接连接手机，不经过路由器。在 CamCon 的 Wi-Fi 连接界面点击打开热点设置，即可直接跳转。</p>
+                <p data-i18n="guide.s1.tip">开启热点后，手机的 Wi-Fi 通常会自动关闭。这是正常现象，保持原样即可。</p>
+                <figure class="shot">
+                  <div class="screen">
+                    <div class="screen-bar" data-i18n="guide.s1.shot.bar">手机设置</div>
+                    <div class="screen-body">
+                      <div class="screen-row on" data-i18n="guide.s1.shot.a">移动热点</div>
+                      <div class="screen-row off" data-i18n="guide.s1.shot.b">记下名称和密码</div>
+                    </div>
+                  </div>
+                  <figcaption data-i18n="guide.s1.cap">下一步需要在相机上输入这里显示的名称和密码。</figcaption>
+                </figure>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-no" aria-hidden="true">2</div>
+              <h3 data-i18n="guide.s2.title">让相机连接该热点</h3>
+              <div>
+                <p data-i18n="guide.s2.body">在相机菜单中进入网络设置，选择刚刚开启的热点并输入密码。不同机型的菜单名称略有差异。</p>
+                <span class="path" data-i18n="guide.s2.path">MENU ▸ 网络 ▸ 连接至计算机 ▸ 网络设置</span>
+                <figure class="shot">
+                  <div class="screen">
+                    <div class="screen-bar" data-i18n="guide.s2.shot.bar">相机屏幕</div>
+                    <div class="screen-body">
+                      <div class="screen-row on" data-i18n="guide.s2.shot.row1">我的手机热点名称</div>
+                      <div class="screen-row off" data-i18n="guide.s2.shot.row2">附近的其他 Wi-Fi</div>
+                    </div>
+                  </div>
+                  <figcaption><span data-i18n="guide.s2.cap">各机型的具体菜单位置可在尼康官方说明书中查看。</span> <a href="https://onlinemanual.nikonimglib.com/" target="_blank" rel="noopener" data-i18n="guide.s2.manual">尼康在线说明书</a></figcaption>
+                </figure>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-no" aria-hidden="true">3</div>
+              <h3 data-i18n="guide.s3.title">将连接类型设为相机控制</h3>
+              <div>
+                <p data-i18n="guide.s3.body">同一网络菜单中有一项用于选择连接类型。请务必选择相机控制。</p>
+                <div class="note">
+                  <b data-i18n="guide.s3.note.title">若设为图像传输，虽能连接但功能不完整</b>
+                  <p data-i18n="guide.s3.note.body">实时取景期间拍摄的照片不会立即传入，也无法浏览存储卡中的照片。CamCon 会检测并提示该状态，但必须在相机上更改设置。</p>
+                </div>
+                <figure class="shot">
+                  <div class="screen">
+                    <div class="screen-bar" data-i18n="guide.s3.shot.bar">连接类型</div>
+                    <div class="screen-body">
+                      <div class="screen-row on" data-i18n="guide.s3.shot.on">相机控制</div>
+                      <div class="screen-row off" data-i18n="guide.s3.shot.off">图像传输</div>
+                    </div>
+                  </div>
+                  <figcaption data-i18n="guide.s3.cap">选择上面一项，拍摄、实时取景和浏览存储卡才能全部可用。</figcaption>
+                </figure>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-no" aria-hidden="true">4</div>
+              <h3 data-i18n="guide.s4.title">在 CamCon 中搜索相机</h3>
+              <div>
+                <p data-i18n="guide.s4.body">在应用中打开 Wi-Fi 连接，选择手机热点标签页并点击搜索。如果相机已连上热点，几秒内就会出现机型名称。</p>
+                <figure class="shot">
+                  <div class="screen">
+                    <div class="screen-bar" data-i18n="guide.s4.shot.bar">已发现的相机</div>
+                    <div class="screen-body">
+                      <div class="screen-row on" data-i18n="guide.s4.shot.row1">Nikon Z8</div>
+                      <div class="screen-row off" data-i18n="guide.s4.shot.row2">自动发现 · 已确认尼康</div>
+                    </div>
+                  </div>
+                  <figcaption data-i18n="guide.s4.cap">机型名称和厂商在连接前即可确认。请先确认是自己的相机再选择。</figcaption>
+                </figure>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-no" aria-hidden="true">5</div>
+              <h3 data-i18n="guide.s5.title">在相机屏幕上允许连接</h3>
+              <div>
+                <p data-i18n="guide.s5.body">从列表中选择相机后不会立即连接。相机屏幕上会出现是否允许连接的提示，需要在机身上确认后才算完成。</p>
+                <div class="note">
+                  <b data-i18n="guide.s5.note.title">如果应用看起来卡住了，请查看相机</b>
+                  <p data-i18n="guide.s5.note.body">此时应用正在等待相机响应。屏幕没有变化，感觉像是失败了，但多数情况下只是相机在等待您的许可。</p>
+                </div>
+                <figure class="shot">
+                  <div class="screen">
+                    <div class="screen-bar" data-i18n="guide.s5.shot.bar">相机屏幕</div>
+                    <div class="screen-body">
+                      <p class="screen-tree" data-i18n="guide.s5.shot.body">要连接到智能设备吗?
+按确定即可连接。</p>
+                    </div>
+                  </div>
+                  <figcaption data-i18n="guide.s5.cap">允许一次之后，以后无需此步骤即可自动连接。</figcaption>
+                </figure>
+              </div>
+            </div>
+
+            <div class="note" style="margin-top:34px">
+              <b data-i18n="guide.done.title">连接成功后</b>
+              <p data-i18n="guide.done.body">按下快门的瞬间，照片就会传到手机上。若已开启胶片模拟，照片抵达时已应用效果。实时取景和拍摄设置也可在手机上操作。</p>
+            </div>
+          </section>
+
+          <section class="guide-sec" id="models">
+            <h2 data-i18n="guide.models.title">已验证无线连接的机型</h2>
+            <p data-i18n="guide.models.body">这些机型已在实机上验证过连接。</p>
+            <ul class="models">
+              <li data-model="Z9">Nikon Z9</li>
+              <li data-model="Z8">Nikon Z8</li>
+              <li data-model="Z7_2">Nikon Z7II</li>
+              <li data-model="Z7">Nikon Z7</li>
+              <li data-model="Z6 III">Nikon Z6III</li>
+              <li data-model="Z6_2">Nikon Z6II</li>
+              <li data-model="Z6">Nikon Z6</li>
+              <li data-model="Z5">Nikon Z5</li>
+              <li data-model="Z50">Nikon Z50</li>
+              <li data-model="Z30">Nikon Z30</li>
+              <li data-model="Zfc">Nikon Zfc</li>
+              <li data-model="Zf">Nikon Zf</li>
+            </ul>
+            <p data-i18n="guide.models.note">未列出的尼康机型也可能可以连接，只是尚未在实机上验证，因此没有列出。</p>
+          </section>
+
+          <section class="guide-sec" id="trouble">
+            <h2 data-i18n="guide.trouble.title">无法连接时</h2>
+            <p data-i18n="guide.trouble.body">请从上往下依次检查。大多数问题在前三项就能解决。</p>
+            <ul class="checks">
+              <li>
+                <b data-i18n="guide.t1.title">相机屏幕上是否有等待允许的提示?</b>
+                <p data-i18n="guide.t1.body">这是最常见的原因。在应用等待期间，请查看相机屏幕并按下确认按钮。</p>
+              </li>
+              <li>
+                <b data-i18n="guide.t2.title">连接类型是否被设为图像传输?</b>
+                <p data-i18n="guide.t2.body">如果能连接但照片不传入或看不到存储卡，就是这个设置。请回到第三步确认。</p>
+              </li>
+              <li>
+                <b data-i18n="guide.t3.title">相机是否真的已连上热点?</b>
+                <p data-i18n="guide.t3.body">请确认相机的 Wi-Fi 列表中已选中手机热点。密码错一个字符都无法连接。</p>
+              </li>
+              <li>
+                <b data-i18n="guide.t4.title">是否因省电导致相机无线关闭?</b>
+                <p data-i18n="guide.t4.body">尼康相机在一段时间无操作后会关闭无线。请半按快门唤醒相机，然后重新搜索。</p>
+              </li>
+              <li>
+                <b data-i18n="guide.t5.title">手机热点是否仍处于开启状态?</b>
+                <p data-i18n="guide.t5.body">省电功能有时会自动关闭热点。另外请检查无设备连接时定时关闭的选项。</p>
+              </li>
+              <li>
+                <b data-i18n="guide.t6.title">仍然不行的话，请重启相机电源</b>
+                <p data-i18n="guide.t6.body">此前的连接可能残留在相机中，阻碍新连接。重启电源即可清除。</p>
+              </li>
+            </ul>
+          </section>
+
+          <div class="guide-end">
+            <h2 data-i18n="guide.end.title">也可以使用数据线连接</h2>
+            <p data-i18n="guide.end.body">只需一根 USB 数据线，且支持的机型远多于无线方式。如果不是尼康相机，请选择这种方式。</p>
+            <a class="btn btn-primary" href="/#cameras" data-i18n="guide.end.cta">查看支持的相机</a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer" id="contact">
+    <div class="wrap">
+      <div class="footer-top">
+        <a class="brand footer-brand" href="/" aria-label="CamCon">
+          <svg class="brand-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <circle cx="24" cy="24" r="16.5" stroke="#EBA23C" stroke-width="2.4"></circle>
+            <path d="M35 24 L29.5 33.5 L18.5 33.5 L13 24 L18.5 14.5 L29.5 14.5 Z" stroke="#F7C266" stroke-width="1.4" stroke-linejoin="round" opacity="0.85"></path>
+            <circle cx="24" cy="24" r="3.4" fill="#EBA23C"></circle>
+          </svg>
+          <span class="brand-name">Cam<b>Con</b></span>
+        </a>
+        <nav class="footer-nav" aria-label="页脚菜单" data-i18n-attr="aria-label" data-i18n="a11y.navFooter">
+          <a href="/#features" data-i18n="nav.features">功能</a>
+          <a href="/#films" data-i18n="nav.films">胶片</a>
+          <a href="/#cameras" data-i18n="nav.cameras">支持的相机</a>
+          <a href="/#connect" data-i18n="nav.connect">连接</a>
+          <a href="/#pricing" data-i18n="nav.pricing">价格</a>
+          <a href="/#faq" data-i18n="nav.faq">常见问题</a>
+          <a href="/privacy.html" data-i18n="footer.privacy">隐私政策</a>
+          <a href="/terms.html" data-i18n="footer.terms">使用条款</a>
+          <a href="mailto:ppp5544@gmail.com" data-i18n="footer.contact">联系我们</a>
+        </nav>
+      </div>
+      <div class="footer-bottom">
+        <nav class="footer-nav" aria-label="选择语言 / Language" data-i18n-attr="aria-label" data-i18n="a11y.langSelect" style="margin:0 0 14px -12px">
+          <a href="/guide.html" lang="ko" hreflang="ko">한국어</a>
+          <a href="/en/guide.html" lang="en" hreflang="en">English</a>
+          <a href="/ja/guide.html" lang="ja" hreflang="ja">日本語</a>
+          <a href="/zh/guide.html" lang="zh" hreflang="zh" aria-current="page">中文</a>
+          <a href="/de/guide.html" lang="de" hreflang="de">Deutsch</a>
+          <a href="/es/guide.html" lang="es" hreflang="es">Español</a>
+          <a href="/fr/guide.html" lang="fr" hreflang="fr">Français</a>
+          <a href="/it/guide.html" lang="it" hreflang="it">Italiano</a>
+        </nav>
+        <p data-i18n="footer.rights">© 2026 CamCon. 保留所有权利。</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/assets/js/main.js?v=20260821b" defer></script>
+</body>
+</html>

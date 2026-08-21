@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""CamCon 다국어 페이지 빌더 — 한국어 정본 index.html 을 템플릿으로 언어별 정적 페이지를 만든다.
+"""CamCon 다국어 페이지 빌더 — 한국어 정본 HTML 을 템플릿으로 언어별 정적 페이지를 만든다.
 
-입력: website/index.html, website/assets/i18n/<lang>.json (8개)
-출력: website/dist-lang/<lang>/index.html (en·ja·zh·de·es·fr·it 7개), website/sitemap.xml
+입력: website/index.html·guide.html, website/assets/i18n/<lang>.json (8개)
+출력: website/dist-lang/<lang>/{index,guide}.html (en·ja·zh·de·es·fr·it 7개), website/sitemap.xml
+
+대상 페이지는 PAGES 로 관리한다. 페이지를 늘릴 때는 여기에 한 줄 추가하고
+Dockerfile 의 COPY 목록에 한국어 원본을 같이 넣으면 된다(원본은 루트에서 서빙된다).
 
 왜 정적 생성인가 — 지금은 8개 언어가 URL 하나를 공유해서 hreflang 을 붙일 대상이 없고,
 "영어 페이지를 영어로 공유"할 방법이 아예 없다. 언어마다 URL 을 주면 OG 카드·색인·공유가 전부 풀린다.
@@ -32,7 +35,6 @@ import lxml.html
 from lxml import etree
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-TEMPLATE = os.path.join(ROOT, "index.html")
 I18N_DIR = os.path.join(ROOT, "assets", "i18n")
 OUT_DIR = os.path.join(ROOT, "dist-lang")
 SITEMAP = os.path.join(ROOT, "sitemap.xml")
@@ -62,13 +64,28 @@ ABSOLUTE_RE = re.compile(r"^(?:[a-z][a-z0-9+.\-]*:|//|/|#)", re.I)
 # 브라우저는 viewbox→viewBox 를 보정해 주지만 원문 그대로 돌려놓는 편이 안전하다.
 SVG_CASE_FIX = {" viewbox=": " viewBox="}
 
+# 생성 대상 페이지.
+#   src   : 한국어 정본 파일명(= 언어 디렉터리 안에서도 같은 이름으로 생성된다)
+#   slug  : URL 에서 언어 접두 뒤에 붙는 부분. 홈은 빈 문자열이라 "/" · "/en/" 이 된다.
+#   title/desc: 이 페이지의 <title>·description 을 담은 사전 키(둘 다 data-i18n 이 없는 자리에 쓰인다)
+#   prio  : sitemap 우선순위(루트 언어는 여기에 +0.1 한 값을 쓴다)
+PAGES = [
+    {"src": "index.html", "slug": "", "title": "meta.title", "desc": "meta.desc", "prio": 0.9},
+    {"src": "guide.html", "slug": "guide.html", "title": "guide.meta.title", "desc": "guide.meta.desc", "prio": 0.7},
+]
 
-def page_path(lang):
-    return "/" if lang == ROOT_LANG else "/%s/" % lang
+
+def template_path(page):
+    return os.path.join(ROOT, page["src"])
 
 
-def page_url(lang):
-    return SITE + page_path(lang)
+def page_path(lang, slug):
+    base = "/" if lang == ROOT_LANG else "/%s/" % lang
+    return base + slug
+
+
+def page_url(lang, slug):
+    return SITE + page_path(lang, slug)
 
 
 def load_dict(lang):
@@ -119,8 +136,10 @@ def set_meta(tree, selector, value):
     return len(nodes)
 
 
-def rebuild_hreflang(tree, lang):
-    """(f) 자기참조 + x-default 포함 9줄. 8개 페이지가 같은 9줄을 갖도록 통째로 다시 깐다."""
+def rebuild_hreflang(tree, slug):
+    """(f) 자기참조 + x-default 포함 9줄. 한 페이지의 8개 언어판이 같은 9줄을 갖도록 통째로 다시 깐다.
+    hreflang 은 같은 문서의 다른 언어판만 가리켜야 하므로 슬러그가 반드시 유지되어야 한다
+    (guide 의 en 대체본은 /en/ 이 아니라 /en/guide.html 이다)."""
     head = tree.find("head")
     canonical = tree.xpath('//link[@rel="canonical"]')
     anchor = canonical[0] if canonical else head[-1]
@@ -131,7 +150,7 @@ def rebuild_hreflang(tree, lang):
         link = etree.Element("link")
         link.set("rel", "alternate")
         link.set("hreflang", code)
-        link.set("href", page_url(X_DEFAULT if code == "x-default" else code))
+        link.set("href", page_url(X_DEFAULT if code == "x-default" else code, slug))
         link.tail = "\n  "
         head.insert(at + i, link)
 
@@ -152,13 +171,16 @@ def absolutize(tree):
     return n
 
 
-def patch_jsonld(tree, lang, dct):
-    """(e) JSON-LD 의 description·url·image 를 해당 언어로."""
+def patch_jsonld(tree, lang, dct, page):
+    """(e) JSON-LD 의 name·description·url·image 를 해당 언어로.
+    name 은 HowTo 처럼 제목을 갖는 타입에만 있으므로 있을 때만 갈아 끼운다."""
     nodes = tree.xpath('//script[@type="application/ld+json"]')
     for node in nodes:
         data = json.loads(node.text)
-        data["description"] = plain(dct["meta.desc"])
-        data["url"] = page_url(lang)
+        if "name" in data and data.get("@type") != "SoftwareApplication":
+            data["name"] = plain(dct[page["title"]]).split(" | ")[0]
+        data["description"] = plain(dct[page["desc"]])
+        data["url"] = page_url(lang, page["slug"])
         data["image"] = OG_IMAGE
         node.text = "\n  " + json.dumps(data, ensure_ascii=False, indent=2) + "\n  "
     return len(nodes)
@@ -201,7 +223,7 @@ def serialize(tree):
     return html + "\n"
 
 
-def render_page(lang, template_src):
+def render_page(lang, template_src, page):
     """언어 페이지 HTML 을 문자열로 만든다(파일 쓰기 없음) — 생성과 --check 가 같은 경로를 타야 판정이 성립한다."""
     tree = lxml.html.document_fromstring(template_src)
     dct = load_dict(lang)
@@ -210,8 +232,8 @@ def render_page(lang, template_src):
     tree.set("lang", lang)                                           # (b)
 
     # (c) 이 7개 태그에는 data-i18n 이 없어 별도 매핑이 필요하다.
-    title = plain(dct["meta.title"])
-    desc = plain(dct["meta.desc"])
+    title = plain(dct[page["title"]])
+    desc = plain(dct[page["desc"]])
     hit = 0
     hit += set_meta(tree, '//meta[@property="og:locale"]', OG_LOCALE[lang])
     hit += set_meta(tree, '//meta[@property="og:title"]', title)
@@ -222,12 +244,12 @@ def render_page(lang, template_src):
     hit += set_meta(tree, '//meta[@name="twitter:image"]', OG_IMAGE)
 
     # (d) 언어별 URL
-    set_meta(tree, '//meta[@property="og:url"]', page_url(lang))
+    set_meta(tree, '//meta[@property="og:url"]', page_url(lang, page["slug"]))
     for c in tree.xpath('//link[@rel="canonical"]'):
-        c.set("href", page_url(lang))
+        c.set("href", page_url(lang, page["slug"]))
 
-    ld = patch_jsonld(tree, lang, dct)                               # (e)
-    rebuild_hreflang(tree, lang)                                     # (f)
+    ld = patch_jsonld(tree, lang, dct, page)                         # (e)
+    rebuild_hreflang(tree, page["slug"])                             # (f)
     n_abs = absolutize(tree)                                         # (g)
     inline_dict(tree, dct)                                           # (h)
     mark_current_lang(tree, lang)
@@ -240,13 +262,13 @@ def render_page(lang, template_src):
     return serialize(tree), n_abs, len(dct)
 
 
-def out_path(lang):
-    return os.path.join(OUT_DIR, lang, "index.html")
+def out_path(lang, page):
+    return os.path.join(OUT_DIR, lang, page["src"])
 
 
-def build_page(lang, template_src):
-    html, n_abs, n_keys = render_page(lang, template_src)
-    out = out_path(lang)
+def build_page(lang, template_src, page):
+    html, n_abs, n_keys = render_page(lang, template_src, page)
+    out = out_path(lang, page)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
         f.write(html)
@@ -287,20 +309,24 @@ def write_sitemap():
              '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"',
              '        xmlns:xhtml="http://www.w3.org/1999/xhtml">']
 
-    alternates = []
-    for code in ALL_LANGS + ["x-default"]:
-        href = page_url(X_DEFAULT if code == "x-default" else code)
-        alternates.append('    <xhtml:link rel="alternate" hreflang="%s" href="%s"/>' % (code, href))
+    n_url = 0
+    for page in PAGES:
+        alternates = []
+        for code in ALL_LANGS + ["x-default"]:
+            href = page_url(X_DEFAULT if code == "x-default" else code, page["slug"])
+            alternates.append('    <xhtml:link rel="alternate" hreflang="%s" href="%s"/>' % (code, href))
 
-    for lang in ALL_LANGS:
-        mod = last_modified("index.html", "assets/i18n/%s.json" % lang)
-        lines += ["  <url>",
-                  "    <loc>%s</loc>" % page_url(lang),
-                  "    <lastmod>%s</lastmod>" % mod,
-                  "    <changefreq>weekly</changefreq>",
-                  "    <priority>%s</priority>" % ("1.0" if lang == ROOT_LANG else "0.9")]
-        lines += alternates
-        lines.append("  </url>")
+        for lang in ALL_LANGS:
+            mod = last_modified(page["src"], "assets/i18n/%s.json" % lang)
+            prio = page["prio"] + (0.1 if lang == ROOT_LANG else 0.0)
+            lines += ["  <url>",
+                      "    <loc>%s</loc>" % page_url(lang, page["slug"]),
+                      "    <lastmod>%s</lastmod>" % mod,
+                      "    <changefreq>weekly</changefreq>",
+                      "    <priority>%.1f</priority>" % prio]
+            lines += alternates
+            lines.append("  </url>")
+            n_url += 1
 
     # 법적 페이지 3종은 지금까지 sitemap 에 아예 없었다.
     for legal in ("privacy.html", "terms.html", "delete.html"):
@@ -310,62 +336,72 @@ def write_sitemap():
                   "    <changefreq>yearly</changefreq>",
                   "    <priority>0.3</priority>",
                   "  </url>"]
+        n_url += 1
 
     lines.append("</urlset>")
     with open(SITEMAP, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
-    print("작성: %s  (URL %d건)" % (SITEMAP, len(ALL_LANGS) + 3))
+    print("작성: %s  (URL %d건)" % (SITEMAP, n_url))
 
 
 # ── 자체 검증 ──────────────────────────────────────────────────────────────
 def verify():
-    """hreflang return-link 대칭성 — 한쪽이라도 깨지면 Google 이 hreflang 전체를 무시한다."""
-    pages = {ROOT_LANG: TEMPLATE}
-    for lang in BUILD_LANGS:
-        pages[lang] = os.path.join(OUT_DIR, lang, "index.html")
-
-    declared = {}
+    """hreflang return-link 대칭성 — 한쪽이라도 깨지면 Google 이 hreflang 전체를 무시한다.
+    페이지마다 독립된 8개 언어 묶음이므로 묶음별로 따로 본다(홈의 대체본이 guide 를 가리키면 안 된다)."""
     ok = True
-    for lang, path in pages.items():
-        tree = lxml.html.parse(path).getroot()
-        links = {l.get("hreflang"): l.get("href")
-                 for l in tree.xpath('//link[@rel="alternate"][@hreflang]')}
-        declared[lang] = links
-        canon = tree.xpath('//link[@rel="canonical"]/@href')
-        if canon[:1] != [page_url(lang)]:
-            print("  [실패] %s canonical=%s" % (lang, canon)); ok = False
-        if links.get(lang) != page_url(lang):
-            print("  [실패] %s 자기참조 hreflang 없음" % lang); ok = False
-        if links.get("x-default") != page_url(X_DEFAULT):
-            print("  [실패] %s x-default 불일치" % lang); ok = False
+    n_checked = 0
+    for page in PAGES:
+        slug = page["slug"]
+        paths = {ROOT_LANG: template_path(page)}
+        for lang in BUILD_LANGS:
+            paths[lang] = out_path(lang, page)
 
-    expected = {c: page_url(X_DEFAULT if c == "x-default" else c) for c in ALL_LANGS + ["x-default"]}
-    for lang, links in declared.items():
-        if links != expected:
-            print("  [실패] %s hreflang 집합 불일치" % lang); ok = False
-    print("검증: hreflang %d페이지 × %d줄 대칭 %s" % (len(pages), len(expected), "OK" if ok else "FAIL"))
+        declared = {}
+        for lang, path in paths.items():
+            tree = lxml.html.parse(path).getroot()
+            links = {l.get("hreflang"): l.get("href")
+                     for l in tree.xpath('//link[@rel="alternate"][@hreflang]')}
+            declared[lang] = links
+            canon = tree.xpath('//link[@rel="canonical"]/@href')
+            if canon[:1] != [page_url(lang, slug)]:
+                print("  [실패] %s/%s canonical=%s" % (page["src"], lang, canon)); ok = False
+            if links.get(lang) != page_url(lang, slug):
+                print("  [실패] %s/%s 자기참조 hreflang 없음" % (page["src"], lang)); ok = False
+            if links.get("x-default") != page_url(X_DEFAULT, slug):
+                print("  [실패] %s/%s x-default 불일치" % (page["src"], lang)); ok = False
+
+        expected = {c: page_url(X_DEFAULT if c == "x-default" else c, slug)
+                    for c in ALL_LANGS + ["x-default"]}
+        for lang, links in declared.items():
+            if links != expected:
+                print("  [실패] %s/%s hreflang 집합 불일치" % (page["src"], lang)); ok = False
+        n_checked += len(paths)
+    print("검증: hreflang %d페이지 × 9줄 대칭 %s" % (n_checked, "OK" if ok else "FAIL"))
     return ok
 
 
-def check_pages(template_src):
-    """커밋된 dist-lang 이 지금의 index.html·사전과 일치하는지만 본다(쓰기 없음).
+def check_pages(sources):
+    """커밋된 dist-lang 이 지금의 원본·사전과 일치하는지만 본다(쓰기 없음).
     sitemap 은 대상에서 뺀다 — lastmod 가 git 상태에 따라 '오늘' 로 흔들려 stale 오탐이 난다."""
     stale = []
-    for lang in BUILD_LANGS:
-        html = render_page(lang, template_src)[0]
-        try:
-            with open(out_path(lang), encoding="utf-8") as f:
-                current = f.read()
-        except OSError:
-            stale.append(lang + "(없음)")
-            continue
-        if current != html:
-            stale.append(lang)
+    n = 0
+    for page in PAGES:
+        for lang in BUILD_LANGS:
+            n += 1
+            html = render_page(lang, sources[page["src"]], page)[0]
+            try:
+                with open(out_path(lang, page), encoding="utf-8") as f:
+                    current = f.read()
+            except OSError:
+                stale.append("%s/%s(없음)" % (lang, page["src"]))
+                continue
+            if current != html:
+                stale.append("%s/%s" % (lang, page["src"]))
     if stale:
         print("  [실패] dist-lang 이 최신이 아니다: %s" % ", ".join(stale))
         print("         python3 tools/build_i18n_pages.py 재실행 후 dist-lang 을 함께 커밋할 것.")
         return False
-    print("검증: dist-lang %d페이지 최신 OK" % len(BUILD_LANGS))
+    print("검증: dist-lang %d페이지 최신 OK" % n)
     return True
 
 
@@ -375,19 +411,22 @@ def main():
         print("사용법: python3 build_i18n_pages.py [--check]")
         sys.exit(2)
 
-    with open(TEMPLATE, encoding="utf-8") as f:
-        template_src = f.read()
+    sources = {}
+    for page in PAGES:
+        with open(template_path(page), encoding="utf-8") as f:
+            sources[page["src"]] = f.read()
 
     if args == ["--check"]:
-        if not check_pages(template_src) or not verify():
+        if not check_pages(sources) or not verify():
             sys.exit(1)
         return
 
     if os.path.isdir(OUT_DIR) and os.path.basename(OUT_DIR) == "dist-lang":
-        shutil.rmtree(OUT_DIR)  # 언어를 뺐을 때 옛 디렉터리가 남지 않게
+        shutil.rmtree(OUT_DIR)  # 언어·페이지를 뺐을 때 옛 산출물이 남지 않게
 
-    for lang in BUILD_LANGS:
-        build_page(lang, template_src)
+    for page in PAGES:
+        for lang in BUILD_LANGS:
+            build_page(lang, sources[page["src"]], page)
     write_sitemap()
     if not verify():
         sys.exit(1)
