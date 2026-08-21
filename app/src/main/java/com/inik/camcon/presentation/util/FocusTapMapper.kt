@@ -81,3 +81,48 @@ fun mapTapToCameraPoint(
         y = iy.roundToInt().coerceIn(0, bmpH)
     )
 }
+
+/**
+ * [mapTapToCameraPoint] 의 역방향 — 카메라 좌표를 화면 좌표로 옮긴다.
+ *
+ * AF 프레임 오버레이가 라이브뷰 이미지 위 정확한 위치에 얹히려면, 탭 환산과 **같은**
+ * 레터박스 계산을 써야 한다. 두 곳에 따로 적으면 한쪽만 고쳐졌을 때 조용히 어긋난다.
+ *
+ * @param camX,camY 카메라 좌표(기준계는 [srcW] × [srcH]).
+ * @param srcW,srcH 좌표 기준계. AF 정보의 경우 LiveViewObject 의 "Whole size" 다.
+ * @param boxW,boxH 이미지가 놓인 컴포저블 영역 크기.
+ * @param rotated 이미지가 180도 회전 표시 중인지.
+ * @return 화면 좌표(px). 기준계가 비었으면 null.
+ */
+fun mapCameraPointToView(
+    camX: Float,
+    camY: Float,
+    srcW: Int,
+    srcH: Int,
+    boxW: Int,
+    boxH: Int,
+    rotated: Boolean
+): Pair<Float, Float>? {
+    if (boxW <= 0 || boxH <= 0 || srcW <= 0 || srcH <= 0) return null
+
+    var ix = camX
+    var iy = camY
+    if (rotated) {
+        ix = srcW - ix
+        iy = srcH - iy
+    }
+
+    val scale = min(boxW.toFloat() / srcW, boxH.toFloat() / srcH)
+    val dispW = srcW * scale
+    val dispH = srcH * scale
+    val offX = (boxW - dispW) / 2f
+    val offY = (boxH - dispH) / 2f
+
+    return Pair(offX + ix * scale, offY + iy * scale)
+}
+
+/** AF 프레임 크기를 화면 크기로 환산할 때 쓰는 배율. [mapCameraPointToView] 와 같은 계산이다. */
+fun cameraToViewScale(srcW: Int, srcH: Int, boxW: Int, boxH: Int): Float {
+    if (boxW <= 0 || boxH <= 0 || srcW <= 0 || srcH <= 0) return 0f
+    return min(boxW.toFloat() / srcW, boxH.toFloat() / srcH)
+}
