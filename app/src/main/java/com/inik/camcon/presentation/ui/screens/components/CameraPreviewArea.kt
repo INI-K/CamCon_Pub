@@ -1084,8 +1084,13 @@ private fun LiveViewExposureStripOverlayPreview() {
  * 레터박스 계산으로 화면 좌표에 옮긴다([mapCameraPointToView]). 탭-투-포커스와 계산을
  * 공유하지 않으면 박스와 실제 탭 지점이 어긋난다.
  *
- * 색은 합초 여부로 가른다 — 니콘 바디의 표시 관례를 따른다.
- * [afInfo] 가 null 이면 아무것도 그리지 않는다(니콘 확장 라이브뷰가 아니거나 정보 없음).
+ * 그리는 방식은 카메라 본체의 표시 관례를 따른다 — 네 모서리의 꺾쇠와 반투명 음영이다.
+ * 테두리만 있는 사각형은 밝은 배경에서 잘 안 보이고 본체 화면과도 달라 보인다. 음영은
+ * 옅게(12%) 깔아 영상 자체를 가리지 않게 하고, 꺾쇠 아래에 어두운 그림자를 한 겹 깔아
+ * 흰 피사체 위에서도 윤곽이 남게 한다.
+ *
+ * 색은 합초 여부로 가른다.
+ * [afInfo] 가 null 이면 아무것도 그리지 않는다(확장 라이브뷰가 아니거나 정보 없음).
  */
 @Composable
 private fun LiveViewAfOverlay(
@@ -1106,7 +1111,9 @@ private fun LiveViewAfOverlay(
         if (scale <= 0f) return@Canvas
 
         val strokePx = 2.dp.toPx()
+        val shadowPx = strokePx + 2.dp.toPx()
         val color = if (afInfo.isFocused) focusedColor else unfocusedColor
+        val shadow = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.45f)
 
         afInfo.frames.forEach { f ->
             val center = com.inik.camcon.presentation.util.mapCameraPointToView(
@@ -1120,15 +1127,43 @@ private fun LiveViewAfOverlay(
             val h = f.height * scale
             if (w <= 0f || h <= 0f) return@forEach
 
-            drawRect(
-                color = color,
-                topLeft = androidx.compose.ui.geometry.Offset(
-                    center.first - w / 2f,
-                    center.second - h / 2f
-                ),
-                size = androidx.compose.ui.geometry.Size(w, h),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokePx)
+            val left = center.first - w / 2f
+            val top = center.second - h / 2f
+            val topLeft = androidx.compose.ui.geometry.Offset(left, top)
+            val boxPx = androidx.compose.ui.geometry.Size(w, h)
+
+            // 반투명 음영 — 어느 영역이 잡혔는지 한눈에 들어오게 하되 영상은 비쳐 보인다.
+            drawRect(color = color.copy(alpha = 0.12f), topLeft = topLeft, size = boxPx)
+
+            // 꺾쇠 길이는 박스 크기에 비례시킨다. 고정 길이로 두면 눈 검출처럼 작은 박스에서
+            // 꺾쇠끼리 겹쳐 사각형이 되어 버린다.
+            val armLen = (minOf(w, h) * 0.28f).coerceIn(4.dp.toPx(), 28.dp.toPx())
+            val corners = listOf(
+                Triple(left, top, 1f to 1f),                 // 좌상
+                Triple(left + w, top, -1f to 1f),            // 우상
+                Triple(left, top + h, 1f to -1f),            // 좌하
+                Triple(left + w, top + h, -1f to -1f)        // 우하
             )
+            // 그림자를 먼저 깔고 그 위에 본색을 그린다.
+            listOf(shadow to shadowPx, color to strokePx).forEach { (c, sw) ->
+                corners.forEach { (cx, cy, dir) ->
+                    val (dx, dy) = dir
+                    drawLine(
+                        color = c,
+                        start = androidx.compose.ui.geometry.Offset(cx, cy),
+                        end = androidx.compose.ui.geometry.Offset(cx + armLen * dx, cy),
+                        strokeWidth = sw,
+                        cap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
+                    drawLine(
+                        color = c,
+                        start = androidx.compose.ui.geometry.Offset(cx, cy),
+                        end = androidx.compose.ui.geometry.Offset(cx, cy + armLen * dy),
+                        strokeWidth = sw,
+                        cap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
+                }
+            }
         }
     }
 }
