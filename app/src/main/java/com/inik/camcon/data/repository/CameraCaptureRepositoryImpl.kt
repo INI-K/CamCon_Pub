@@ -649,6 +649,15 @@ class CameraCaptureRepositoryImpl @Inject constructor(
                     }
                 }
 
+                // 네이티브는 프레임 **직전**에 AF 정보를 준다. 여기 담아 두었다가 바로 뒤에
+                // 오는 프레임에 실어 보내면 이미지와 박스의 짝이 정확히 맞는다.
+                // 같은 펌프 스레드에서 순차 호출되므로 별도 동기화가 필요 없다.
+                private var pendingAfInfo: com.inik.camcon.domain.model.LiveViewAfInfo? = null
+
+                override fun onLiveViewAfInfo(info: com.inik.camcon.domain.model.LiveViewAfInfo?) {
+                    pendingAfInfo = info
+                }
+
                 override fun onLiveViewFrame(frame: ByteArray) {
                     firstFrameReceived.set(true)
                     try {
@@ -656,7 +665,8 @@ class CameraCaptureRepositoryImpl @Inject constructor(
                             data = frame,
                             width = 0,
                             height = 0,
-                            timestamp = System.currentTimeMillis()
+                            timestamp = System.currentTimeMillis(),
+                            afInfo = pendingAfInfo
                         )
                         trySend(liveViewFrame)
                     } catch (e: Exception) {

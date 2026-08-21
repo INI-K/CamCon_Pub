@@ -288,6 +288,14 @@ fun CameraPreviewArea(
                     contentScale = ContentScale.Fit
                 )
 
+                // AF 프레임 오버레이 — 니콘 확장 라이브뷰가 프레임마다 실어 보내는 좌표를 그린다.
+                // 이미지와 같은 프레임의 정보이므로(LiveViewFrame.afInfo) 박스가 한 박자 밀리지 않는다.
+                LiveViewAfOverlay(
+                    afInfo = liveViewFrame?.afInfo,
+                    boxSize = previewSize.value,
+                    rotated = rotated
+                )
+
                 // 탭-투-포커스 마커 — 탭한 화면 위치에 표시(이미지 회전과 무관). 1.5초 후 소멸.
                 tapMarker.value?.let { mk ->
                     Canvas(modifier = Modifier.fillMaxSize()) {
@@ -1065,6 +1073,61 @@ private fun LiveViewExposureStripOverlayPreview() {
                     exposureCompensation = "0",
                     exposureMode = "S"
                 )
+            )
+        }
+    }
+}
+/**
+ * 라이브뷰 위에 카메라가 알려준 AF 프레임을 그린다.
+ *
+ * 좌표는 카메라 기준계(LiveViewObject 의 Whole size)로 오므로, 라이브뷰 이미지와 **같은**
+ * 레터박스 계산으로 화면 좌표에 옮긴다([mapCameraPointToView]). 탭-투-포커스와 계산을
+ * 공유하지 않으면 박스와 실제 탭 지점이 어긋난다.
+ *
+ * 색은 합초 여부로 가른다 — 니콘 바디의 표시 관례를 따른다.
+ * [afInfo] 가 null 이면 아무것도 그리지 않는다(니콘 확장 라이브뷰가 아니거나 정보 없음).
+ */
+@Composable
+private fun LiveViewAfOverlay(
+    afInfo: com.inik.camcon.domain.model.LiveViewAfInfo?,
+    boxSize: androidx.compose.ui.unit.IntSize,
+    rotated: Boolean
+) {
+    if (afInfo == null || afInfo.frames.isEmpty()) return
+    if (boxSize.width <= 0 || boxSize.height <= 0) return
+
+    val focusedColor = com.inik.camcon.presentation.theme.Accent
+    val unfocusedColor = androidx.compose.ui.graphics.Color.White
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val scale = com.inik.camcon.presentation.util.cameraToViewScale(
+            afInfo.wholeWidth, afInfo.wholeHeight, boxSize.width, boxSize.height
+        )
+        if (scale <= 0f) return@Canvas
+
+        val strokePx = 2.dp.toPx()
+        val color = if (afInfo.isFocused) focusedColor else unfocusedColor
+
+        afInfo.frames.forEach { f ->
+            val center = com.inik.camcon.presentation.util.mapCameraPointToView(
+                f.centerX.toFloat(), f.centerY.toFloat(),
+                afInfo.wholeWidth, afInfo.wholeHeight,
+                boxSize.width, boxSize.height,
+                rotated
+            ) ?: return@forEach
+
+            val w = f.width * scale
+            val h = f.height * scale
+            if (w <= 0f || h <= 0f) return@forEach
+
+            drawRect(
+                color = color,
+                topLeft = androidx.compose.ui.geometry.Offset(
+                    center.first - w / 2f,
+                    center.second - h / 2f
+                ),
+                size = androidx.compose.ui.geometry.Size(w, h),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokePx)
             )
         }
     }
