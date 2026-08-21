@@ -444,8 +444,20 @@ class CameraViewModel @Inject constructor(
      */
     private fun observeNativeCameraConnection() {
         viewModelScope.launch {
+            var wasConnected = usbDeviceRepository.isNativeCameraConnected.value
             usbDeviceRepository.isNativeCameraConnected.collect { isConnected ->
                 uiStateManager.updateNativeCameraConnection(isConnected)
+
+                // 케이블을 뽑은 경우에도 카메라에 딸린 상태(모델명·기능 정보·촬영 플래그)를 정리한다.
+                // 이 정리는 지금까지 사용자가 직접 해제 버튼을 눌렀을 때만 실행됐다
+                // (UsbAutoConnectManager.disconnectCamera 경로). 물리적으로 분리하면 연결 플래그만
+                // 내려가고 모델명이 그대로 남아, 상단에 기종명이 붙은 채로 남는 잔상이 됐다.
+                //
+                // PTP/IP 로 붙어 있는 동안에는 USB 플래그가 내려가도 그 카메라 정보를 지우면 안 된다.
+                if (wasConnected && !isConnected && !uiState.value.isPtpipConnected) {
+                    uiStateManager.onCameraDisconnected()
+                }
+                wasConnected = isConnected
             }
         }
     }
