@@ -171,6 +171,30 @@ def absolutize(tree):
     return n
 
 
+def localize_links(tree, lang):
+    """(g2) 사이트 안쪽 링크에 언어 접두를 붙인다.
+
+    absolutize 가 만든 "/guide.html" 은 어느 언어판에서 눌러도 한국어 문서로 간다.
+    guide 의 헤더에 있는 "/#features" 도 마찬가지로 한국어 홈으로 튄다. 링크는 절대경로라
+    404 가 나지 않고 조용히 언어만 바뀌므로 눈으로는 거의 걸리지 않는다.
+
+    푸터의 언어 선택 링크는 특정 언어를 가리키는 것이 목적이므로 건드리지 않는다
+    (hreflang 속성이 있는 <a> 가 그것이다). 언어판이 없는 문서(privacy·terms·delete)도
+    PAGES 에 없으니 자동으로 제외된다."""
+    targets = {"/" + p["slug"]: p["slug"] for p in PAGES}   # {"/": "", "/guide.html": "guide.html"}
+    n = 0
+    for a in tree.xpath("//a[@href]"):
+        if a.get("hreflang") is not None:
+            continue
+        href = a.get("href")
+        cut = min([i for i in (href.find("#"), href.find("?")) if i >= 0] or [len(href)])
+        path, rest = href[:cut], href[cut:]
+        if path in targets:
+            a.set("href", page_path(lang, targets[path]) + rest)
+            n += 1
+    return n
+
+
 def patch_jsonld(tree, lang, dct, page):
     """(e) JSON-LD 의 name·description·url·image 를 해당 언어로.
     name 은 HowTo 처럼 제목을 갖는 타입에만 있으므로 있을 때만 갈아 끼운다."""
@@ -251,6 +275,7 @@ def render_page(lang, template_src, page):
     ld = patch_jsonld(tree, lang, dct, page)                         # (e)
     rebuild_hreflang(tree, page["slug"])                             # (f)
     n_abs = absolutize(tree)                                         # (g)
+    localize_links(tree, lang)                                       # (g2)
     inline_dict(tree, dct)                                           # (h)
     mark_current_lang(tree, lang)
     strip_comments(tree)

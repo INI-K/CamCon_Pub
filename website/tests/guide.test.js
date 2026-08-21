@@ -90,6 +90,25 @@ test("언어판 hreflang 이 홈이 아니라 guide 를 가리킨다", () => {
   }
 });
 
+test("언어판의 사이트 내부 링크가 같은 언어로 간다", () => {
+  /* 절대경로 링크는 언어 접두가 빠져도 404 가 나지 않고 조용히 한국어 문서로 넘어간다.
+     프랑스어 홈의 안내 링크가 한국어 안내로 가던 실제 사고를 막는다. */
+  for (const lang of BUILD_LANGS) {
+    const home = fs.readFileSync(path.join(WEB, "dist-lang", lang, "index.html"), "utf8");
+    const toGuide = [...home.matchAll(/href="([^"]*)" data-i18n="footer.guide"/g)].map((m) => m[1]);
+    assert.ok(toGuide.length > 0, `${lang}/index.html 에 안내 페이지 링크가 없다`);
+    for (const href of toGuide) {
+      assert.equal(href, `/${lang}/guide.html`, `${lang} 홈의 안내 링크가 다른 언어로 간다`);
+    }
+
+    // guide 쪽 헤더·푸터가 한국어 홈으로 튀지 않는지. 언어 선택 링크(hreflang 보유)는 제외한다.
+    const html = fs.readFileSync(path.join(WEB, "dist-lang", lang, "guide.html"), "utf8");
+    const stray = [...html.matchAll(/<a(?![^>]*hreflang)[^>]*href="(\/(?:#|guide\.html|")[^"]*)"/g)]
+      .map((m) => m[1]);
+    assert.deepEqual(stray, [], `${lang}/guide.html 에 언어 접두가 빠진 내부 링크`);
+  }
+});
+
 test("사용자 노출 문구에 em-dash 가 없다", () => {
   // 사전 쪽은 color-transfer.test.js 가 이미 본다. 여기서는 원본 HTML 에 직접 적힌 한국어를 본다.
   const body = guide.replace(/<!--[\s\S]*?-->/g, "");
