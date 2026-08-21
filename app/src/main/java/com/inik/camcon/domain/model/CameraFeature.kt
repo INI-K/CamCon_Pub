@@ -40,7 +40,15 @@ data class LiveViewFrame(
     val data: ByteArray,
     val width: Int,
     val height: Int,
-    val timestamp: Long
+    val timestamp: Long,
+    /**
+     * 이 프레임에 딸려 온 AF 표시 정보. 니콘 확장 라이브뷰(0x****)에서만 채워지고,
+     * 그 외(구세대 명령 폴백·타 제조사)에서는 null 이다.
+     *
+     * 프레임과 같은 객체에 담는 이유는 **짝을 보장하기 위해서**다. 별도 흐름으로 보내면
+     * 화면이 N 번째 이미지 위에 N±1 번째 AF 박스를 그릴 수 있다.
+     */
+    val afInfo: LiveViewAfInfo? = null
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
