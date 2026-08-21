@@ -31,6 +31,7 @@ class CameraConnectionManager @Inject constructor(
     private val nativeDataSource: NativeCameraDataSource,
     private val usbCameraManager: UsbCameraManager,
     private val nikonApplicationModeManager: com.inik.camcon.data.datasource.nativesource.NikonApplicationModeManager,
+    private val nikonLinkDiagnostics: com.inik.camcon.data.datasource.nativesource.NikonLinkDiagnostics,
     private val cameraStateObserver: com.inik.camcon.domain.manager.CameraStateObserver,
     @ApplicationScope private val scope: CoroutineScope,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
@@ -156,6 +157,13 @@ class CameraConnectionManager @Inject constructor(
             // 이 호출이 PTP/IP 경로에만 있어서 USB 세션은 콜드스타트에 굳은 판별 결과를
             // 그대로 물려받았다(2026-08-20 실측).
             nikonApplicationModeManager.onCameraSessionStarted()
+
+            // 링크 사실(USBSpeed/ConnectionPath) 1회 로깅 — 전송 속도 진단 근거.
+            // USBSpeed 는 케이블 연결일 때만 의미가 있는데(무선에서도 값은 나온다) 정작
+            // 그 USB 경로에 배선이 없어서, "왜 이 속도밖에 안 나오나"를 물었을 때 근거가
+            // 없었다. 실측 2026-08-21: 커널은 480Mbps(USB2.0)로 협상했다고 보고한다.
+            nikonLinkDiagnostics.logLinkFacts()
+
             _isConnected.value = true
             _isInitializing.value = false
             updateCameraList()
@@ -184,6 +192,7 @@ class CameraConnectionManager @Inject constructor(
             Log.d("카메라연결매니저", "일반 카메라 초기화 성공")
             // USB 경로와 동일 — 새 세션이므로 앱 모드/제조사 판별 캐시를 버린다.
             nikonApplicationModeManager.onCameraSessionStarted()
+            nikonLinkDiagnostics.logLinkFacts()
             _isConnected.value = true
             _isInitializing.value = false  // 초기화 완료 시 상태 해제
             updateCameraList()

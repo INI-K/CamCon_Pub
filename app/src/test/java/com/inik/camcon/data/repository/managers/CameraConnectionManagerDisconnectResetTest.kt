@@ -52,6 +52,7 @@ class CameraConnectionManagerDisconnectResetTest {
                 nativeDataSource = nativeDataSource,
                 usbCameraManager = usbCameraManager,
                 nikonApplicationModeManager = mockk(relaxed = true),
+                nikonLinkDiagnostics = mockk(relaxed = true),
                 cameraStateObserver = cameraStateObserver,
                 scope = CoroutineScope(Dispatchers.Unconfined),
                 ioDispatcher = Dispatchers.Unconfined
