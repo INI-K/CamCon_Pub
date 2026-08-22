@@ -1,3 +1,7 @@
+<!-- camcon-public-sync:begin -->
+> 이 저장소는 개발 저장소에서 자동 동기화됩니다. 마지막 동기화: 2026-08-22 18:30:12 UTC
+
+<!-- camcon-public-sync:end -->
 # CamCon - Camera Control Application
 
 [![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://developer.android.com)
