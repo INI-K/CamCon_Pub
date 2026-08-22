@@ -72,3 +72,155 @@ app/build/
 
 # OMC 툴링 상태 (소스 트리에 커밋 금지)
 .omc/
+# >>> camcon-public-sync >>>
+# sync-to-public 워크플로가 자동 생성하는 블록. 직접 편집하지 말 것.
+
+# ===== 앱 키 / 시크릿 =====
+app/google-services.json
+/Key*
+*.jks
+*.keystore
+*.pem
+*.p12
+# 아래 4줄은 위 4줄에 포섭된다(fnmatch·gitignore 둘 다 `*.jks` 가 이미 전 깊이를 잡는다).
+# 다만 glob 줄은 게이트2 검사 대상이 아니라 중복 비용이 0이므로 방어적으로 남긴다.
+**/*.jks
+**/*.keystore
+**/*.pem
+**/*.p12
+
+# 릴리스 서명 키·인증서. main/develop 트리에는 없고 히스토리와 낡은 브랜치에만 남아 있다.
+# 규칙을 지우면 그 히스토리가 그대로 공개된다.
+Key/
+local.properties
+
+# 커밋된 적 없는 예방 규칙. 실재하지 않는 것이 정상이므로 절대 지우지 않는다.
+key.properties
+keystore.properties
+signing.properties
+google-services.json
+gphoto-build/
+gphoto-build_16k/
+
+# ===== libgphoto2 / 네이티브 (LGPL 수정 소스는 서면 제공 오퍼 방식 — 계속 비공개) =====
+# 아래 두 줄은 맨 아래 glob(app/src/main/cpp*·jniLibs*)에 포섭되지만 의도적으로 남긴다.
+# 디렉터리가 통째로 rename 되면(cpp/ → native/) 글롭도 같이 빗나가는데, 그때 게이트2가
+# STALE 로 잡아 준다. 최고민감 트리라 '삭제'될 가능성은 사실상 0이므로 오탐 위험도 없다.
+app/src/main/cpp/
+app/src/main/jniLibs/
+third_party/
+patches/
+# CameraNative.kt 는 구현이 아니라 '선언'이지만, external 함수 177개를 한 파일에 모아
+# 네이티브 API 설계 전체(어떤 기능을 어떤 시그니처로 뽑았는가)를 그대로 드러낸다.
+# 포팅 노하우의 일부이므로 cpp/ 와 같은 등급으로 다룬다.
+app/src/main/java/com/inik/camcon/CameraNative.kt
+# 필름 시뮬레이션 LUT 296종 — 제품의 핵심 자산이라 소스와 같은 등급으로 가린다.
+# (APK 에는 동봉되지만 저장소에서 통째로 클론되는 것과는 난이도가 다르다.)
+app/src/main/assets/luts/**
+build_libgphoto2.sh
+build_libgphoto2_android.sh
+rebuild_ptp2_only.sh
+libgphoto2-android-complete.tar.gz
+/patch_*.py
+# 접미사 우회 차단 (jniLibs_bak/·cpp_old/ 같은 이름으로 다시 새는 것을 막는다)
+app/src/main/jniLibs*
+app/src/main/cpp*
+
+# 히스토리에만 남은 경로. 규칙을 지우면 force-push 로도 회수되지 않는다.
+Complete_arm64-v8a/
+# CMake/NDK 산출물 — .o 에 DWARF 비스트립 디버그정보와 로컬 계정 경로가 박혀 있다
+app/.cxx/
+.gradle/
+.kotlin/
+_workspace/
+
+# ===== 클로드 / 하네스 / 내부 문서 =====
+.claude/
+CLAUDE.md
+.mcp.json
+docs/superpowers/
+docs/CLOUD_FUNCTIONS_BILLING.md
+docs/AUDIT_2026-06-01.md
+docs/DEV_DOCUMENT.md
+docs/HARNESS_CHANGELOG.md
+docs/aso-playstore.md
+docs/archive/
+marketing/
+# 루트 내부 리포트 중 '글롭에 안 걸리는 이름'만 리터럴로 남긴다.
+# (completeness_report.md 는 소문자라 *_REPORT.md 에 안 걸리고, STRUCTURE_SUMMARY.txt 는 .txt다.)
+# CODE_ANALYSIS_REPORT / PROJECT_STRUCTURE_REPORT / SECURITY_AUDIT_REPORT /
+# COMPOSE_QUICK_SUMMARY / DATA_LAYER_SUMMARY / QUICK_SUMMARY 6개는 아래 글롭에 완전히
+# 포섭되므로 적지 않는다 — 정리 대상 파일이라 삭제되는 순간 게이트2가 sync 를 죽인다.
+ACTION_PLAN.md
+COMPOSE_DETAILED_RECOMMENDATIONS.md
+COMPOSE_UI_ANALYSIS.md
+COMPREHENSIVE_PROJECT_REVIEW.md
+DATA_LAYER_ANALYSIS.md
+PROJECT_STATUS_REVIEW.md
+completeness_report.md
+STRUCTURE_SUMMARY.txt
+# 열거는 한 세대씩 뒤처진다 — 루트 내부 리포트는 패턴으로 잡는다
+*_REPORT.md
+*_SUMMARY.md
+/PTPIP_*.md
+
+# 위 패턴 도입 전 유출된 개별 리포트(패턴에 안 걸리는 이름들)
+ADVANCED_FEATURES.md
+BACKGROUND_TEST_CHECKLIST.md
+IMPLEMENTATION_COMPLETE.md
+MOCK_CAMERA_GUIDE.md
+WIFI_SUGGESTION_FIX.md
+
+# ===== 서버 로직 / 인프라 설정 =====
+functions/
+firestore.rules
+firestore.indexes.json
+firebase.json
+.firebaserc
+# CI 워크플로 전체(.github/workflows/ 만 막으면 하위 신규 파일이 샌다)
+.github/
+
+# ===== 구독 / 결제 / 레퍼럴 / 관리자 =====
+# 규칙: 구현체를 제외하면 동명 테스트도 제외한다. 테스트가 스펙을 역출간하기 때문에
+#       열거 대신 글롭으로 잡는다(과거 impl 만 막고 *Test.kt 16개가 공개됐다).
+app/release/
+# 베이스라인 프로파일은 R8 이후 클래스/메서드 시그니처를 평문으로 나열한다.
+# app/src/release/generated/baselineProfiles/baseline-prof.txt 에 BillingDataSourceImpl·
+# SubscriptionRepositoryImpl·ValidateFeatureAccessUseCase·UserReferralUseCase 등
+# 제외 대상 구현체의 시그니처가 실제로 들어 있다(develop 기준 400줄 이상).
+# 'app/release/' 는 리터럴 선행 매칭이라 'app/src/release/' 를 잡지 못한다.
+app/src/release/
+*baseline-prof.txt
+*.dm
+app/src/main/java/com/inik/camcon/domain/usecase/ValidateImageFormatUseCase.kt
+app/src/main/java/com/inik/camcon/domain/usecase/ValidateFeatureAccessUseCase.kt
+app/src/test/java/com/inik/camcon/domain/usecase/ValidateImageFormatUseCaseTest.kt
+app/src/test/java/com/inik/camcon/domain/usecase/ValidateFeatureAccessUseCaseTest.kt
+app/src/*Subscription*
+app/src/*subscription*
+app/src/*Referral*
+app/src/*Admin*
+app/src/*Billing*
+app/src/*Tier*
+# docs/ 는 기본 공개라 위 app/src 글롭이 닿지 않는다. 그런데 내부 결정 문서는
+# docs/ADR/ADR-002_Subscription_TTL_FailClosed_Pattern.md 처럼 같은 이름 규칙으로 계속
+# 늘어나므로(리터럴 열거는 다음 ADR에서 바로 뒤처진다) docs/ 도 이름 규칙으로 막는다.
+# 이 4줄이 ADR-002 리터럴을 대체한다. 게이트1은 앵커 없는 백스톱이라 docs/ 도 함께 잡는다.
+docs/*Subscription*
+docs/*subscription*
+docs/*Referral*
+docs/*Admin*
+
+# 커밋 59983504 에서 domain/util/ 로 이동한 옛 경로(현재는 위 glob 이 실경로를 잡는다)
+app/src/main/java/com/inik/camcon/utils/SubscriptionUtils.kt
+
+# ===== IDE / 로그 / 백업 잡파일 =====
+# 전부 현재 트리에서는 정리됐고 히스토리·낡은 브랜치에만 남아 있다.
+.idea/
+README.md.backup
+build.log
+kapt_error.log
+firebase-debug.log
+
+*.log
+# <<< camcon-public-sync <<<
