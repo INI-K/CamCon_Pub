@@ -9,7 +9,7 @@
 
   // 정적 자산 캐시 버스터. index.html 의 css/js ?v= 와 같은 값을 유지한다
   // (main.js 자체가 ?v= 로 받아지므로 stale main.js 가 stale ASSET_V 를 들고 있을 수 없다).
-  var ASSET_V = "20260821b";
+  var ASSET_V = "20260824a";
 
   var VERIFIED_URL = "https://asia-northeast3-camcon-67ad7.cloudfunctions.net/getVerifiedCameras";
   var verifiedByKey = {};
@@ -280,7 +280,7 @@ function normalizeCameraKey(input) {
   /* 언어를 바꿔도 보던 문서에 그대로 남아야 한다. 언어 디렉터리에 같이 생성되는 페이지는
      여기 적힌 것뿐이고(build_i18n_pages.py 의 PAGES 와 같아야 한다), 그 밖의 문서
      (privacy·terms·delete)는 언어판이 없으므로 홈으로 보낸다. */
-  var LANG_PAGES = ["guide.html"];
+  var LANG_PAGES = ["guide.html", "guide-nikon.html", "guide-canon.html", "guide-sony.html", "guide-fujifilm.html"];
 
   function langHref(lang) {
     var base = lang === "ko" ? "/" : "/" + lang + "/";

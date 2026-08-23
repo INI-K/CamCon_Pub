@@ -71,7 +71,11 @@ SVG_CASE_FIX = {" viewbox=": " viewBox="}
 #   prio  : sitemap 우선순위(루트 언어는 여기에 +0.1 한 값을 쓴다)
 PAGES = [
     {"src": "index.html", "slug": "", "title": "meta.title", "desc": "meta.desc", "prio": 0.9},
-    {"src": "guide.html", "slug": "guide.html", "title": "guide.meta.title", "desc": "guide.meta.desc", "prio": 0.7},
+    {"src": "guide.html", "slug": "guide.html", "title": "ghub.meta.title", "desc": "ghub.meta.desc", "prio": 0.7},
+    {"src": "guide-nikon.html", "slug": "guide-nikon.html", "title": "guide.meta.title", "desc": "guide.meta.desc", "prio": 0.6},
+    {"src": "guide-canon.html", "slug": "guide-canon.html", "title": "gc.meta.title", "desc": "gc.meta.desc", "prio": 0.6},
+    {"src": "guide-sony.html", "slug": "guide-sony.html", "title": "gs.meta.title", "desc": "gs.meta.desc", "prio": 0.6},
+    {"src": "guide-fujifilm.html", "slug": "guide-fujifilm.html", "title": "gf.meta.title", "desc": "gf.meta.desc", "prio": 0.6},
 ]
 
 

@@ -11,7 +11,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const WEB = path.join(__dirname, "..");
-const guide = fs.readFileSync(path.join(WEB, "guide.html"), "utf8");
+const guide = fs.readFileSync(path.join(WEB, "guide-nikon.html"), "utf8");
+/** 허브 + 제조사 4종. 언어판이 만들어지는 안내 페이지 전부. */
+const GUIDE_PAGES = ["guide.html", "guide-nikon.html", "guide-canon.html",
+                     "guide-sony.html", "guide-fujifilm.html"];
 const catalog = JSON.parse(
   fs.readFileSync(path.join(WEB, "assets", "data", "supported-cameras.json"), "utf8")
 );
@@ -45,8 +48,9 @@ test("기종 칩에는 니콘만 있다", () => {
   }
 });
 
-test("guide.html 의 data-i18n 키가 8개 사전에 모두 있다", () => {
-  const keys = [...new Set([...guide.matchAll(/data-i18n="([^"]+)"/g)].map((m) => m[1]))];
+test("안내 페이지 5장의 data-i18n 키가 8개 사전에 모두 있다", () => {
+  const all = GUIDE_PAGES.map((f) => fs.readFileSync(path.join(WEB, f), "utf8")).join("\n");
+  const keys = [...new Set([...all.matchAll(/data-i18n="([^"]+)"/g)].map((m) => m[1]))];
   assert.ok(keys.length > 50, `키가 너무 적다(${keys.length}개) — 추출 정규식을 확인할 것`);
 
   const dir = path.join(WEB, "assets", "i18n");
@@ -68,7 +72,7 @@ test("생성된 언어별 guide 에 한국어 원문이 남아 있지 않다", (
   assert.ok(guideKeys.length > 50, `검사 대상 키가 너무 적다(${guideKeys.length}개)`);
 
   for (const lang of BUILD_LANGS) {
-    const p = path.join(WEB, "dist-lang", lang, "guide.html");
+    const p = path.join(WEB, "dist-lang", lang, "guide-nikon.html");
     assert.ok(fs.existsSync(p), `생성물 없음: ${p} (build_i18n_pages.py 를 실행할 것)`);
     const html = fs.readFileSync(p, "utf8");
     const dict = JSON.parse(fs.readFileSync(path.join(dir, `${lang}.json`), "utf8"));
@@ -81,11 +85,11 @@ test("언어판 hreflang 이 홈이 아니라 guide 를 가리킨다", () => {
   // 슬러그를 빠뜨리면 8개 언어의 guide 가 전부 홈을 대체본으로 선언해
   // Google 이 hreflang 묶음 전체를 무시한다(가장 알아채기 어려운 실패다).
   for (const lang of BUILD_LANGS) {
-    const html = fs.readFileSync(path.join(WEB, "dist-lang", lang, "guide.html"), "utf8");
+    const html = fs.readFileSync(path.join(WEB, "dist-lang", lang, "guide-nikon.html"), "utf8");
     const hrefs = [...html.matchAll(/rel="alternate" hreflang="([^"]+)" href="([^"]+)"/g)];
     assert.equal(hrefs.length, 9, `${lang}: hreflang 9줄이 아니다`);
     for (const [, code, href] of hrefs) {
-      assert.ok(href.endsWith("/guide.html"), `${lang}: ${code} 가 guide 를 가리키지 않는다 (${href})`);
+      assert.ok(href.endsWith("/guide-nikon.html"), `${lang}: ${code} 가 guide 를 가리키지 않는다 (${href})`);
     }
   }
 });
@@ -102,8 +106,8 @@ test("언어판의 사이트 내부 링크가 같은 언어로 간다", () => {
     }
 
     // guide 쪽 헤더·푸터가 한국어 홈으로 튀지 않는지. 언어 선택 링크(hreflang 보유)는 제외한다.
-    const html = fs.readFileSync(path.join(WEB, "dist-lang", lang, "guide.html"), "utf8");
-    const stray = [...html.matchAll(/<a(?![^>]*hreflang)[^>]*href="(\/(?:#|guide\.html|")[^"]*)"/g)]
+    const html = fs.readFileSync(path.join(WEB, "dist-lang", lang, "guide-nikon.html"), "utf8");
+    const stray = [...html.matchAll(/<a(?![^>]*hreflang)[^>]*href="(\/(?:#|guide[a-z-]*\.html|")[^"]*)"/g)]
       .map((m) => m[1]);
     assert.deepEqual(stray, [], `${lang}/guide.html 에 언어 접두가 빠진 내부 링크`);
   }
