@@ -338,5 +338,9 @@
   "gn.tip.code.title": "Alcuni corpi mostrano un codice di autenticazione",
   "gn.tip.code.body": "Se sullo schermo della fotocamera compaiono alcune cifre, digitale nell'app. La maggior parte dei corpi non ne mostra alcuno, quindi la sua assenza non è un problema.",
   "gn.t.recon.title": "È caduta una volta subito dopo il primo accoppiamento?",
-  "gn.t.recon.body": "Su alcuni corpi la connessione cade una volta al termine dell'accoppiamento. Non è un guasto, significa che la registrazione è conclusa. Collegati di nuovo dall'app e da quel momento resterà stabile."
+  "gn.t.recon.body": "Su alcuni corpi la connessione cade una volta al termine dell'accoppiamento. Non è un guasto, significa che la registrazione è conclusa. Collegati di nuovo dall'app e da quel momento resterà stabile.",
+  "gn.shot.menu": "Nel menu di rete apri collega al computer e scegli impostazioni di rete.",
+  "gn.shot.create": "Scegli crea profilo.",
+  "gn.shot.name": "Chiede un nome per il profilo. Puoi lasciarlo come WLAN1.",
+  "gn.shot.key": "Inserisci la password dell'hotspot."
 }

@@ -338,5 +338,9 @@
   "gn.tip.code.title": "Some bodies show an authentication code",
   "gn.tip.code.body": "If a few digits appear on the camera screen, type them into the app. More bodies do not show one at all, so its absence is not a problem.",
   "gn.t.recon.title": "Did it drop once right after the first pairing?",
-  "gn.t.recon.body": "On some bodies the connection drops once as pairing completes. That is not a fault, it means the registration finished. Connect once more from the app and it stays up from then on."
+  "gn.t.recon.body": "On some bodies the connection drops once as pairing completes. That is not a fault, it means the registration finished. Connect once more from the app and it stays up from then on.",
+  "gn.shot.menu": "In the network menu, open connect to computer and choose network settings.",
+  "gn.shot.create": "Choose create profile.",
+  "gn.shot.name": "It asks for a profile name. Leaving it as WLAN1 is fine.",
+  "gn.shot.key": "Enter your hotspot password."
 }

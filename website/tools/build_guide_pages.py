@@ -99,7 +99,7 @@ def head(slug, tkey, dkey, ogtitle, ldtype, ldname):
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="assets/css/style.css?v=20260818b">
-  <link rel="stylesheet" href="assets/css/guide.css?v=20260824b">
+  <link rel="stylesheet" href="assets/css/guide.css?v=20260824c">
   <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"></noscript>
 
@@ -275,20 +275,62 @@ def screen_text(bar_key, body_key, cap_key, slot=""):
                 </figure>'''
 
 
-def wizard_block():
+# 마법사 화면 순서와 각 화면의 설명 키. 사진이 없는 자리는 건너뛴다.
+WIZ_SHOTS = [
+    ("nikon-01-menu", "gn.shot.menu"),
+    ("nikon-02-create", "gn.shot.create"),
+    ("nikon-03-name", "gn.shot.name"),
+    ("nikon-04-method", "gn.wiz.m1.cap"),
+    ("nikon-05-network", "guide.s2.cap"),
+    ("nikon-06-key", "gn.shot.key"),
+    ("nikon-07-ip", "gn.wiz.m2.cap"),
+]
+
+
+def wizard_shots(manual_url):
+    """마법사 화면 사진을 순서대로 늘어놓는다. 한 장도 없으면 빈 문자열을 준다(호출부가 도해로 되돌린다).
+
+    사진은 도해와 달리 찍힌 언어 그대로 8개 언어판에 나온다. 그래서 화면 안의 글자에
+    의존하지 않도록 설명(figcaption)이 무엇을 고르는 자리인지 문장으로 말해 준다."""
+    figs = []
+    for slot, cap_key in WIZ_SHOTS:
+        src = slot_src(slot)
+        if not src:
+            continue
+        extra = ""
+        if slot == "nikon-05-network":
+            extra = (' <a href="%s" target="_blank" rel="noopener" data-i18n="guide.s2.manual">%s</a>'
+                     % (manual_url, t("guide.s2.manual")))
+        cap = ('<span data-i18n="%s">%s</span>%s' % (cap_key, t(cap_key), extra)) if extra else t(cap_key)
+        capattr = "" if extra else ' data-i18n="%s"' % cap_key
+        figs.append('                  <figure class="shot">\n'
+                    '                    <img src="/%s" alt="" loading="lazy" decoding="async">\n'
+                    '                    <figcaption%s>%s</figcaption>\n'
+                    '                  </figure>' % (src, capattr, cap))
+    if not figs:
+        return ""
+    return '                <div class="shots">\n' + "\n".join(figs) + '\n                </div>'
+
+
+def wizard_block(manual_url):
     """마법사가 묻는 다섯 항목. 화면을 다섯 장 늘어놓는 것보다 표 하나가 훨씬 빨리 읽힌다."""
     rows = "\n".join(
         '                    <div class="wiz-k" data-i18n="gn.wiz.k%d">%s</div>\n'
         '                    <div class="wiz-v" data-i18n="gn.wiz.v%d">%s</div>' % (
             i, t("gn.wiz.k%d" % i), i, t("gn.wiz.v%d" % i))
         for i in range(1, 6))
+    shots = wizard_shots(manual_url)
+    if not shots:
+        # 사진이 없으면 잘못 고르기 쉬운 두 화면만 도해로 보인다.
+        shots = (screen("gn.wiz.m1.bar", [("gn.wiz.v2", "on"), ("gn.wiz.m1.off", "off")], "gn.wiz.m1.cap")
+                 + "\n"
+                 + screen("gn.wiz.m2.bar", [("gn.wiz.v5", "on"), ("gn.wiz.m2.off", "off")], "gn.wiz.m2.cap"))
     return f'''                <p class="gen-label" data-i18n="gn.wiz.title">{t("gn.wiz.title")}</p>
                 <p data-i18n="gn.wiz.body">{t("gn.wiz.body")}</p>
                 <div class="wiz">
 {rows}
                 </div>
-{screen("gn.wiz.m1.bar", [("gn.wiz.v2", "on"), ("gn.wiz.m1.off", "off")], "gn.wiz.m1.cap", slot="nikon-04-method")}
-{screen("gn.wiz.m2.bar", [("gn.wiz.v5", "on"), ("gn.wiz.m2.off", "off")], "gn.wiz.m2.cap", slot="nikon-07-ip")}'''
+{shots}'''
 
 
 def vendor_page(v):
@@ -371,10 +413,15 @@ def vendor_page(v):
                 <p class="gen-label" data-i18n="gn.gen.old.title">{t("gn.gen.old.title")}</p>
                 <span class="path" data-i18n="gn.gen.old.path">{t("gn.gen.old.path")}</span>
                 <p data-i18n="gn.gen.note">{t("gn.gen.note")}</p>
-{wizard_block()}''')
+{wizard_block(v["manual"])}''')
     else:
         a(f'                <span class="path" data-i18n="{s2path}">{t(s2path)}</span>')
-    a(f'''{screen("guide.s2.shot.bar", [("guide.s2.shot.row1", "on"), ("guide.s2.shot.row2", "off")], "guide.s2.cap", cap_extra=' <a href="' + v["manual"] + '" target="_blank" rel="noopener" data-i18n="guide.s2.manual">' + t("guide.s2.manual") + '</a>', slot=v["p"] + "-05-network")}
+    s2shot = "" if (v["wizard"] and wizard_shots(v["manual"])) else screen(
+        "guide.s2.shot.bar", [("guide.s2.shot.row1", "on"), ("guide.s2.shot.row2", "off")], "guide.s2.cap",
+        cap_extra=' <a href="' + v["manual"] + '" target="_blank" rel="noopener" data-i18n="guide.s2.manual">'
+                  + t("guide.s2.manual") + '</a>',
+        slot=v["p"] + "-05-network")
+    a(f'''{s2shot}
               </div>
             </div>
 

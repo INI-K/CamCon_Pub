@@ -338,5 +338,9 @@
   "gn.tip.code.title": "Manche Gehäuse zeigen einen Authentifizierungscode",
   "gn.tip.code.body": "Erscheinen auf dem Kamerabildschirm ein paar Ziffern, geben Sie sie in der App ein. Die meisten Gehäuse zeigen gar keinen Code, sein Fehlen ist also kein Fehler.",
   "gn.t.recon.title": "Ist die Verbindung direkt nach dem ersten Pairing einmal abgebrochen?",
-  "gn.t.recon.body": "Bei manchen Gehäusen bricht die Verbindung beim Abschluss des Pairings einmal ab. Das ist kein Fehler, sondern das Zeichen, dass die Registrierung fertig ist. Verbinden Sie sich in der App noch einmal, danach bleibt sie bestehen."
+  "gn.t.recon.body": "Bei manchen Gehäusen bricht die Verbindung beim Abschluss des Pairings einmal ab. Das ist kein Fehler, sondern das Zeichen, dass die Registrierung fertig ist. Verbinden Sie sich in der App noch einmal, danach bleibt sie bestehen.",
+  "gn.shot.menu": "Öffnen Sie im Netzwerkmenü Mit Computer verbinden und wählen Sie Netzwerkeinstellungen.",
+  "gn.shot.create": "Wählen Sie Profil erstellen.",
+  "gn.shot.name": "Es wird nach einem Profilnamen gefragt. WLAN1 kann so bleiben.",
+  "gn.shot.key": "Geben Sie das Passwort Ihres Hotspots ein."
 }

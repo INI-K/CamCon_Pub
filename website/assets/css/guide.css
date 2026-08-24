@@ -92,6 +92,17 @@
              color:var(--ink-dim,#B6BCC6);white-space:pre-line;line-height:1.9}
 .shot figcaption{margin:8px 2px 0;color:var(--mute,#8F95A0);font-size:12.5px;line-height:1.6}
 
+/* 마법사 화면 연속 배치. 한 줄에 한 장씩 쌓으면 일곱 장이 지나치게 길어진다.
+   순서가 중요한 내용이라 좌우가 아니라 위아래로 읽히도록 열 수를 2로 제한한다. */
+.shots{display:grid;grid-template-columns:1fr;gap:22px 20px;margin:18px 0 0;counter-reset:shot}
+.shots .shot{margin:0;max-width:330px}
+.shots .shot figcaption{counter-increment:shot;position:relative;padding-left:22px}
+.shots .shot figcaption::before{content:counter(shot);position:absolute;left:0;top:1px;
+  width:16px;height:16px;border-radius:50%;background:var(--panel,#14171C);
+  border:1px solid var(--hair,#262C33);color:var(--amber,#E8A245);font-size:10px;
+  display:grid;place-items:center;font-variant-numeric:tabular-nums}
+@media (min-width:720px){ .shots{grid-template-columns:repeat(2,minmax(0,330px))} }
+
 /* 지원 기종. 목록이 12개뿐이라 표보다 칩이 읽기 쉽다. */
 .models{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0;padding:0;list-style:none}
 .models li{padding:7px 14px;border-radius:999px;border:1px solid var(--hair,#262C33);

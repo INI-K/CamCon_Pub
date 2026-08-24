@@ -338,5 +338,9 @@
   "gn.tip.code.title": "Algunos cuerpos muestran un código de autenticación",
   "gn.tip.code.body": "Si en la pantalla de la cámara aparecen unos dígitos, escríbelos en la app. La mayoría de los cuerpos no muestran ninguno, así que su ausencia no es un problema.",
   "gn.t.recon.title": "¿Se cortó una vez justo después del primer emparejamiento?",
-  "gn.t.recon.body": "En algunos cuerpos la conexión se corta una vez al completarse el emparejamiento. No es un fallo, indica que el registro terminó. Conecta otra vez desde la app y a partir de ahí se mantiene."
+  "gn.t.recon.body": "En algunos cuerpos la conexión se corta una vez al completarse el emparejamiento. No es un fallo, indica que el registro terminó. Conecta otra vez desde la app y a partir de ahí se mantiene.",
+  "gn.shot.menu": "En el menú de red, entra en conectar al ordenador y elige ajustes de red.",
+  "gn.shot.create": "Elige crear perfil.",
+  "gn.shot.name": "Pide un nombre de perfil. Puedes dejarlo como WLAN1.",
+  "gn.shot.key": "Introduce la contraseña del punto de acceso."
 }

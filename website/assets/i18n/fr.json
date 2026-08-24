@@ -338,5 +338,9 @@
   "gn.tip.code.title": "Certains boîtiers affichent un code d'authentification",
   "gn.tip.code.body": "Si quelques chiffres s'affichent sur l'écran de l'appareil, saisissez-les dans l'application. La plupart des boîtiers n'en affichent aucun : son absence n'est pas un problème.",
   "gn.t.recon.title": "La connexion a-t-elle coupé juste après le premier appairage ?",
-  "gn.t.recon.body": "Sur certains boîtiers, la connexion coupe une fois à la fin de l'appairage. Ce n'est pas une panne : cela signifie que l'enregistrement est terminé. Reconnectez-vous depuis l'application et elle tiendra ensuite."
+  "gn.t.recon.body": "Sur certains boîtiers, la connexion coupe une fois à la fin de l'appairage. Ce n'est pas une panne : cela signifie que l'enregistrement est terminé. Reconnectez-vous depuis l'application et elle tiendra ensuite.",
+  "gn.shot.menu": "Dans le menu réseau, ouvrez connexion à l'ordinateur et choisissez réglages réseau.",
+  "gn.shot.create": "Choisissez créer un profil.",
+  "gn.shot.name": "Un nom de profil est demandé. Vous pouvez laisser WLAN1.",
+  "gn.shot.key": "Saisissez le mot de passe du point d'accès."
 }
