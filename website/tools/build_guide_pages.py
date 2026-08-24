@@ -90,6 +90,9 @@ def head(slug, tkey, dkey, ogtitle, ldtype, ldname):
   <title data-i18n="{tkey}">{t(tkey)}</title>
   <meta name="description" data-i18n-attr="content" data-i18n="{dkey}" content="{t(dkey)}">
   <meta name="theme-color" content="#0A0A0C">
+  <!-- 등장 연출을 CSS 로 숨기기 전에 스크립트가 살아 있음을 표시한다. defer 로 미루면
+       첫 페인트 때 보였다가 사라지는 깜빡임이 생기므로 head 에서 즉시 실행한다. -->
+  <script>document.documentElement.classList.add("js")</script>
 
   <meta property="og:type" content="article">
   <meta property="og:locale" content="ko_KR">
@@ -119,7 +122,7 @@ def head(slug, tkey, dkey, ogtitle, ldtype, ldname):
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="assets/css/style.css?v=20260824c">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260824d">
   <link rel="stylesheet" href="assets/css/guide.css?v=20260824d">
   <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"></noscript>
@@ -226,7 +229,7 @@ def footer(slug):
     </div>
   </footer>
 
-  <script src="assets/js/main.js?v=20260824d" defer></script>
+  <script src="assets/js/main.js?v=20260824e" defer></script>
 </body>
 </html>
 '''

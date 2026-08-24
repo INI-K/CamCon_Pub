@@ -2,6 +2,13 @@
 (function () {
   "use strict";
 
+  /* 이 표식이 있을 때만 CSS 가 등장 요소를 숨긴다. 스크립트가 죽으면 전부 보인 채로 남는다. */
+  /* head 의 인라인 스크립트가 이미 붙였지만, 그것이 없는 경우를 위한 보루다.
+     테스트는 DOM 스텁으로 이 파일을 불러오므로 존재 확인이 필요하다. */
+  if (document.documentElement && document.documentElement.classList) {
+    document.documentElement.classList.add("js");
+  }
+
   var SUPPORTED = ["ko", "en", "ja", "zh", "de", "es", "fr", "it"];
   var OTHER_VENDOR = "기타"; // supported-cameras.json 안의 벤더 없는 모델 버킷
   var I18N = {};
@@ -9,7 +16,7 @@
 
   // 정적 자산 캐시 버스터. index.html 의 css/js ?v= 와 같은 값을 유지한다
   // (main.js 자체가 ?v= 로 받아지므로 stale main.js 가 stale ASSET_V 를 들고 있을 수 없다).
-  var ASSET_V = "20260824d";
+  var ASSET_V = "20260824e";
 
   var VERIFIED_URL = "https://asia-northeast3-camcon-67ad7.cloudfunctions.net/getVerifiedCameras";
   var verifiedByKey = {};
@@ -835,7 +842,11 @@ function normalizeCameraKey(input) {
           io.unobserve(entry.target);
         }
       });
-    }, { threshold: 0.12, rootMargin: "0px 0px -8% 0px" });
+    /* threshold 는 0 이어야 한다. 0.12 로 두면 화면보다 큰 요소(사진 11장 묶음, 필름 격자,
+       요금제 표)는 교차 비율이 12% 에 영원히 도달하지 못해 is-visible 이 붙지 않고,
+       자식들이 opacity:0 에 갇혀 글자가 통째로 사라진다. 실제로 그렇게 깨졌다.
+       0 이면 1px 이라도 겹치는 순간 발화하므로 요소 높이와 무관하다. */
+    }, { threshold: 0, rootMargin: "0px 0px -5% 0px" });
     items.forEach(function (el) { io.observe(el); });
   }
 
