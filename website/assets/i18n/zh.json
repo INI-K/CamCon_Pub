@@ -528,5 +528,14 @@
   "gf.prep": "一部能开启热点的 Android 手机、一台富士 X 或 GFX 相机，以及 CamCon 应用。不需要数据线，也不需要路由器。",
   "g.ph.config": "打开配置即可看到名称和密码，这两项要输入到相机中。",
   "g.ph.band": "若频段设为 5GHz，仅支持 2.4GHz 的相机将无法找到此热点。手机本身也会给出该提示。搜索不到相机时，请在这里改为 2.4GHz。",
-  "g.ph.search": "热点开启时应用会这样提示。点击搜索相机即可开始查找。"
+  "g.ph.search": "热点开启时应用会这样提示。点击搜索相机即可开始查找。",
+  "connect.guideUsb": "查看数据线连接指南",
+  "connect.guideWifi": "查看各品牌无线连接指南",
+  "connect.guideHint": "配合实际相机画面照片，逐步进行说明。",
+  "connect.guide.title": "按相机分类的连接指南",
+  "connect.guide.lead": "上面三个步骤对所有相机都相同，但相机上要操作的菜单因品牌而异。我们会配合实际画面照片逐一说明。",
+  "connect.guide.usbTitle": "使用数据线连接",
+  "connect.guide.usbDesc": "只需一根 USB-C 数据线。不挑品牌，支持的机型也最多。",
+  "connect.guide.wifiTitle": "无线连接",
+  "connect.guide.wifiDesc": "各品牌的步骤差别很大。请选择您使用的相机。"
 }

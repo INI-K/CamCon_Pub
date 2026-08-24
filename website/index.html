@@ -45,7 +45,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="assets/css/style.css?v=20260818b">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260824b">
   <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"></noscript>
 
@@ -463,6 +463,7 @@
               <li class="step"><div class="lbl" data-i18n="connect.usb3Label">촬영 시작</div><p data-i18n="connect.usb3">자동 인식·연결이 완료되면 바로 촬영을 시작합니다.</p></li>
             </ol>
             <div class="perm-note" data-i18n="connect.usbPerm">필요 권한: USB 장치 접근 권한(연결 시 1회 허용)</div>
+
           </div>
 
           <div class="tab-panel" id="panel-sta" role="tabpanel" aria-labelledby="tab-sta" hidden>
@@ -472,7 +473,40 @@
               <li class="step"><div class="lbl" data-i18n="connect.sta3Label">연결 승인</div><p data-i18n="connect.sta3">첫 연결 시 <strong>카메라 본체에서 "연결 허용"을 승인</strong>합니다. 이후에는 자동으로 재연결됩니다.</p></li>
             </ol>
             <div class="perm-note" data-i18n="connect.staPerm">필요 권한: 위치 권한(네트워크 검색용), 알림 권한(백그라운드 수신용)</div>
-            <p style="margin:16px 0 0"><a href="/guide.html" data-i18n="footer.guide">연결 안내</a></p>
+
+          </div>
+        </div>
+
+        <!-- 홈의 세 줄 요약으로는 제조사마다 다른 메뉴를 담을 수 없다. 실제로 막힌 사람이
+             건너갈 자리가 필요해서, 탭 바깥(어느 탭에서든 보이는 곳)에 크게 둔다.
+             무선 카드의 제조사 칩은 허브를 거치지 않고 바로 해당 페이지로 보낸다. -->
+        <div class="guide-band reveal">
+          <div class="guide-band-head">
+            <h3 data-i18n="connect.guide.title">카메라별 연결 안내</h3>
+            <p data-i18n="connect.guide.lead">위 세 단계는 어느 카메라나 같지만, 카메라에서 눌러야 할 메뉴는 제조사마다 다릅니다. 실제 화면 사진과 함께 하나씩 짚어 드립니다.</p>
+          </div>
+          <div class="guide-band-cards">
+            <a class="gcard" href="/guide-usb.html">
+              <span class="gcard-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6M15 3v6"/><path d="M6 9h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6z"/><path d="M12 18v3"/></svg>
+              </span>
+              <span class="gcard-title" data-i18n="connect.guide.usbTitle">케이블로 연결</span>
+              <span class="gcard-desc" data-i18n="connect.guide.usbDesc">USB-C 케이블 하나면 됩니다. 제조사를 가리지 않고 가장 많은 기종에서 동작합니다.</span>
+              <span class="gcard-go" data-i18n="connect.guideUsb">케이블 연결 안내 보기</span>
+            </a>
+            <div class="gcard gcard-wifi">
+              <span class="gcard-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.5a16 16 0 0 1 20 0"/><path d="M5 12a11 11 0 0 1 14 0"/><path d="M8.5 15.5a6 6 0 0 1 7 0"/><circle cx="12" cy="19" r="1"/></svg>
+              </span>
+              <span class="gcard-title" data-i18n="connect.guide.wifiTitle">무선으로 연결</span>
+              <span class="gcard-desc" data-i18n="connect.guide.wifiDesc">제조사마다 절차가 크게 다릅니다. 쓰시는 카메라를 골라 주세요.</span>
+              <div class="gcard-brands">
+                <a href="/guide-nikon.html">Nikon</a>
+                <a href="/guide-canon.html">Canon</a>
+                <a href="/guide-sony.html">Sony</a>
+                <a href="/guide-fujifilm.html">Fujifilm</a>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -528,5 +528,14 @@
   "gf.prep": "Ein Android-Telefon mit Hotspot-Funktion, eine Fujifilm X- oder GFX-Kamera und die CamCon-App. Weder Kabel noch Router.",
   "g.ph.config": "Öffnen Sie Konfigurieren, dann sehen Sie Name und Passwort. Genau diese geben Sie an der Kamera ein.",
   "g.ph.band": "Steht das Band auf 5 GHz, findet eine Kamera, die nur 2,4 GHz beherrscht, diesen Hotspot nicht. Genau davor warnt auch das Telefon. Taucht die Kamera nicht auf, stellen Sie hier auf 2,4 GHz um.",
-  "g.ph.search": "Ist der Hotspot an, meldet die App das hier. Tippen Sie auf Kamera suchen, dann beginnt die Suche."
+  "g.ph.search": "Ist der Hotspot an, meldet die App das hier. Tippen Sie auf Kamera suchen, dann beginnt die Suche.",
+  "connect.guideUsb": "Anleitung zur Kabelverbindung",
+  "connect.guideWifi": "Drahtlos-Anleitung für Ihre Marke",
+  "connect.guideHint": "Schritt für Schritt, mit Fotos der echten Kamerabildschirme.",
+  "connect.guide.title": "Verbindungsanleitungen nach Kamera",
+  "connect.guide.lead": "Die drei Schritte oben sind bei jeder Kamera gleich, die Menüs an der Kamera unterscheiden sich jedoch je nach Marke. Wir gehen sie einzeln durch, mit Fotos der echten Bildschirme.",
+  "connect.guide.usbTitle": "Per Kabel verbinden",
+  "connect.guide.usbDesc": "Ein USB-C-Kabel genügt. Es funktioniert markenunabhängig und deckt die meisten Modelle ab.",
+  "connect.guide.wifiTitle": "Drahtlos verbinden",
+  "connect.guide.wifiDesc": "Der Ablauf unterscheidet sich stark je nach Marke. Wählen Sie Ihre Kamera."
 }

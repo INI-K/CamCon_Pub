@@ -528,5 +528,14 @@
   "gf.prep": "Uno smartphone Android in grado di attivare l'hotspot, una fotocamera Fujifilm X o GFX e l'app CamCon. Nessun cavo e nessun router.",
   "g.ph.config": "Apri Configura e vedrai nome e password. Sono questi che inserirai nella fotocamera.",
   "g.ph.band": "Se la banda è su 5GHz, una fotocamera che supporta solo i 2,4GHz non troverà questo hotspot. Il telefono stesso lo segnala. Se la fotocamera non compare, passa qui a 2,4GHz.",
-  "g.ph.search": "Con l'hotspot attivo, l'app lo segnala qui. Tocca cerca fotocamera e inizierà la ricerca."
+  "g.ph.search": "Con l'hotspot attivo, l'app lo segnala qui. Tocca cerca fotocamera e inizierà la ricerca.",
+  "connect.guideUsb": "Vedi la guida al collegamento via cavo",
+  "connect.guideWifi": "Vedi la guida wireless per la tua marca",
+  "connect.guideHint": "Passo dopo passo, con foto delle schermate reali della fotocamera.",
+  "connect.guide.title": "Guide alla connessione per fotocamera",
+  "connect.guide.lead": "I tre passaggi qui sopra sono uguali su ogni fotocamera, ma i menu da usare cambiano da marca a marca. Li affrontiamo uno per uno, con foto delle schermate reali.",
+  "connect.guide.usbTitle": "Collegare via cavo",
+  "connect.guide.usbDesc": "Basta un cavo USB-C. Funziona a prescindere dalla marca e copre il maggior numero di modelli.",
+  "connect.guide.wifiTitle": "Collegare in wireless",
+  "connect.guide.wifiDesc": "La procedura cambia molto da marca a marca. Scegli la fotocamera che usi."
 }

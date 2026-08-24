@@ -988,3 +988,42 @@ main { position: relative; z-index: var(--z-content); }
   .cam-explorer-head { justify-content: flex-start; }
   .cam-explorer-head .cam-toggle { flex: 1 1 100%; justify-content: center; }
 }
+
+/* ══════════════ 연결 섹션의 안내 블록 ══════════════
+   홈의 세 줄 요약으로는 제조사마다 다른 메뉴를 담을 수 없다. 실제로 막힌 사람이 건너갈
+   자리가 필요해서 탭 바깥에 크게 둔다(어느 탭을 보고 있든 눈에 들어와야 한다).
+   무선 카드의 제조사 칩은 허브를 거치지 않고 곧장 해당 페이지로 보낸다. */
+.guide-band{margin:44px 0 0;padding:32px;border-radius:18px;
+            border:1px solid rgba(232,162,69,.26);
+            background:linear-gradient(180deg,rgba(232,162,69,.07),rgba(232,162,69,.02))}
+.guide-band-head h3{margin:0 0 8px;font-size:clamp(19px,2.6vw,23px);font-weight:700;
+                    letter-spacing:-.02em;color:var(--ink,#F6F7F8)}
+.guide-band-head p{margin:0;max-width:64ch;font-size:15px;line-height:1.75;color:var(--ink-dim,#B6BCC6)}
+.guide-band-cards{display:grid;grid-template-columns:1fr;gap:14px;margin:24px 0 0}
+@media (min-width:820px){ .guide-band-cards{grid-template-columns:1fr 1fr} }
+
+.gcard{display:flex;flex-direction:column;gap:8px;padding:22px 24px;border-radius:14px;
+       border:1px solid var(--hair,#262C33);background:rgba(10,11,13,.55);text-decoration:none;
+       transition:border-color .16s ease,transform .16s ease,background .16s ease}
+a.gcard:hover{border-color:var(--amber,#E8A245);background:rgba(10,11,13,.75);
+              transform:translateY(-2px);text-decoration:none}
+.gcard-ico{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
+           background:rgba(232,162,69,.13);color:var(--amber,#E8A245);margin:0 0 4px}
+.gcard-ico svg{width:21px;height:21px}
+.gcard-title{font-size:17.5px;font-weight:700;color:var(--ink,#F6F7F8);letter-spacing:-.01em}
+.gcard-desc{font-size:14.5px;line-height:1.7;color:var(--ink-dim,#B6BCC6)}
+.gcard-go{margin:6px 0 0;font-size:14px;font-weight:600;color:var(--amber,#E8A245)}
+.gcard-go::after{content:" →"}
+
+/* 제조사 칩. 카드 안에 있지만 각자 다른 곳으로 가므로 카드 링크와 분리한다. */
+.gcard-brands{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0}
+.gcard-brands a{padding:7px 15px;border-radius:999px;border:1px solid var(--hair,#262C33);
+                background:var(--panel,#14171C);font-size:14px;font-weight:600;
+                color:var(--ink,#F6F7F8);text-decoration:none;
+                transition:border-color .14s ease,color .14s ease}
+.gcard-brands a:hover{border-color:var(--amber,#E8A245);color:var(--amber,#E8A245);text-decoration:none}
+
+@media (max-width:560px){
+  .guide-band{padding:24px 20px;border-radius:14px}
+  .gcard{padding:19px 18px}
+}

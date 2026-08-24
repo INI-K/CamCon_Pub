@@ -528,5 +528,14 @@
   "gf.prep": "Un móvil Android que pueda compartir punto de acceso, una cámara Fujifilm X o GFX y la app CamCon. Sin cable y sin router.",
   "g.ph.config": "Abre configurar y verás el nombre y la contraseña. Eso es lo que introduces en la cámara.",
   "g.ph.band": "Si la banda está en 5GHz, una cámara que solo admite 2,4GHz no encontrará este punto de acceso. El propio móvil lo advierte. Si la cámara no aparece, cámbialo aquí a 2,4GHz.",
-  "g.ph.search": "Con el punto de acceso activo, la app lo indica aquí. Pulsa buscar cámara y empezará a buscar."
+  "g.ph.search": "Con el punto de acceso activo, la app lo indica aquí. Pulsa buscar cámara y empezará a buscar.",
+  "connect.guideUsb": "Ver la guía de conexión por cable",
+  "connect.guideWifi": "Ver la guía inalámbrica de tu marca",
+  "connect.guideHint": "Paso a paso, con fotos de las pantallas reales de la cámara.",
+  "connect.guide.title": "Guías de conexión por cámara",
+  "connect.guide.lead": "Los tres pasos de arriba son iguales en cualquier cámara, pero los menús que hay que pulsar cambian según la marca. Los repasamos uno a uno, con fotos de las pantallas reales.",
+  "connect.guide.usbTitle": "Conectar por cable",
+  "connect.guide.usbDesc": "Basta un cable USB-C. Funciona con cualquier marca y abarca el mayor número de modelos.",
+  "connect.guide.wifiTitle": "Conectar sin cables",
+  "connect.guide.wifiDesc": "El procedimiento cambia mucho según la marca. Elige la cámara que usas."
 }

@@ -528,5 +528,14 @@
   "gf.prep": "Un téléphone Android capable de partager sa connexion, un appareil Fujifilm X ou GFX et l'application CamCon. Ni câble ni routeur.",
   "g.ph.config": "Ouvrez Configurer pour voir le nom et le mot de passe. Ce sont eux que vous saisirez sur l'appareil.",
   "g.ph.band": "Si la bande est sur 5 GHz, un appareil qui ne gère que le 2,4 GHz ne trouvera pas ce point d'accès. Le téléphone vous en avertit lui-même. Si l'appareil n'apparaît pas, passez ici en 2,4 GHz.",
-  "g.ph.search": "Le point d'accès activé, l'application l'indique ici. Appuyez sur rechercher un appareil pour lancer la recherche."
+  "g.ph.search": "Le point d'accès activé, l'application l'indique ici. Appuyez sur rechercher un appareil pour lancer la recherche.",
+  "connect.guideUsb": "Voir le guide de connexion par câble",
+  "connect.guideWifi": "Voir le guide sans fil de votre marque",
+  "connect.guideHint": "Étape par étape, avec des photos des écrans réels de l'appareil.",
+  "connect.guide.title": "Guides de connexion par appareil",
+  "connect.guide.lead": "Les trois étapes ci-dessus sont identiques sur tous les appareils, mais les menus à utiliser diffèrent selon la marque. Nous les parcourons un par un, avec des photos des écrans réels.",
+  "connect.guide.usbTitle": "Connexion par câble",
+  "connect.guide.usbDesc": "Un câble USB-C suffit. Cela fonctionne quelle que soit la marque et couvre le plus de modèles.",
+  "connect.guide.wifiTitle": "Connexion sans fil",
+  "connect.guide.wifiDesc": "La procédure diffère beaucoup selon la marque. Choisissez votre appareil."
 }

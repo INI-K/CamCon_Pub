@@ -528,5 +528,14 @@
   "gf.prep": "An Android phone that can share a hotspot, a Fujifilm X or GFX camera, and the CamCon app. No cable and no router.",
   "g.ph.config": "Open configure and you can see the name and password. These are what you type into the camera.",
   "g.ph.band": "If the band is on 5GHz, a camera that only does 2.4GHz cannot find this hotspot. The phone warns you about exactly that. When the camera will not show up, switch to 2.4GHz here.",
-  "g.ph.search": "With the hotspot on, the app says so here. Tap search for camera and it starts looking."
+  "g.ph.search": "With the hotspot on, the app says so here. Tap search for camera and it starts looking.",
+  "connect.guideUsb": "See the cable connection guide",
+  "connect.guideWifi": "See the wireless guide for your brand",
+  "connect.guideHint": "Step by step, with photos of the actual camera screens.",
+  "connect.guide.title": "Connection guides by camera",
+  "connect.guide.lead": "The three steps above are the same on every camera, but the menus you press differ by brand. We walk through them one by one, with photos of the actual screens.",
+  "connect.guide.usbTitle": "Connect with a cable",
+  "connect.guide.usbDesc": "One USB-C cable is enough. It works regardless of brand and covers the most models.",
+  "connect.guide.wifiTitle": "Connect wirelessly",
+  "connect.guide.wifiDesc": "The procedure differs a lot by brand. Pick the camera you use."
 }
