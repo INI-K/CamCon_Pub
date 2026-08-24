@@ -45,7 +45,15 @@ VENDORS = [
     dict(src="guide-sony.html", p="gs", brand="Sony", verified=False,
          s5title="g.s5.title", s5note=False, models=False, gen=False, wizard=False, textra=[],
          s3="gs.s3", ogtitle="소니 카메라 Wi-Fi 연결 방법", manual="https://helpguide.sony.net/",
-         t12=["gs.t1", "gs.t2"]),
+         t12=["gs.t1", "gs.t2"], s2note="gs.band",
+         s2slots=[("gs-w1-menu", "gs.w1"), ("gs-w2-wifi", "gs.w2"),
+                  ("gs-w3-ap", "gs.w3"), ("gs-w4-done", "gs.w4")],
+         s3slots=[("gs-a1-option", "gs.a1"), ("gs-a2-authon", "gs.a2"),
+                  ("gs-a3-authset", "gs.a3"), ("gs-a4-off", "gs.a4"),
+                  ("gs-a5-warn", "gs.a5"), ("gs-a6-authoff", "gs.a6"),
+                  ("gs-a7-cnct", "gs.a7"), ("gs-a8-pcremote", "gs.a8"),
+                  ("gs-a9-on", "gs.a9")],
+         s5slots=[("gs-p1-pairing", "gs.p1"), ("gs-p2-connected", "gs.p2")]),
     dict(src="guide-fujifilm.html", p="gf", brand="Fujifilm", verified=False,
          s5title="g.s5.title", s5note=False, models=False, gen=False, wizard=False, textra=[],
          s3="gf.s3", ogtitle="후지필름 카메라 Wi-Fi 연결 방법", manual="https://fujifilm-dsc.com/",
@@ -369,6 +377,21 @@ def vendor_page(v):
                   <p data-i18n="gn.pair.note.body">{t("gn.pair.note.body")}</p>
                 </div>'''
 
+    def seq(key):
+        """설정에 적힌 (슬롯, 설명키) 목록을 번호 붙은 격자로. 사진이 없으면 빈 문자열."""
+        figs = [x for x in (photo(sl, ck) for sl, ck in v.get(key, []) if slot_src(sl)) if x]
+        if not figs:
+            return ""
+        return '                <div class="shots">\n' + "\n".join(figs) + '\n                </div>'
+
+    s2_seq, s3_seq, s5_seq = seq("s2slots"), seq("s3slots"), seq("s5slots")
+    s2_note = ""
+    if v.get("s2note"):
+        s2_note = f'''                <div class="note">
+                  <b data-i18n="{v["s2note"]}.title">{t(v["s2note"] + ".title")}</b>
+                  <p data-i18n="{v["s2note"]}.body">{t(v["s2note"] + ".body")}</p>
+                </div>'''
+
     out = [head(v["src"], tkey, dkey, v["ogtitle"], "HowTo", v["ogtitle"]), header()]
     a = out.append
 
@@ -440,6 +463,8 @@ def vendor_page(v):
                   + t("guide.s2.manual") + '</a>',
         slot=v["p"] + "-05-network")
     a(f'''{s2shot}
+{s2_note}
+{s2_seq}
               </div>
             </div>
 
@@ -451,7 +476,8 @@ def vendor_page(v):
                 <div class="note">
                   <b data-i18n="{s3}.note.title">{t(s3 + ".note.title")}</b>
                   <p data-i18n="{s3}.note.body">{t(s3 + ".note.body")}</p>
-                </div>''')
+                </div>
+{s3_seq}''')
     if p == "guide":
         a(f'''                <div class="note">
                   <b data-i18n="gn.tip.auto.title">{t("gn.tip.auto.title")}</b>
@@ -475,7 +501,8 @@ def vendor_page(v):
               <div class="step-no" aria-hidden="true">5</div>
               <h3 data-i18n="{v["s5title"]}">{t(v["s5title"])}</h3>
               <div>
-                <p data-i18n="{s5body}">{t(s5body)}</p>''')
+                <p data-i18n="{s5body}">{t(s5body)}</p>
+{s5_seq}''')
     if v["s5note"]:
         a(f'''                <div class="note">
                   <b data-i18n="guide.s5.note.title">{t("guide.s5.note.title")}</b>
