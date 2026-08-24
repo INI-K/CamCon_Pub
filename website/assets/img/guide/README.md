@@ -7,19 +7,36 @@
 
 ## 슬롯 이름
 
-| 파일 이름 | 그 자리에 지금 들어 있는 도해 |
-|---|---|
-| `guide-hotspot` | 1단계 · 휴대폰 핫스팟 설정 화면 (니콘) |
-| `nikon-01-type` | 3단계 · 연결 유형 (카메라 제어 / 사진 전송) |
-| `guide-05-network` | 2단계 · 카메라의 Wi-Fi 네트워크 목록 (니콘) |
-| `nikon-04-method` | 2단계 · 연결 방법 선택 (Wi-Fi 검색 / 간편 연결) |
-| `nikon-07-ip` | 2단계 · IP 주소 얻는 방법 (자동 / 직접) |
-| `nikon-08-pairing` | 4단계 · 페어링 대기 화면 (SnapBridge 안내) |
-| `nikon-09-allow` | 5단계 · 연결 허용 확인 화면 |
-| `guide-app` | 4단계 · CamCon 검색 결과 (니콘) |
+### 폰 화면 (제조사 공용, 1장씩이면 전부 채워진다)
 
-캐논·소니·후지는 접두어만 다르다: `gc-` `gs-` `gf-`
-예) `gc-hotspot` `gc-05-network` `gc-app`
+| 파일 이름 | 자리 |
+|---|---|
+| `phone-hotspot` | 무선 1단계 · 휴대폰 핫스팟 설정 |
+| `phone-app` | 무선 4단계 · CamCon 카메라 검색 결과 |
+| `usb-03-permission` | 유선 마지막 단계 · USB 권한 허용 대화상자 |
+
+### 무선 · 카메라 화면
+
+| 파일 이름 | 자리 |
+|---|---|
+| `nikon-01-menu` ~ `nikon-08-pairing` | 니콘 연결 마법사 8장 (채워짐) |
+| `nikon-01-type` | 니콘 3단계 · 연결 유형 (카메라 제어 / 사진 전송) |
+| `nikon-09-allow` | 니콘 5단계 · 연결 허용 확인 화면 |
+| `gc-05-network` | 캐논 2단계 · 카메라의 Wi-Fi 목록 |
+| `gs-05-network` | 소니 2단계 · 카메라의 Wi-Fi 목록 |
+| `gf-05-network` | 후지 2단계 · 카메라의 Wi-Fi 목록 |
+
+### 유선 · 카메라 화면
+
+| 파일 이름 | 자리 |
+|---|---|
+| `usb-nikon-01-data` | 니콘 · USB 데이터 연결 (MTP/PTP) |
+| `usb-nikon-02-priority` | 니콘 · USB 연결 우선순위 (촬영) |
+| `usb-nikon-03-power` | 니콘 · USB 전력 공급 (끄기) |
+| `usb-nikon-power-off` | 니콘 · 자동 전원 꺼짐 |
+| `usb-canon-power` `usb-canon-eco` `usb-canon-usb` | 캐논 (채워짐) |
+| `usb-sony-power` `usb-sony-usb` `usb-sony-mode` `usb-sony-remote` | 소니 (채워짐) |
+| `usb-fuji-01-setup` ~ `usb-fuji-05-power` | 후지 5장 (채워짐) |
 
 ## 주의
 

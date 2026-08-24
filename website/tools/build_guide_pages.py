@@ -416,7 +416,7 @@ def vendor_page(v):
               <div>
                 <p data-i18n="guide.s1.body">{t("guide.s1.body")}</p>
                 <p data-i18n="guide.s1.tip">{t("guide.s1.tip")}</p>
-{screen("guide.s1.shot.bar", [("guide.s1.shot.a", "on"), ("guide.s1.shot.b", "off")], "guide.s1.cap", slot=v["p"] + "-hotspot")}
+{screen("guide.s1.shot.bar", [("guide.s1.shot.a", "on"), ("guide.s1.shot.b", "off")], "guide.s1.cap", slot="phone-hotspot")}
               </div>
             </div>
 
@@ -467,7 +467,7 @@ def vendor_page(v):
               <div>
                 <p data-i18n="guide.s4.body">{t("guide.s4.body")}</p>
 {pair_block if v["wizard"] else ""}
-{screen("guide.s4.shot.bar", [("guide.s4.shot.row1", "on"), ("guide.s4.shot.row2", "off")], "guide.s4.cap", slot=v["p"] + "-app")}
+{screen("guide.s4.shot.bar", [("guide.s4.shot.row1", "on"), ("guide.s4.shot.row2", "off")], "guide.s4.cap", slot="phone-app")}
               </div>
             </div>
 
@@ -548,7 +548,11 @@ def vendor_page(v):
 WIRED = [
     dict(src="guide-usb-nikon.html", p="un", brand="Nikon", usb=("gu.nikon", 3),
          note="gu.nikon.note", wireless="guide-nikon.html", manual="https://onlinemanual.nikonimglib.com/",
-         ogtitle="니콘 카메라 USB 유선 연결 방법"),
+         ogtitle="니콘 카메라 USB 유선 연결 방법",
+         pwslots=["usb-nikon-power-off"],
+         usbslots=[("usb-nikon-01-data", "gu.nikon.k1"),
+                   ("usb-nikon-02-priority", "gu.nikon.k2"),
+                   ("usb-nikon-03-power", "gu.nikon.k3")]),
     dict(src="guide-usb-canon.html", p="uc", brand="Canon", usb=("uc.usb", 1),
          note="uc.note", wireless="guide-canon.html", manual="https://cam.start.canon/",
          ogtitle="캐논 카메라 USB 유선 연결 방법",
