@@ -534,9 +534,13 @@ WIRED = [
     dict(src="guide-usb-canon.html", p="uc", brand="Canon", usb=("uc.usb", 1),
          note="uc.note", wireless="guide-canon.html", manual="https://cam.start.canon/",
          ogtitle="캐논 카메라 USB 유선 연결 방법"),
-    dict(src="guide-usb-sony.html", p="us", brand="Sony", usb=("us.usb", 3),
+    dict(src="guide-usb-sony.html", p="us", brand="Sony", usb=("us.usb", 4),
          note="us.note", wireless="guide-sony.html", manual="https://helpguide.sony.net/",
-         ogtitle="소니 카메라 USB 유선 연결 방법"),
+         ogtitle="소니 카메라 USB 유선 연결 방법",
+         pwtbl=("us.pw", 4), pwslot="usb-sony-power",
+         usbslot="usb-sony-usb", noteslot="usb-sony-mode",
+         extra=dict(title="us.rs.title", body="us.rs.body", tbl=("us.rs", 3),
+                    note="us.rs.note", slot="usb-sony-remote")),
     dict(src="guide-usb-fujifilm.html", p="uf", brand="Fujifilm", usb=("uf.usb", 2),
          note="uf.note", wireless="guide-fujifilm.html", manual="https://fujifilm-dsc.com/",
          ogtitle="후지필름 카메라 USB 유선 연결 방법"),
@@ -560,6 +564,43 @@ def wired_vendor_page(v):
     out = [head(slug, p + ".meta.title", p + ".meta.desc", v["ogtitle"], "HowTo", v["ogtitle"]), header()]
     a = out.append
     prefix, n = v["usb"]
+
+    def shot(slot, cap_key):
+        """사진이 있으면 사진, 없으면 아무것도 넣지 않는다(도해를 새로 그리지는 않는다)."""
+        return photo(slot, cap_key) if slot and slot_src(slot) else ""
+
+    # 소니만 원격 촬영 설정 단계가 하나 더 있어 뒤 단계 번호가 밀린다.
+    has_extra = bool(v.get("extra"))
+    n_cable = 4 if has_extra else 3
+    n_perm = n_cable + 1
+
+    pw_block = ""
+    if v.get("pwtbl"):
+        pw_block = '                <div class="wiz">\n%s\n                </div>' % kv_table(*v["pwtbl"])
+    pw_block += ("\n" + shot(v.get("pwslot"), p + ".power")) if v.get("pwslot") else ""
+    usb_shot = shot(v.get("usbslot"), prefix + ".k1")
+    note_shot = shot(v.get("noteslot"), v["note"] + ".title")
+
+    extra_block = ""
+    if has_extra:
+        e = v["extra"]
+        extra_block = f'''
+            <div class="step">
+              <div class="step-no" aria-hidden="true">3</div>
+              <h3 data-i18n="{e["title"]}">{t(e["title"])}</h3>
+              <div>
+                <p data-i18n="{e["body"]}">{t(e["body"])}</p>
+                <div class="wiz">
+{kv_table(*e["tbl"])}
+                </div>
+{shot(e["slot"], e["title"])}
+                <div class="note">
+                  <b data-i18n="{e["note"]}.title">{t(e["note"] + ".title")}</b>
+                  <p data-i18n="{e["note"]}.body">{t(e["note"] + ".body")}</p>
+                </div>
+              </div>
+            </div>
+'''
 
     a(f'''
   <main id="main">
@@ -605,6 +646,7 @@ def wired_vendor_page(v):
               <div>
                 <p data-i18n="gu.power.body">{t("gu.power.body")}</p>
                 <p data-i18n="{p}.power">{t(p + ".power")}</p>
+{pw_block}
               </div>
             </div>
 
@@ -615,16 +657,18 @@ def wired_vendor_page(v):
                 <div class="wiz">
 {kv_table(prefix, n)}
                 </div>
+{usb_shot}
                 <div class="note">
                   <b data-i18n="{v["note"]}.title">{t(v["note"] + ".title")}</b>
                   <p data-i18n="{v["note"]}.body">{t(v["note"] + ".body")}</p>
                 </div>
+{note_shot}
                 <p><a href="{v["manual"]}" target="_blank" rel="noopener" data-i18n="guide.s2.manual">{t("guide.s2.manual")}</a></p>
               </div>
             </div>
-
+{extra_block}
             <div class="step">
-              <div class="step-no" aria-hidden="true">3</div>
+              <div class="step-no" aria-hidden="true">{n_cable}</div>
               <h3 data-i18n="gu.s2.title">{t("gu.s2.title")}</h3>
               <div>
                 <p data-i18n="gu.s2.body">{t("gu.s2.body")}</p>
@@ -633,7 +677,7 @@ def wired_vendor_page(v):
             </div>
 
             <div class="step">
-              <div class="step-no" aria-hidden="true">4</div>
+              <div class="step-no" aria-hidden="true">{n_perm}</div>
               <h3 data-i18n="gu.s3.title">{t("gu.s3.title")}</h3>
               <div>
                 <p data-i18n="gu.s3.body">{t("gu.s3.body")}</p>
