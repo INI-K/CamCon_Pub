@@ -563,7 +563,10 @@ WIRED = [
                     note="us.rs.note", slot="usb-sony-remote")),
     dict(src="guide-usb-fujifilm.html", p="uf", brand="Fujifilm", usb=("uf.usb", 2),
          note="uf.note", wireless="guide-fujifilm.html", manual="https://fujifilm-dsc.com/",
-         ogtitle="후지필름 카메라 USB 유선 연결 방법"),
+         ogtitle="후지필름 카메라 USB 유선 연결 방법",
+         usbslots=[("usb-fuji-01-setup", "uf.sh1"), ("usb-fuji-02-connection", "uf.sh2"),
+                   ("usb-fuji-03-mode", "uf.sh3"), ("usb-fuji-04-power-row", "uf.sh4"),
+                   ("usb-fuji-05-power", "uf.sh5")]),
 ]
 
 
@@ -602,6 +605,11 @@ def wired_vendor_page(v):
         if img:
             pw_block += "\n" + img
     usb_shot = shot(v.get("usbslot"), prefix + ".k1")
+    # 여러 장이면 순서가 있는 이동 경로이므로 번호가 붙는 격자에 담는다.
+    seq = [x for x in (shot(sl, ck) for sl, ck in v.get("usbslots", [])) if x]
+    if seq:
+        usb_shot += ('\n' if usb_shot else '') + '                <div class="shots">\n' \
+                    + "\n".join(seq) + '\n                </div>' 
     note_shot = shot(v.get("noteslot"), v["note"] + ".title")
 
     extra_block = ""
