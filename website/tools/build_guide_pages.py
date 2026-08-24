@@ -551,11 +551,13 @@ WIRED = [
          ogtitle="니콘 카메라 USB 유선 연결 방법"),
     dict(src="guide-usb-canon.html", p="uc", brand="Canon", usb=("uc.usb", 1),
          note="uc.note", wireless="guide-canon.html", manual="https://cam.start.canon/",
-         ogtitle="캐논 카메라 USB 유선 연결 방법"),
+         ogtitle="캐논 카메라 USB 유선 연결 방법",
+         pwtbl=("uc.pw", 4), pwslots=["usb-canon-power", "usb-canon-eco"],
+         usbslot="usb-canon-usb"),
     dict(src="guide-usb-sony.html", p="us", brand="Sony", usb=("us.usb", 4),
          note="us.note", wireless="guide-sony.html", manual="https://helpguide.sony.net/",
          ogtitle="소니 카메라 USB 유선 연결 방법",
-         pwtbl=("us.pw", 4), pwslot="usb-sony-power",
+         pwtbl=("us.pw", 4), pwslots=["usb-sony-power"],
          usbslot="usb-sony-usb", noteslot="usb-sony-mode",
          extra=dict(title="us.rs.title", body="us.rs.body", tbl=("us.rs", 3),
                     note="us.rs.note", slot="usb-sony-remote")),
@@ -595,7 +597,10 @@ def wired_vendor_page(v):
     pw_block = ""
     if v.get("pwtbl"):
         pw_block = '                <div class="wiz">\n%s\n                </div>' % kv_table(*v["pwtbl"])
-    pw_block += ("\n" + shot(v.get("pwslot"), p + ".power")) if v.get("pwslot") else ""
+    for sl in v.get("pwslots", []):
+        img = shot(sl, p + ".power")
+        if img:
+            pw_block += "\n" + img
     usb_shot = shot(v.get("usbslot"), prefix + ".k1")
     note_shot = shot(v.get("noteslot"), v["note"] + ".title")
 
