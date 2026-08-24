@@ -379,6 +379,7 @@ def vendor_page(v):
     h1key = "guide.h1" if p == "guide" else p + ".h1"
     leadkey = "guide.lead" if p == "guide" else p + ".lead"
     s2body = "guide.s2.body" if p == "guide" else p + ".s2.body"
+    prepkey = "guide.prep.body" if p == "guide" else p + ".prep"
     s2path = "guide.s2.path" if p == "guide" else p + ".s2.path"
     s5body = "guide.s5.body" if p == "guide" else p + ".s5.body"
 
@@ -398,6 +399,15 @@ def vendor_page(v):
         return '                <div class="shots">\n' + "\n".join(figs) + '\n                </div>'
 
     s2_seq, s3_seq, s5_seq = seq("s2slots"), seq("s3slots"), seq("s5slots")
+
+    def fixed(pairs):
+        figs = [photo(sl, ck) for sl, ck in pairs if slot_src(sl)]
+        if not figs:
+            return ""
+        return '                <div class="shots">\n' + "\n".join(figs) + '\n                </div>'
+
+    s1_seq = fixed([("phone-hotspot-config", "g.ph.config"), ("phone-hotspot-band", "g.ph.band")])
+    s4_seq = fixed([("phone-search", "g.ph.search")])
     s2_note = ""
     if v.get("s2note"):
         s2_note = f'''                <div class="note">
@@ -433,7 +443,7 @@ def vendor_page(v):
 
           <section class="guide-sec" id="prep">
             <h2 data-i18n="guide.prep.title">{t("guide.prep.title")}</h2>
-            <p data-i18n="guide.prep.body">{t("guide.prep.body")}</p>
+            <p data-i18n="{prepkey}">{t(prepkey)}</p>
             <p data-i18n="guide.router">{t("guide.router")}</p>''')
     if not v["verified"]:
         a(f'''            <div class="note note-warn">
@@ -453,6 +463,7 @@ def vendor_page(v):
                 <p data-i18n="guide.s1.body">{t("guide.s1.body")}</p>
                 <p data-i18n="guide.s1.tip">{t("guide.s1.tip")}</p>
 {screen("guide.s1.shot.bar", [("guide.s1.shot.a", "on"), ("guide.s1.shot.b", "off")], "guide.s1.cap", slot="phone-hotspot")}
+{s1_seq}
               </div>
             </div>
 
@@ -506,6 +517,7 @@ def vendor_page(v):
               <div>
                 <p data-i18n="guide.s4.body">{t("guide.s4.body")}</p>
 {pair_block if v["wizard"] else ""}
+{s4_seq}
 {screen("guide.s4.shot.bar", [("guide.s4.shot.row1", "on"), ("guide.s4.shot.row2", "off")], "guide.s4.cap", slot="phone-app")}
               </div>
             </div>

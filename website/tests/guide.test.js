@@ -121,3 +121,38 @@ test("사용자 노출 문구에 em-dash 가 없다", () => {
   const body = guide.replace(/<!--[\s\S]*?-->/g, "");
   assert.equal(/[—–]/.test(body), false, "em-dash 는 콜론이나 접속사로 바꿔야 한다");
 });
+
+test("제조사 페이지에 다른 제조사 이름이 새지 않는다", () => {
+  /* 공용 문구(준비물·설명서 링크·절전 안내 등)가 니콘 기준으로 쓰여 있어서 캐논·소니·후지
+     페이지에 "니콘 Z 시리즈 카메라를 준비하세요"가 그대로 나오던 사고가 있었다.
+     키를 공유하는 구조라 한 번 새면 세 페이지가 동시에 틀린다. */
+  const VENDORS = {
+    nikon: [/니콘/, /Nikon/],
+    canon: [/캐논/, /Canon/],
+    sony: [/소니/, /Sony/],
+    fujifilm: [/후지/, /Fujifilm/],
+  };
+  // 페이지 → 그 페이지가 언급해도 되는 제조사
+  const OWN = {
+    "guide-nikon.html": "nikon", "guide-canon.html": "canon",
+    "guide-sony.html": "sony", "guide-fujifilm.html": "fujifilm",
+    "guide-usb-nikon.html": "nikon", "guide-usb-canon.html": "canon",
+    "guide-usb-sony.html": "sony", "guide-usb-fujifilm.html": "fujifilm",
+  };
+
+  for (const [file, own] of Object.entries(OWN)) {
+    const raw = fs.readFileSync(path.join(WEB, file), "utf8");
+    // 개발 주석과 사진 파일 경로는 검사 대상이 아니다(경로에 제조사명이 들어간다).
+    const body = raw
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<img[^>]*>/g, "")
+      .replace(/href="[^"]*"/g, "");
+    for (const [vendor, pats] of Object.entries(VENDORS)) {
+      if (vendor === own) continue;
+      for (const re of pats) {
+        assert.equal(re.test(body), false,
+          `${file} 에 다른 제조사(${vendor}) 이름이 있다: ${(body.match(re) || [])[0]}`);
+      }
+    }
+  }
+});
