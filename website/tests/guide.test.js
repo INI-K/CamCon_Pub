@@ -156,3 +156,45 @@ test("제조사 페이지에 다른 제조사 이름이 새지 않는다", () =>
     }
   }
 });
+
+test("등장 연출이 글자를 영구히 숨길 수 없다", () => {
+  /* 두 번 깨졌던 자리다. 요소를 숨겨 두고 스크립트로 드러내는 구조라, 규칙이 조금만
+     어긋나면 글자가 통째로 사라진 채 배포된다. 사고 원인 두 가지를 기계적으로 막는다. */
+  // 주석 안의 텍스트가 선택자로 잡히지 않도록 먼저 걷어낸다.
+  const css = fs.readFileSync(path.join(WEB, "assets", "css", "style.css"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+
+  // (1) 숨김과 드러남의 특정도가 같아야 한다. 한쪽만 .js 접두면 드러남이 못 이긴다.
+  const hides = [...css.matchAll(/^(\S[^{]*?\.reveal[^{]*)\{[^}]*opacity:\s*0/gm)].map((m) => m[1].trim());
+  for (const sel of hides) {
+    assert.ok(sel.startsWith(".js "), `숨김 규칙에 .js 접두가 없다: ${sel}`);
+  }
+  const shows = [...css.matchAll(/^(\S[^{]*?\.is-visible[^{]*)\{/gm)].map((m) => m[1].trim());
+  assert.ok(shows.length > 0, "드러남 규칙을 찾지 못했다");
+  for (const sel of shows) {
+    assert.ok(sel.startsWith(".js "), `드러남 규칙에 .js 접두가 없다: ${sel}`);
+  }
+
+  // (2) 드러남 규칙은 변형 정의 뒤에 와야 한다. 같은 특정도면 뒤가 이긴다.
+  //     모션 최소화 블록은 !important 로 따로 이기므로 이 비교에서 뺀다(@media 전부 제거).
+  const main = css.replace(/@media[^{]*\{(?:[^{}]|\{[^{}]*\})*\}/g, "");
+  const lastVariant = Math.max(...[".js .reveal--mask", ".js .reveal--scale", ".js .reveal-group > *"]
+    .map((sel) => main.lastIndexOf(sel)));
+  const firstShow = main.indexOf(".js .reveal.is-visible");
+  assert.ok(firstShow > lastVariant,
+    "드러남 규칙이 변형보다 앞에 있다. 같은 특정도라 변형이 이겨서 글자가 숨겨진 채 남는다");
+
+  // (3) 모션 최소화에서는 !important 로 확실히 되돌린다. 특정도 싸움에 지면 글자가 사라진다.
+  //     .reveal 을 다루는 모션-최소화 블록이 여러 개다. 그중 하나라도 !important 로
+  //     확실히 되돌리면 된다(특정도 싸움에 지지 않는 유일한 보장).
+  const reduceBlocks = css.match(/@media[^{]*prefers-reduced-motion[^{]*\{(?:[^{}]|\{[^{}]*\})*\}/g) || [];
+  assert.ok(
+    reduceBlocks.some((b) => /\.js \.reveal[\s\S]*?opacity:\s*1\s*!important/.test(b)),
+    "모션 최소화 설정에서 등장 요소를 !important 로 되돌리지 않는다"
+  );
+
+  // (4) clip-path 로 드러내지 않는다. 어긋나면 글자가 남지 않고 통째로 사라진다.
+  const revealBlock = css.slice(css.indexOf(".js .reveal {"));
+  assert.equal(/\.reveal[^{]*\{[^}]*clip-path/.test(revealBlock), false,
+    "등장 연출에 clip-path 를 쓰면 실패했을 때 글자가 통째로 사라진다");
+});

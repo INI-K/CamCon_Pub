@@ -83,6 +83,17 @@
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
+/* ---------- 언어별 줄바꿈 ----------
+   한국어는 어절 단위로 끊어야 읽힌다. keep-all 이 없으면 "카메라를 핫스" / "팟에" 처럼
+   낱말 가운데가 잘린다. 지금까지 홈의 제목 네 곳에만 걸려 있어서, 본문과 안내 페이지
+   11장은 전부 낱말이 잘린 채였다. 문서 전체에 건다.
+   아주 긴 토큰(URL·모델명)까지 통째로 밀려 넘치지 않도록 break-word 를 짝으로 둔다.
+
+   일본어·중국어는 어디서든 끊는 것이 정상이지만, 작은 가나와 문장부호 앞에서 끊기면
+   어색하다. line-break: strict 가 그것을 막는다. */
+:lang(ko) { word-break: keep-all; overflow-wrap: break-word; }
+:lang(ja), :lang(zh) { line-break: strict; }
+
 body {
   font-family: var(--sans);
   background: var(--bg);
@@ -916,13 +927,12 @@ main { position: relative; z-index: var(--z-content); }
    REVEAL
    ============================================================ */
 .js .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease-out), transform .7s var(--ease-out); }
-.reveal.is-visible { opacity: 1; transform: none; }
 .reveal[data-delay="1"] { transition-delay: .08s; }
 .reveal[data-delay="2"] { transition-delay: .16s; }
 .reveal[data-delay="3"] { transition-delay: .24s; }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal { opacity: 1; transform: none; transition: none; }
+  .js .reveal { opacity: 1; transform: none; transition: none; }
   .hero-stage::before, .hero-iris, .filmstrip-track,
   .flow-dot, .cam-skel { animation: none !important; }
   .flow-dot { opacity: 0; }
@@ -1029,32 +1039,42 @@ a.gcard:hover{border-color:var(--amber,#E8A245);background:rgba(10,11,13,.75);
 }
 
 
-/* ══════════════ 등장 연출 (2026-08-24) ══════════════
-   기존에는 52개 요소가 전부 같은 방식(위로 22px 페이드업)으로 나타났다. 움직임은 있는데
-   연출이 없어서 어디를 봐야 하는지 알려 주지 못한다. 역할에 따라 셋으로 나눈다.
-   is-visible 은 공통으로 transform 을 지우므로, 변형(variant)은 초기 상태만 정의하면 된다. */
+/* ══════════════ 등장 연출 ══════════════
+   기존에는 52개 요소가 전부 같은 방식으로 페이드업했다. 역할에 따라 나눈다.
 
-/* 제목: 아래에서 올라오며 드러난다. 글자가 잘려 있다가 제자리를 찾는 인상. */
-.js .reveal--mask { transform: translateY(30px); clip-path: inset(0 0 100% 0); transition: opacity .8s var(--ease-out), transform .8s var(--ease-out), clip-path .8s var(--ease-out); }
-.reveal--mask.is-visible { clip-path: inset(0 0 0 0); }
+   ⚠️ 규칙 순서가 곧 동작이다. 아래 세 가지를 지켜야 글자가 사라지지 않는다.
+     1) 초기 상태와 드러남 규칙의 특정도를 똑같이 맞춘다(둘 다 .js 접두).
+        한쪽만 .js 를 붙이면 특정도가 어긋나 드러남이 초기 상태를 못 이긴다.
+     2) 드러남 규칙은 반드시 모든 변형 뒤에 온다. 같은 특정도에서는 뒤가 이긴다.
+     3) 모션 최소화 설정에서는 !important 로 확실히 되돌린다. 접근성 우선이다.
 
-/* 사진·시각 자산: 살짝 확대된 상태에서 제자리로. 카메라가 초점을 잡는 느낌. */
+   clip-path 로 잘라 드러내는 기법은 쓰지 않는다. 보기에는 좋지만 한 번 어긋나면
+   글자가 통째로 사라지고, 그 상태를 사용자가 먼저 발견하게 된다. 실제로 그렇게 깨졌다.
+   transform 과 opacity 만 쓰면 최악의 경우에도 위치가 조금 어긋날 뿐 글자는 남는다. */
+
+/* --- 초기 상태 --- */
+.js .reveal--mask  { transform: translateY(34px); transition: opacity .85s var(--ease-out), transform .85s var(--ease-out); }
 .js .reveal--scale { transform: scale(1.035); }
-
-/* 가로로 놓인 짝: 옆에서 들어온다. */
 .js .reveal--left  { transform: translateX(-24px); }
 .js .reveal--right { transform: translateX(24px); }
-
-/* 묶음 안에서는 순서대로. data-delay 를 일일이 붙이지 않아도 되게 한다. */
 .js .reveal-group > * { opacity: 0; transform: translateY(18px); transition: opacity .65s var(--ease-out), transform .65s var(--ease-out); }
-.reveal-group.is-visible > * { opacity: 1; transform: none; }
-.reveal-group.is-visible > :nth-child(1) { transition-delay: 0s }
-.reveal-group.is-visible > :nth-child(2) { transition-delay: .07s }
-.reveal-group.is-visible > :nth-child(3) { transition-delay: .14s }
-.reveal-group.is-visible > :nth-child(4) { transition-delay: .21s }
-.reveal-group.is-visible > :nth-child(5) { transition-delay: .28s }
-.reveal-group.is-visible > :nth-child(6) { transition-delay: .35s }
-.reveal-group.is-visible > :nth-child(n+7) { transition-delay: .4s }
+
+/* --- 드러남 (반드시 변형 뒤) --- */
+.js .reveal.is-visible { opacity: 1; transform: none; }
+.js .reveal-group.is-visible > * { opacity: 1; transform: none; }
+.js .reveal-group.is-visible > :nth-child(1) { transition-delay: 0s }
+.js .reveal-group.is-visible > :nth-child(2) { transition-delay: .07s }
+.js .reveal-group.is-visible > :nth-child(3) { transition-delay: .14s }
+.js .reveal-group.is-visible > :nth-child(4) { transition-delay: .21s }
+.js .reveal-group.is-visible > :nth-child(5) { transition-delay: .28s }
+.js .reveal-group.is-visible > :nth-child(6) { transition-delay: .35s }
+.js .reveal-group.is-visible > :nth-child(n+7) { transition-delay: .4s }
+
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal, .js .reveal-group > * {
+    opacity: 1 !important; transform: none !important; transition: none !important;
+  }
+}
 
 /* ══════════════ 스크롤 연동 조리개 ══════════════
    조리개가 열리는 것은 이 제품의 아이콘이자 촬영 그 자체다. 등속 회전은 배경 장식이지만,
@@ -1086,7 +1106,5 @@ a.gcard:hover{border-color:var(--amber,#E8A245);background:rgba(10,11,13,.75);
 .btn-primary:hover::after, .btn-primary:focus-visible::after { transform: translateX(120%); }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal--mask, .reveal--scale, .reveal--left, .js .reveal--right { transform: none; clip-path: none; transition: none; }
-  .reveal-group > * { opacity: 1; transform: none; transition: none; }
   .btn-primary::after { display: none; }
 }

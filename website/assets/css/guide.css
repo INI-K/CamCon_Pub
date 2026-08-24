@@ -40,9 +40,11 @@
      border:1px solid var(--hair);border-radius:var(--r-lg);overflow:hidden}
 .wiz > div{padding:10px 14px;border-top:1px solid var(--hair);font-size:14px;line-height:1.6}
 .wiz > div:nth-child(1),.wiz > div:nth-child(2){border-top:0}
-.wiz-k{background:var(--surface);color:var(--mute,#8F95A0);font-weight:600;white-space:nowrap}
+/* nowrap 금지: 이탈리아어 '(corpi meno recenti)' 처럼 52자짜리 항목명이 들어와
+   가로로 넘친다. 긴 항목명은 줄바꿈되는 편이 낫다. */
+.wiz-k{background:var(--surface);color:var(--mute,#8F95A0);font-weight:600}
 .wiz-v{color:var(--ink,#F6F7F8)}
-@media (max-width:480px){
+@media (max-width:720px){
   .wiz{grid-template-columns:1fr}
   .wiz-k{border-top:1px solid var(--hair);padding-bottom:2px}
   .wiz-v{border-top:0;padding-top:4px}
