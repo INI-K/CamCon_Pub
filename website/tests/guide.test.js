@@ -13,7 +13,10 @@ const path = require("node:path");
 const WEB = path.join(__dirname, "..");
 const guide = fs.readFileSync(path.join(WEB, "guide-nikon.html"), "utf8");
 /** 허브 + 제조사 4종. 언어판이 만들어지는 안내 페이지 전부. */
-const GUIDE_PAGES = ["guide.html", "guide-usb.html", "guide-nikon.html", "guide-canon.html",
+const GUIDE_PAGES = ["guide.html", "guide-usb.html",
+                     "guide-usb-nikon.html", "guide-usb-canon.html",
+                     "guide-usb-sony.html", "guide-usb-fujifilm.html",
+                     "guide-nikon.html", "guide-canon.html",
                      "guide-sony.html", "guide-fujifilm.html"];
 const catalog = JSON.parse(
   fs.readFileSync(path.join(WEB, "assets", "data", "supported-cameras.json"), "utf8")

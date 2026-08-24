@@ -205,7 +205,7 @@ def footer(slug):
     </div>
   </footer>
 
-  <script src="assets/js/main.js?v=20260824b" defer></script>
+  <script src="assets/js/main.js?v=20260824c" defer></script>
 </body>
 </html>
 '''
@@ -526,32 +526,48 @@ def vendor_page(v):
 {footer(v["src"])}''')
     return "".join(out)
 
+# 유선 제조사. usb = (키 접두, 개수) 로 USB 설정 표를 만든다.
+WIRED = [
+    dict(src="guide-usb-nikon.html", p="un", brand="Nikon", usb=("gu.nikon", 3),
+         note="gu.nikon.note", wireless="guide-nikon.html", manual="https://onlinemanual.nikonimglib.com/",
+         ogtitle="니콘 카메라 USB 유선 연결 방법"),
+    dict(src="guide-usb-canon.html", p="uc", brand="Canon", usb=("uc.usb", 1),
+         note="uc.note", wireless="guide-canon.html", manual="https://cam.start.canon/",
+         ogtitle="캐논 카메라 USB 유선 연결 방법"),
+    dict(src="guide-usb-sony.html", p="us", brand="Sony", usb=("us.usb", 3),
+         note="us.note", wireless="guide-sony.html", manual="https://helpguide.sony.net/",
+         ogtitle="소니 카메라 USB 유선 연결 방법"),
+    dict(src="guide-usb-fujifilm.html", p="uf", brand="Fujifilm", usb=("uf.usb", 2),
+         note="uf.note", wireless="guide-fujifilm.html", manual="https://fujifilm-dsc.com/",
+         ogtitle="후지필름 카메라 USB 유선 연결 방법"),
+]
 
-def usb_page():
-    """유선(USB) 안내. 제조사를 가리지 않아 한 장으로 충분하다.
-    다만 니콘만 손볼 항목이 셋이라 별도 절을 둔다(다른 제조사는 한 줄로 끝난다)."""
-    slug = "guide-usb.html"
-    out = [head(slug, "gu.meta.title", "gu.meta.desc", "USB 케이블로 카메라 연결하는 방법",
-                "HowTo", "USB 케이블로 카메라 연결하는 방법"), header()]
+
+def kv_table(prefix, n, indent=20):
+    """{prefix}.k1/v1 … 형태의 설정 표. 제조사마다 행 수가 달라 개수를 받는다."""
+    pad = " " * indent
+    return "\n".join(
+        '%s<div class="wiz-k" data-i18n="%s.k%d">%s</div>\n'
+        '%s<div class="wiz-v" data-i18n="%s.v%d">%s</div>' % (
+            pad, prefix, i, t("%s.k%d" % (prefix, i)), pad, prefix, i, t("%s.v%d" % (prefix, i)))
+        for i in range(1, n + 1))
+
+
+def wired_vendor_page(v):
+    """제조사별 유선 안내. 절전·카드·케이블·권한은 어느 제조사나 같고, USB 설정만 다르다."""
+    p = v["p"]
+    slug = v["src"]
+    out = [head(slug, p + ".meta.title", p + ".meta.desc", v["ogtitle"], "HowTo", v["ogtitle"]), header()]
     a = out.append
-
-    vrows = "\n".join(
-        '                <div class="wiz-k">%s</div>\n                <div class="wiz-v" data-i18n="%s">%s</div>'
-        % (brand, key, t(key))
-        for brand, key in [("Nikon", "gu.s1.vn"), ("Canon", "gu.s1.vc"), ("Sony", "gu.s1.vs")])
-    nrows = "\n".join(
-        '                    <div class="wiz-k" data-i18n="gu.nikon.k%d">%s</div>\n'
-        '                    <div class="wiz-v" data-i18n="gu.nikon.v%d">%s</div>' % (
-            i, t("gu.nikon.k%d" % i), i, t("gu.nikon.v%d" % i))
-        for i in (1, 2, 3))
+    prefix, n = v["usb"]
 
     a(f'''
   <main id="main">
     <div class="wrap">
       <div class="guide-hero">
-        <p class="eyebrow"><a href="/guide.html" data-i18n="g.back">{t("g.back")}</a></p>
-        <h1 data-i18n="gu.h1">{t("gu.h1")}</h1>
-        <p class="lead" data-i18n="gu.lead">{t("gu.lead")}</p>
+        <p class="eyebrow"><a href="/guide-usb.html" data-i18n="g.back">{t("g.back")}</a></p>
+        <h1 data-i18n="{p}.h1">{t(p + ".h1")}</h1>
+        <p class="lead" data-i18n="{p}.lead">{t(p + ".lead")}</p>
       </div>
 
       <div class="guide-layout">
@@ -585,43 +601,39 @@ def usb_page():
 
             <div class="step">
               <div class="step-no" aria-hidden="true">1</div>
-              <h3 data-i18n="gu.s1.title">{t("gu.s1.title")}</h3>
+              <h3 data-i18n="gu.power.title">{t("gu.power.title")}</h3>
               <div>
-                <p data-i18n="gu.s1.body">{t("gu.s1.body")}</p>
-                <div class="wiz">
-{vrows}
-                </div>
-                <p data-i18n="gu.s1.vo">{t("gu.s1.vo")}</p>
-                <div class="note">
-                  <b data-i18n="gu.s1.note.title">{t("gu.s1.note.title")}</b>
-                  <p data-i18n="gu.s1.note.body">{t("gu.s1.note.body")}</p>
-                </div>
-{screen("gu.s1.shot.bar", [("gu.s1.shot.on", "on"), ("gu.s1.shot.off", "off")], "gu.s1.cap", slot="usb-01-mode")}
-
-                <p class="gen-label" data-i18n="gu.nikon.title">{t("gu.nikon.title")}</p>
-                <p data-i18n="gu.nikon.body">{t("gu.nikon.body")}</p>
-                <div class="wiz">
-{nrows}
-                </div>
-                <div class="note">
-                  <b data-i18n="gu.nikon.note.title">{t("gu.nikon.note.title")}</b>
-                  <p data-i18n="gu.nikon.note.body">{t("gu.nikon.note.body")}</p>
-                </div>
+                <p data-i18n="gu.power.body">{t("gu.power.body")}</p>
+                <p data-i18n="{p}.power">{t(p + ".power")}</p>
               </div>
             </div>
 
             <div class="step">
               <div class="step-no" aria-hidden="true">2</div>
-              <h3 data-i18n="gu.s2.title">{t("gu.s2.title")}</h3>
+              <h3 data-i18n="gu.usbset.title">{t("gu.usbset.title")}</h3>
               <div>
-                <p data-i18n="gu.s2.body">{t("gu.s2.body")}</p>
-                <p data-i18n="gu.s2.tip">{t("gu.s2.tip")}</p>
-{screen("gu.s1.shot.bar", [], "gu.s3.cap", slot="usb-02-cable") if slot_src("usb-02-cable") else ""}
+                <div class="wiz">
+{kv_table(prefix, n)}
+                </div>
+                <div class="note">
+                  <b data-i18n="{v["note"]}.title">{t(v["note"] + ".title")}</b>
+                  <p data-i18n="{v["note"]}.body">{t(v["note"] + ".body")}</p>
+                </div>
+                <p><a href="{v["manual"]}" target="_blank" rel="noopener" data-i18n="guide.s2.manual">{t("guide.s2.manual")}</a></p>
               </div>
             </div>
 
             <div class="step">
               <div class="step-no" aria-hidden="true">3</div>
+              <h3 data-i18n="gu.s2.title">{t("gu.s2.title")}</h3>
+              <div>
+                <p data-i18n="gu.s2.body">{t("gu.s2.body")}</p>
+                <p data-i18n="gu.s2.tip">{t("gu.s2.tip")}</p>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-no" aria-hidden="true">4</div>
               <h3 data-i18n="gu.s3.title">{t("gu.s3.title")}</h3>
               <div>
                 <p data-i18n="gu.s3.body">{t("gu.s3.body")}</p>
@@ -657,11 +669,76 @@ def usb_page():
           <div class="guide-end">
             <h2 data-i18n="gu.wifi.title">{t("gu.wifi.title")}</h2>
             <p data-i18n="gu.wifi.body">{t("gu.wifi.body")}</p>
-            <a class="btn btn-primary" href="/guide.html" data-i18n="g.back">{t("g.back")}</a>
+            <a class="btn btn-primary" href="/{v["wireless"]}">{v["brand"]} Wi-Fi</a>
           </div>
 
         </div>
       </div>
+    </div>
+  </main>
+{footer(slug)}''')
+    return "".join(out)
+
+
+def usb_page():
+    """유선 허브. 제조사를 고르게 하고, 어느 제조사나 같은 두 조건(카드·케이블)을 먼저 못 박는다."""
+    slug = "guide-usb.html"
+    out = [head(slug, "gu.meta.title", "gu.meta.desc", "USB 케이블로 카메라 연결하는 방법",
+                "WebPage", "USB 케이블로 카메라 연결하는 방법"), header()]
+    a = out.append
+
+    cards = "\n".join(
+        '''            <a class="vcard" href="/%s">
+              <span class="vcard-name">%s</span>
+              <span class="vcard-desc" data-i18n="%s.lead">%s</span>
+            </a>''' % (v["src"], v["brand"], v["p"], t(v["p"] + ".lead"))
+        for v in WIRED)
+
+    a(f'''
+  <main id="main">
+    <div class="wrap">
+      <div class="guide-hero">
+        <p class="eyebrow"><a href="/guide.html" data-i18n="g.back">{t("g.back")}</a></p>
+        <h1 data-i18n="gu.h1">{t("gu.h1")}</h1>
+        <p class="lead" data-i18n="gu.lead">{t("gu.lead")}</p>
+      </div>
+
+      <section class="guide-sec" id="prep" style="border-top:0;margin-top:22px">
+        <h2 data-i18n="gu.prep.title">{t("gu.prep.title")}</h2>
+        <p data-i18n="gu.prep.body">{t("gu.prep.body")}</p>
+        <div class="note">
+          <b data-i18n="gu.prep.note.title">{t("gu.prep.note.title")}</b>
+          <p data-i18n="gu.prep.note.body">{t("gu.prep.note.body")}</p>
+        </div>
+        <div class="note">
+          <b data-i18n="gu.card.title">{t("gu.card.title")}</b>
+          <p data-i18n="gu.card.body">{t("gu.card.body")}</p>
+        </div>
+      </section>
+
+      <section class="guide-sec" id="pick">
+        <h2 data-i18n="ghub.pick.title">{t("ghub.pick.title")}</h2>
+        <div class="vgrid">
+{cards}
+        </div>
+      </section>
+
+      <section class="guide-sec" id="other">
+        <h2 data-i18n="guh.other.title">{t("guh.other.title")}</h2>
+        <p data-i18n="guh.other.body">{t("guh.other.body")}</p>
+        <div class="wiz">
+          <div class="wiz-k">Panasonic</div>
+          <div class="wiz-v" data-i18n="guh.pana">{t("guh.pana")}</div>
+          <div class="wiz-k">OM System</div>
+          <div class="wiz-v" data-i18n="guh.om">{t("guh.om")}</div>
+        </div>
+      </section>
+
+      <section class="guide-sec" id="wifi">
+        <h2 data-i18n="gu.wifi.title">{t("gu.wifi.title")}</h2>
+        <p data-i18n="gu.wifi.body">{t("gu.wifi.body")}</p>
+        <p style="margin-top:16px"><a class="btn btn-primary" href="/guide.html" data-i18n="g.back">{t("g.back")}</a></p>
+      </section>
     </div>
   </main>
 {footer(slug)}''')
@@ -715,6 +792,8 @@ def hub_page():
 def main():
     check = "--check" in sys.argv
     pages = {"guide.html": hub_page(), "guide-usb.html": usb_page()}
+    for w in WIRED:
+        pages[w["src"]] = wired_vendor_page(w)
     for v in VENDORS:
         pages[v["src"]] = vendor_page(v)
 
