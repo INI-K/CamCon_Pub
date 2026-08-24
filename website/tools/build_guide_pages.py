@@ -205,7 +205,7 @@ def footer(slug):
     </div>
   </footer>
 
-  <script src="assets/js/main.js?v=20260824a" defer></script>
+  <script src="assets/js/main.js?v=20260824b" defer></script>
 </body>
 </html>
 '''
@@ -516,7 +516,7 @@ def vendor_page(v):
           <div class="guide-end">
             <h2 data-i18n="guide.end.title">{t("guide.end.title")}</h2>
             <p data-i18n="guide.end.body">{t("guide.end.body")}</p>
-            <a class="btn btn-primary" href="/#cameras" data-i18n="guide.end.cta">{t("guide.end.cta")}</a>
+            <a class="btn btn-primary" href="/guide-usb.html" data-i18n="gu.h1">{t("gu.h1")}</a>
           </div>
 
         </div>
@@ -524,6 +524,147 @@ def vendor_page(v):
     </div>
   </main>
 {footer(v["src"])}''')
+    return "".join(out)
+
+
+def usb_page():
+    """유선(USB) 안내. 제조사를 가리지 않아 한 장으로 충분하다.
+    다만 니콘만 손볼 항목이 셋이라 별도 절을 둔다(다른 제조사는 한 줄로 끝난다)."""
+    slug = "guide-usb.html"
+    out = [head(slug, "gu.meta.title", "gu.meta.desc", "USB 케이블로 카메라 연결하는 방법",
+                "HowTo", "USB 케이블로 카메라 연결하는 방법"), header()]
+    a = out.append
+
+    vrows = "\n".join(
+        '                <div class="wiz-k">%s</div>\n                <div class="wiz-v" data-i18n="%s">%s</div>'
+        % (brand, key, t(key))
+        for brand, key in [("Nikon", "gu.s1.vn"), ("Canon", "gu.s1.vc"), ("Sony", "gu.s1.vs")])
+    nrows = "\n".join(
+        '                    <div class="wiz-k" data-i18n="gu.nikon.k%d">%s</div>\n'
+        '                    <div class="wiz-v" data-i18n="gu.nikon.v%d">%s</div>' % (
+            i, t("gu.nikon.k%d" % i), i, t("gu.nikon.v%d" % i))
+        for i in (1, 2, 3))
+
+    a(f'''
+  <main id="main">
+    <div class="wrap">
+      <div class="guide-hero">
+        <p class="eyebrow"><a href="/guide.html" data-i18n="g.back">{t("g.back")}</a></p>
+        <h1 data-i18n="gu.h1">{t("gu.h1")}</h1>
+        <p class="lead" data-i18n="gu.lead">{t("gu.lead")}</p>
+      </div>
+
+      <div class="guide-layout">
+        <nav class="guide-toc" aria-labelledby="toc-title">
+          <h2 id="toc-title" data-i18n="guide.toc.title">{t("guide.toc.title")}</h2>
+          <ol>
+            <li><a href="#prep" data-i18n="guide.toc.prep">{t("guide.toc.prep")}</a></li>
+            <li><a href="#steps" data-i18n="guide.toc.steps">{t("guide.toc.steps")}</a></li>
+            <li><a href="#trouble" data-i18n="guide.toc.trouble">{t("guide.toc.trouble")}</a></li>
+          </ol>
+        </nav>
+
+        <div class="guide-body">
+
+          <section class="guide-sec" id="prep">
+            <h2 data-i18n="gu.prep.title">{t("gu.prep.title")}</h2>
+            <p data-i18n="gu.prep.body">{t("gu.prep.body")}</p>
+            <div class="note">
+              <b data-i18n="gu.prep.note.title">{t("gu.prep.note.title")}</b>
+              <p data-i18n="gu.prep.note.body">{t("gu.prep.note.body")}</p>
+            </div>
+            <div class="note">
+              <b data-i18n="gu.card.title">{t("gu.card.title")}</b>
+              <p data-i18n="gu.card.body">{t("gu.card.body")}</p>
+            </div>
+          </section>
+
+          <section class="guide-sec" id="steps">
+            <h2 data-i18n="gu.steps.title">{t("gu.steps.title")}</h2>
+            <p data-i18n="gu.steps.body">{t("gu.steps.body")}</p>
+
+            <div class="step">
+              <div class="step-no" aria-hidden="true">1</div>
+              <h3 data-i18n="gu.s1.title">{t("gu.s1.title")}</h3>
+              <div>
+                <p data-i18n="gu.s1.body">{t("gu.s1.body")}</p>
+                <div class="wiz">
+{vrows}
+                </div>
+                <p data-i18n="gu.s1.vo">{t("gu.s1.vo")}</p>
+                <div class="note">
+                  <b data-i18n="gu.s1.note.title">{t("gu.s1.note.title")}</b>
+                  <p data-i18n="gu.s1.note.body">{t("gu.s1.note.body")}</p>
+                </div>
+{screen("gu.s1.shot.bar", [("gu.s1.shot.on", "on"), ("gu.s1.shot.off", "off")], "gu.s1.cap", slot="usb-01-mode")}
+
+                <p class="gen-label" data-i18n="gu.nikon.title">{t("gu.nikon.title")}</p>
+                <p data-i18n="gu.nikon.body">{t("gu.nikon.body")}</p>
+                <div class="wiz">
+{nrows}
+                </div>
+                <div class="note">
+                  <b data-i18n="gu.nikon.note.title">{t("gu.nikon.note.title")}</b>
+                  <p data-i18n="gu.nikon.note.body">{t("gu.nikon.note.body")}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-no" aria-hidden="true">2</div>
+              <h3 data-i18n="gu.s2.title">{t("gu.s2.title")}</h3>
+              <div>
+                <p data-i18n="gu.s2.body">{t("gu.s2.body")}</p>
+                <p data-i18n="gu.s2.tip">{t("gu.s2.tip")}</p>
+{screen("gu.s1.shot.bar", [], "gu.s3.cap", slot="usb-02-cable") if slot_src("usb-02-cable") else ""}
+              </div>
+            </div>
+
+            <div class="step">
+              <div class="step-no" aria-hidden="true">3</div>
+              <h3 data-i18n="gu.s3.title">{t("gu.s3.title")}</h3>
+              <div>
+                <p data-i18n="gu.s3.body">{t("gu.s3.body")}</p>
+{screen_text("gu.s3.shot.bar", "gu.s3.shot.body", "gu.s3.cap", slot="usb-03-permission")}
+              </div>
+            </div>
+
+            <div class="note" style="margin-top:34px">
+              <b data-i18n="guide.done.title">{t("guide.done.title")}</b>
+              <p data-i18n="guide.done.body">{t("guide.done.body")}</p>
+            </div>
+
+            <div class="note" style="margin-top:14px">
+              <b data-i18n="gu.mtp.title">{t("gu.mtp.title")}</b>
+              <p data-i18n="gu.mtp.body">{t("gu.mtp.body")}</p>
+            </div>
+          </section>
+
+          <section class="guide-sec" id="trouble">
+            <h2 data-i18n="guide.trouble.title">{t("guide.trouble.title")}</h2>
+            <p data-i18n="guide.trouble.body">{t("guide.trouble.body")}</p>
+            <ul class="checks">''')
+
+    for k in ("gu.t1", "gu.t2", "gu.t3", "gu.t4", "gu.t5", "gu.t6", "gu.t7"):
+        a(f'''              <li>
+                <b data-i18n="{k}.title">{t(k + ".title")}</b>
+                <p data-i18n="{k}.body">{t(k + ".body")}</p>
+              </li>''')
+
+    a(f'''            </ul>
+          </section>
+
+          <div class="guide-end">
+            <h2 data-i18n="gu.wifi.title">{t("gu.wifi.title")}</h2>
+            <p data-i18n="gu.wifi.body">{t("gu.wifi.body")}</p>
+            <a class="btn btn-primary" href="/guide.html" data-i18n="g.back">{t("g.back")}</a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+{footer(slug)}''')
     return "".join(out)
 
 
@@ -560,7 +701,10 @@ def hub_page():
       <section class="guide-sec" id="usb">
         <h2 data-i18n="ghub.usb.title">{t("ghub.usb.title")}</h2>
         <p data-i18n="ghub.usb.body">{t("ghub.usb.body")}</p>
-        <p style="margin-top:16px"><a class="btn btn-primary" href="/#cameras" data-i18n="guide.end.cta">{t("guide.end.cta")}</a></p>
+        <p style="margin-top:16px">
+          <a class="btn btn-primary" href="/guide-usb.html" data-i18n="gu.h1">{t("gu.h1")}</a>
+          <a href="/#cameras" style="margin-left:14px" data-i18n="guide.end.cta">{t("guide.end.cta")}</a>
+        </p>
       </section>
     </div>
   </main>
@@ -570,7 +714,7 @@ def hub_page():
 
 def main():
     check = "--check" in sys.argv
-    pages = {"guide.html": hub_page()}
+    pages = {"guide.html": hub_page(), "guide-usb.html": usb_page()}
     for v in VENDORS:
         pages[v["src"]] = vendor_page(v)
 

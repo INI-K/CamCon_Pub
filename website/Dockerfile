@@ -8,7 +8,7 @@ COPY snippets/ /etc/nginx/snippets/
 # 사이트 정적 파일 복사 (OG 카드/카메라 JSON/번역은 assets/ 아래에 포함)
 # favicon.svg는 index.html·guide·privacy·terms·delete 5개 문서가 전부 참조한다. 빠지면 전 페이지 404.
 # guide.html은 한국어 원본이라 루트에서 서빙된다(다른 7개 언어판은 아래 dist-lang/ 에 들어 있다).
-COPY index.html guide.html guide-nikon.html guide-canon.html guide-sony.html guide-fujifilm.html favicon.svg /usr/share/nginx/html/
+COPY index.html guide.html guide-usb.html guide-nikon.html guide-canon.html guide-sony.html guide-fujifilm.html favicon.svg /usr/share/nginx/html/
 COPY robots.txt sitemap.xml privacy.html terms.html delete.html /usr/share/nginx/html/
 COPY assets/ /usr/share/nginx/html/assets/
 
