@@ -99,7 +99,7 @@ def head(slug, tkey, dkey, ogtitle, ldtype, ldname):
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="assets/css/style.css?v=20260818b">
-  <link rel="stylesheet" href="assets/css/guide.css?v=20260824c">
+  <link rel="stylesheet" href="assets/css/guide.css?v=20260824d">
   <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"></noscript>
 
@@ -215,6 +215,22 @@ IMG_DIR = os.path.join(WEB, "assets", "img", "guide")
 EXTS = (".webp", ".jpg", ".jpeg", ".png")
 
 
+def img_size(rel):
+    """webp 헤더에서 폭·높이를 읽는다. width/height 를 비워 두면 사진이 뜰 때 본문이 밀린다.
+    Pillow 없이도 돌아야 하므로 VP8/VP8L/VP8X 세 형식을 직접 읽는다."""
+    with open(os.path.join(WEB, rel), "rb") as f:
+        b = f.read(40)
+    if b[12:16] == b"VP8X":
+        return (int.from_bytes(b[24:27], "little") + 1, int.from_bytes(b[27:30], "little") + 1)
+    if b[12:16] == b"VP8L":
+        n = int.from_bytes(b[21:25], "little")
+        return ((n & 0x3FFF) + 1, ((n >> 14) & 0x3FFF) + 1)
+    if b[12:16] == b"VP8 ":
+        return (int.from_bytes(b[26:28], "little") & 0x3FFF,
+                int.from_bytes(b[28:30], "little") & 0x3FFF)
+    return (768, 512)
+
+
 def slot_src(slot):
     """assets/img/guide/<slot>.<확장자> 가 있으면 그 경로를 준다. 없으면 None.
 
@@ -233,8 +249,9 @@ def photo(slot, cap_key, cap_extra=""):
     src = slot_src(slot)
     cap = '<span data-i18n="%s">%s</span>%s' % (cap_key, t(cap_key), cap_extra) if cap_extra else t(cap_key)
     capattr = "" if cap_extra else ' data-i18n="%s"' % cap_key
-    return f'''                <figure class="shot">
-                  <img src="/{src}" alt="" loading="lazy" decoding="async">
+    w, h = img_size(src)
+    return f'''                <figure class="shot shot-photo">
+                  <img src="/{src}" alt="" width="{w}" height="{h}" loading="lazy" decoding="async">
                   <figcaption{capattr}>{cap}</figcaption>
                 </figure>'''
 
@@ -303,10 +320,11 @@ def wizard_shots(manual_url):
                      % (manual_url, t("guide.s2.manual")))
         cap = ('<span data-i18n="%s">%s</span>%s' % (cap_key, t(cap_key), extra)) if extra else t(cap_key)
         capattr = "" if extra else ' data-i18n="%s"' % cap_key
-        figs.append('                  <figure class="shot">\n'
-                    '                    <img src="/%s" alt="" loading="lazy" decoding="async">\n'
+        w, h = img_size(src)
+        figs.append('                  <figure class="shot shot-photo">\n'
+                    '                    <img src="/%s" alt="" width="%d" height="%d" loading="lazy" decoding="async">\n'
                     '                    <figcaption%s>%s</figcaption>\n'
-                    '                  </figure>' % (src, capattr, cap))
+                    '                  </figure>' % (src, w, h, capattr, cap))
     if not figs:
         return ""
     return '                <div class="shots">\n' + "\n".join(figs) + '\n                </div>'
