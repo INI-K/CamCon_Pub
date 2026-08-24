@@ -4,11 +4,11 @@
    홈페이지 캐시 버스터를 올릴 필요가 없다. */
 
 .guide-hero{padding:76px 0 30px}
-.guide-hero h1{font-size:clamp(28px,5.4vw,44px);font-weight:700;letter-spacing:-.03em;margin:0 0 14px;line-height:1.2}
+.guide-hero h1{font-size:clamp(28px,5.4vw,44px);font-weight:600;letter-spacing:-.04em;margin:0 0 14px;line-height:1.14}
 .guide-hero .lead{font-size:clamp(15px,2.2vw,18px);color:var(--ink-dim,#B6BCC6);margin:0;max-width:62ch;line-height:1.75}
 
 /* 목차. 모바일에서는 그냥 흐르고 데스크톱에서만 본문 옆에 고정된다. */
-.guide-toc{margin:30px 0 0;padding:16px 20px;border:1px solid var(--hair,#262C33);border-radius:12px;background:var(--panel,#14171C)}
+.guide-toc{margin:30px 0 0;padding:16px 20px;border:1px solid var(--hair);border-radius:var(--r-lg);background:var(--surface)}
 .guide-toc h2{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--mute,#8F95A0);margin:0 0 10px}
 .guide-toc ol{margin:0;padding-left:20px}
 .guide-toc li{margin:5px 0;color:var(--ink-dim,#B6BCC6);font-size:14.5px}
@@ -17,13 +17,13 @@
 
 /* 허브의 제조사 카드. 실기 확인 여부를 배지로 드러내 놓는다 — 숨기면 "된다고 해놓고 안 되네"가 된다. */
 .vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(216px,1fr));gap:12px;margin:20px 0 0}
-.vcard{display:grid;grid-template-columns:1fr auto;gap:6px 10px;padding:18px 20px;border-radius:13px;
-       border:1px solid var(--hair,#262C33);background:var(--panel,#14171C);text-decoration:none;
+.vcard{display:grid;grid-template-columns:1fr auto;gap:6px 10px;padding:18px 20px;border-radius:var(--r-lg);
+       border:1px solid var(--hair);background:var(--surface);text-decoration:none;
        transition:border-color .15s ease,transform .15s ease}
 .vcard:hover{border-color:var(--amber,#E8A245);transform:translateY(-2px);text-decoration:none}
-.vcard-name{font-size:18px;font-weight:700;color:var(--ink,#F6F7F8);letter-spacing:-.01em}
+.vcard-name{font-size:18px;font-weight:600;color:var(--ink,#F6F7F8);letter-spacing:-.01em}
 .vcard-badge{align-self:center;justify-self:end;font-size:11px;font-weight:600;padding:4px 9px;
-             border-radius:999px;border:1px solid var(--hair,#262C33);color:var(--mute,#8F95A0);white-space:nowrap}
+             border-radius:999px;border:1px solid var(--hair);color:var(--mute,#8F95A0);white-space:nowrap}
 .vcard.is-verified .vcard-badge{border-color:rgba(232,162,69,.45);color:var(--amber-hi,#F0B865);
                                 background:rgba(232,162,69,.1)}
 .vcard-desc{grid-column:1/-1;font-size:14px;color:var(--ink-dim,#B6BCC6);line-height:1.65}
@@ -37,20 +37,20 @@
 
 /* 마법사가 묻는 항목과 답. 화면을 다섯 장 늘어놓는 것보다 표 하나가 훨씬 빨리 읽힌다. */
 .wiz{display:grid;grid-template-columns:auto 1fr;gap:0;margin:12px 0 0;max-width:520px;
-     border:1px solid var(--hair,#262C33);border-radius:10px;overflow:hidden}
-.wiz > div{padding:10px 14px;border-top:1px solid var(--hair,#262C33);font-size:14px;line-height:1.6}
+     border:1px solid var(--hair);border-radius:var(--r-lg);overflow:hidden}
+.wiz > div{padding:10px 14px;border-top:1px solid var(--hair);font-size:14px;line-height:1.6}
 .wiz > div:nth-child(1),.wiz > div:nth-child(2){border-top:0}
-.wiz-k{background:var(--panel,#14171C);color:var(--mute,#8F95A0);font-weight:600;white-space:nowrap}
+.wiz-k{background:var(--surface);color:var(--mute,#8F95A0);font-weight:600;white-space:nowrap}
 .wiz-v{color:var(--ink,#F6F7F8)}
 @media (max-width:480px){
   .wiz{grid-template-columns:1fr}
-  .wiz-k{border-top:1px solid var(--hair,#262C33);padding-bottom:2px}
+  .wiz-k{border-top:1px solid var(--hair);padding-bottom:2px}
   .wiz-v{border-top:0;padding-top:4px}
   .wiz > div:nth-child(2){border-top:0}
 }
 
-.guide-sec{padding-top:30px;margin-top:44px;border-top:1px solid var(--hair,#262C33)}
-.guide-sec > h2{font-size:clamp(20px,3vw,26px);font-weight:700;letter-spacing:-.02em;margin:0 0 8px}
+.guide-sec{padding-top:30px;margin-top:44px;border-top:1px solid var(--hair)}
+.guide-sec > h2{font-size:clamp(20px,3vw,26px);font-weight:600;letter-spacing:-.032em;margin:0 0 8px}
 .guide-sec > p{color:var(--ink-dim,#B6BCC6);margin:8px 0;max-width:66ch;line-height:1.8}
 .guide-body{max-width:768px}
 
@@ -59,20 +59,20 @@
 .step-no{grid-row:1/span 3;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
          background:var(--amber,#E8A245);color:var(--on-amber,#1C1005);font-weight:700;font-size:15px;
          font-variant-numeric:tabular-nums}
-.step h3{margin:5px 0 6px;font-size:18px;font-weight:650;letter-spacing:-.01em}
+.step h3{margin:5px 0 6px;font-size:18px;font-weight:600;letter-spacing:-.01em}
 .step p{margin:6px 0;color:var(--ink-dim,#B6BCC6);line-height:1.8;max-width:62ch}
-.step .path{display:inline-block;margin:10px 0 2px;padding:8px 13px;border-radius:8px;
+.step .path{display:inline-block;margin:10px 0 2px;padding:8px 13px;border-radius:var(--r-lg);
             background:rgba(232,162,69,.09);border:1px solid rgba(232,162,69,.28);
             font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
             font-size:13px;color:var(--amber-hi,#F0B865);line-height:1.7}
 
 /* 주의 박스. 실제로 사람들이 막히는 두 지점(연결 유형·본체 승인)에만 쓴다. 남발하면 무시된다. */
-.note{margin:14px 0 0;padding:14px 16px;border-radius:10px;border:1px solid rgba(232,162,69,.34);
+.note{margin:14px 0 0;padding:14px 16px;border-radius:var(--r-lg);border:1px solid rgba(232,162,69,.34);
       background:rgba(232,162,69,.07)}
 .note b{display:block;color:var(--amber-hi,#F0B865);font-size:14px;margin:0 0 5px}
 .note p{margin:0;color:var(--ink-dim,#B6BCC6);font-size:14.5px;line-height:1.75}
 /* 검증 상태 고지. 주의 박스와 색을 달리해 "조작 주의"가 아니라 "정보"로 읽히게 한다. */
-.note-warn{border-color:var(--hair,#262C33);background:rgba(255,255,255,.03)}
+.note-warn{border-color:var(--hair);background:rgba(255,255,255,.03)}
 .note-warn b{color:var(--ink,#F6F7F8)}
 
 /* 기기 화면 도해. 사진이 준비되면 이 블록을 <img> 로 교체한다.
@@ -83,14 +83,14 @@
    .shot-photo 를 붙여 본문 폭까지 키운다(원본이 768px 안팎이라 그 이상은 늘리지 않는다). */
 .shot{margin:16px 0 0;max-width:330px}
 .shot-photo{max-width:min(100%,768px)}
-.shot img{display:block;width:100%;height:auto;border-radius:12px;border:1px solid var(--hair,#262C33)}
-.screen{border:1px solid var(--hair,#262C33);border-radius:12px;background:#0B0D10;overflow:hidden;
+.shot img{display:block;width:100%;height:auto;border-radius:var(--r-lg);border:1px solid var(--hair)}
+.screen{border:1px solid var(--hair);border-radius:var(--r-lg);background:var(--bg-2);overflow:hidden;
         font-size:13.5px;line-height:1.6}
-.screen-bar{padding:8px 13px;background:var(--panel,#14171C);border-bottom:1px solid var(--hair,#262C33);
+.screen-bar{padding:8px 13px;background:var(--surface);border-bottom:1px solid var(--hair);
             color:var(--mute,#8F95A0);font-size:11.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
 .screen-body{padding:13px 15px;color:var(--ink-dim,#B6BCC6)}
 .screen-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;
-            border-radius:7px;margin:3px 0}
+            border-radius:var(--r-md);margin:3px 0}
 .screen-row.on{background:rgba(232,162,69,.13);color:var(--ink,#F6F7F8);font-weight:600}
 .screen-row.on::after{content:"✓";color:var(--amber,#E8A245);font-weight:700}
 .screen-row.off{color:var(--mute,#8F95A0)}
@@ -104,30 +104,30 @@
 .shots .shot{margin:0}
 .shots .shot figcaption{counter-increment:shot;position:relative;padding-left:22px}
 .shots .shot figcaption::before{content:counter(shot);position:absolute;left:0;top:1px;
-  width:16px;height:16px;border-radius:50%;background:var(--panel,#14171C);
-  border:1px solid var(--hair,#262C33);color:var(--amber,#E8A245);font-size:10px;
+  width:16px;height:16px;border-radius:50%;background:var(--surface);
+  border:1px solid var(--hair);color:var(--amber,#E8A245);font-size:10px;
   display:grid;place-items:center;font-variant-numeric:tabular-nums}
 @media (min-width:1400px){ .shots{grid-template-columns:repeat(2,minmax(0,1fr))} }
 
 /* 지원 기종. 목록이 12개뿐이라 표보다 칩이 읽기 쉽다. */
 .models{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0;padding:0;list-style:none}
-.models li{padding:7px 14px;border-radius:999px;border:1px solid var(--hair,#262C33);
-           background:var(--panel,#14171C);font-size:14px;color:var(--ink,#F6F7F8);font-weight:550}
+.models li{padding:7px 14px;border-radius:999px;border:1px solid var(--hair);
+           background:var(--surface);font-size:14px;color:var(--ink,#F6F7F8);font-weight:600}
 
 /* 문제 해결. 증상이 아니라 확인 순서대로 놓는다. */
 .checks{margin:18px 0 0;padding:0;list-style:none;counter-reset:chk}
 .checks li{counter-increment:chk;position:relative;padding:14px 0 14px 34px;
-           border-top:1px solid var(--hair,#262C33)}
+           border-top:1px solid var(--hair)}
 .checks li:first-child{border-top:0}
 .checks li::before{content:counter(chk);position:absolute;left:0;top:15px;width:21px;height:21px;
-                   border-radius:50%;border:1px solid var(--hair,#262C33);color:var(--mute,#8F95A0);
+                   border-radius:50%;border:1px solid var(--hair);color:var(--mute,#8F95A0);
                    font-size:11.5px;display:grid;place-items:center;font-variant-numeric:tabular-nums}
 .checks b{display:block;font-size:15.5px;font-weight:600;color:var(--ink,#F6F7F8);margin:0 0 4px}
 .checks p{margin:0;color:var(--ink-dim,#B6BCC6);font-size:14.5px;line-height:1.75;max-width:62ch}
 
-.guide-end{margin:52px 0 0;padding:26px 24px;border-radius:14px;border:1px solid var(--hair,#262C33);
-           background:var(--panel,#14171C)}
-.guide-end h2{margin:0 0 8px;font-size:19px;font-weight:650}
+.guide-end{margin:52px 0 0;padding:26px 24px;border-radius:var(--r-lg);border:1px solid var(--hair);
+           background:var(--surface)}
+.guide-end h2{margin:0 0 8px;font-size:19px;font-weight:600}
 .guide-end p{margin:0 0 16px;color:var(--ink-dim,#B6BCC6);line-height:1.75;max-width:60ch}
 
 @media (min-width:900px){
@@ -140,3 +140,14 @@
   .step{grid-template-columns:34px 1fr;gap:0 12px}
   .step-no{width:28px;height:28px;font-size:13px}
 }
+
+
+/* ══════════════ 단계 진행선 (2026-08-24) ══════════════
+   후지 무선은 사진이 11장이라 스크롤 중에 지금 몇 번째인지 놓치기 쉽다. 번호 원을 잇는
+   세로선을 그려 두면 위치를 눈으로 잡을 수 있다. 마지막 단계에는 선을 그리지 않는다. */
+.step { position: relative; }
+.step:not(:last-of-type)::before {
+  content: ""; position: absolute; left: 16px; top: 40px; bottom: -30px; width: 1px;
+  background: linear-gradient(180deg, var(--hair), transparent);
+}
+@media (max-width:560px){ .step:not(:last-of-type)::before { left: 13px; top: 34px } }

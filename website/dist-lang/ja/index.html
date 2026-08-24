@@ -40,7 +40,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="/assets/css/style.css?v=20260824b">
+  <link rel="stylesheet" href="/assets/css/style.css?v=20260824c">
   <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap"></noscript>
 
@@ -131,7 +131,7 @@
         <div class="hero-grid">
           <div>
             <p class="eyebrow hero-eyebrow reveal" data-i18n="hero.eyebrow">Cinema Camera Controller</p>
-            <h1 class="hero-title reveal" data-delay="1" data-i18n="hero.title">シャッターを切ると、<span class="accent">フィルムルックの写真</span>がスマホに届く</h1>
+            <h1 class="hero-title reveal reveal--mask" data-delay="1" data-i18n="hero.title">シャッターを切ると、<span class="accent">フィルムルックの写真</span>がスマホに届く</h1>
             <p class="hero-sub reveal" data-delay="2" data-i18n="hero.sub">カメラをUSB・Wi-Fiでつなぎ、撮影と同時にフィルムシミュレーションを施した写真を受け取りましょう。</p>
             <div class="hero-actions reveal" data-delay="3">
               <a class="play-badge-link" href="https://play.google.com/store/apps/details?id=com.inik.camcon" target="_blank" rel="noopener" aria-label="Google Play で手に入れよう" data-i18n-attr="aria-label" data-i18n="hero.cta">
@@ -141,7 +141,7 @@
             </div>
           </div>
 
-          <div class="hero-visual reveal" data-delay="2" aria-hidden="true">
+          <div class="hero-visual reveal reveal--scale" data-delay="2" aria-hidden="true">
             <div class="hero-lens">
               <svg class="hero-iris" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10.2" stroke="#6b5426" stroke-width="0.5"></circle>
@@ -201,7 +201,7 @@
       <div class="wrap">
         <header class="section-head reveal">
           <p class="eyebrow" data-i18n="features.eyebrow">Features</p>
-          <h2 class="section-title" data-i18n="features.title">撮影から色作りまで、カメラとスマホの間をひとつに</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="features.title">撮影から色作りまで、カメラとスマホの間をひとつに</h2>
         </header>
         <div class="features-grid">
           <article class="feat span-3 has-visual reveal">
@@ -272,7 +272,7 @@
     <section class="section section-alt" id="films">
       <div class="wrap">
         <header class="section-head center reveal">
-          <h2 class="section-title" data-i18n="films.title">9系統、<span class="accent">296種</span>のフィルムシミュレーション</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="films.title">9系統、<span class="accent">296種</span>のフィルムシミュレーション</h2>
           <p class="section-lead" data-i18n="films.lead">モノクロからインスタント、カラーネガまで。実際のフィルムのトーンカーブと色を3D LUTで再現しました。</p>
         </header>
 
@@ -299,7 +299,7 @@
           </div>
         </div>
 
-        <div class="films-grid">
+        <div class="films-grid reveal-group">
           <button type="button" class="swatch film-cat reveal" data-before="/assets/film/ba-before-alt.webp" data-after="/assets/film/ba-after-cat-bw.webp" data-name="Ilford Delta 100"><img class="shot" src="/assets/film/cat-bw.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.bw">モノクロ</span><span class="n">25</span></div></button>
           <button type="button" class="swatch film-cat reveal" data-delay="1" data-before="/assets/film/ba-before-grid.webp" data-after="/assets/film/ba-after-cat-slide.webp" data-name="Fuji Provia 100"><img class="shot" src="/assets/film/cat-slide.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.slide">カラースライド</span><span class="n">26</span></div></button>
           <button type="button" class="swatch film-cat reveal" data-delay="2" data-before="/assets/film/ba-before-hero.webp" data-after="/assets/film/ba-after-cat-xtrans.webp" data-name="Fuji Astia"><img class="shot" src="/assets/film/cat-xtrans.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.xtrans">富士 X-Trans III</span><span class="n">15</span></div></button>
@@ -322,7 +322,7 @@
     <section class="section section-alt" id="color">
       <div class="wrap">
         <header class="section-head center reveal">
-          <h2 class="section-title" data-i18n="color.title">写真1枚が、そのまま<span class="accent">プリセット</span>になります</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="color.title">写真1枚が、そのまま<span class="accent">プリセット</span>になります</h2>
           <p class="section-lead" data-i18n="color.lead">気に入った写真から色の分布を統計として抽出し、自分の写真に移します。カタログにない色でも、レファレンス1枚で再現できます。</p>
         </header>
 
@@ -369,7 +369,7 @@
     <section class="section is-tight" id="cameras">
       <div class="wrap">
         <header class="section-head reveal">
-          <h2 class="section-title" data-i18n="cameras.title">私のカメラ、使えますか?</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="cameras.title">私のカメラ、使えますか?</h2>
           <p class="section-lead" data-i18n="cameras.lead">USB(PTP)またはWi-Fi STA(ルーター)モードに対応したカメラならお使いいただけます。</p>
         </header>
 
@@ -417,7 +417,7 @@
     <section class="section section-alt is-tight" id="connect">
       <div class="wrap">
         <header class="section-head reveal">
-          <h2 class="section-title" data-i18n="connect.title">2つの接続方法</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="connect.title">2つの接続方法</h2>
         </header>
 
         <div class="reveal">
@@ -427,7 +427,7 @@
           </div>
 
           <div class="tab-panel is-active" id="panel-usb" role="tabpanel" aria-labelledby="tab-usb">
-            <ol class="steps">
+            <ol class="steps reveal-group">
               <li class="step"><div class="lbl" data-i18n="connect.usb1Label">ケーブル接続</div><p data-i18n="connect.usb1">USB-C(OTG)ケーブルでスマホとカメラを接続します。</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.usb2Label">アクセスを許可</div><p data-i18n="connect.usb2">アプリでUSB接続の権限を許可します。</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.usb3Label">撮影開始</div><p data-i18n="connect.usb3">自動認識・接続が完了したら、すぐに撮影を始めます。</p></li>
@@ -437,7 +437,7 @@
           </div>
 
           <div class="tab-panel" id="panel-sta" role="tabpanel" aria-labelledby="tab-sta" hidden>
-            <ol class="steps">
+            <ol class="steps reveal-group">
               <li class="step"><div class="lbl" data-i18n="connect.sta1Label">同じネットワーク</div><p data-i18n="connect.sta1">カメラとスマホを同じルーターに接続します。</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.sta2Label">カメラを選択</div><p data-i18n="connect.sta2">アプリでカメラを検索して選択します。</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.sta3Label">接続を承認</div><p data-i18n="connect.sta3">初回接続時は<strong>カメラ本体で「接続を許可」を承認</strong>します。以降は自動的に再接続します。</p></li>
@@ -452,7 +452,7 @@
             <h3 data-i18n="connect.guide.title">カメラ別の接続ガイド</h3>
             <p data-i18n="connect.guide.lead">上の3ステップはどのカメラでも同じですが、カメラ側で押すメニューはメーカーごとに異なります。実際の画面写真とともにひとつずつご案内します。</p>
           </div>
-          <div class="guide-band-cards">
+          <div class="guide-band-cards reveal-group">
             <a class="gcard" href="/ja/guide-usb.html">
               <span class="gcard-ico" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6M15 3v6"></path><path d="M6 9h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6z"></path><path d="M12 18v3"></path></svg>
@@ -483,11 +483,11 @@
       <div class="wrap">
         <header class="section-head center reveal">
           <p class="eyebrow center" data-i18n="pricing.eyebrow">Pricing</p>
-          <h2 class="section-title" data-i18n="pricing.title">無料で始めて、必要なときにPROへ</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="pricing.title">無料で始めて、必要なときにPROへ</h2>
           <p class="section-lead" data-i18n="pricing.lead">無料で始められます。PRO プランは準備中です。</p>
         </header>
 
-        <div class="plans">
+        <div class="plans reveal-group">
           <div class="plan reveal">
             <div class="plan-name">FREE</div>
             <div class="price-free" data-i18n="pricing.freePrice">無料</div>
@@ -517,7 +517,7 @@
     <section class="section section-alt is-tight" id="faq">
       <div class="wrap">
         <header class="section-head center reveal">
-          <h2 class="section-title" data-i18n="faq.title">よくある質問</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="faq.title">よくある質問</h2>
         </header>
         <div class="faq-list">
           <div class="acc reveal">
@@ -613,6 +613,6 @@
     </div>
   </footer>
 
-  <script src="/assets/js/main.js?v=20260824c" defer></script>
+  <script src="/assets/js/main.js?v=20260824d" defer></script>
 </body>
 </html>

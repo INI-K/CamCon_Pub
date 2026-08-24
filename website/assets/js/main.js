@@ -9,7 +9,7 @@
 
   // 정적 자산 캐시 버스터. index.html 의 css/js ?v= 와 같은 값을 유지한다
   // (main.js 자체가 ?v= 로 받아지므로 stale main.js 가 stale ASSET_V 를 들고 있을 수 없다).
-  var ASSET_V = "20260824c";
+  var ASSET_V = "20260824d";
 
   var VERIFIED_URL = "https://asia-northeast3-camcon-67ad7.cloudfunctions.net/getVerifiedCameras";
   var verifiedByKey = {};
@@ -821,7 +821,8 @@ function normalizeCameraKey(input) {
 
   /* ══════════════ scroll reveal ══════════════ */
   function initReveal() {
-    var items = document.querySelectorAll(".reveal");
+    // .reveal 은 요소 하나, .reveal-group 은 자식들을 순서대로 등장시킨다(같은 관찰자를 쓴다).
+    var items = document.querySelectorAll(".reveal, .reveal-group");
     if (!items.length) return;
     if (REDUCE_MOTION.matches || !("IntersectionObserver" in window)) {
       items.forEach(function (el) { el.classList.add("is-visible"); });

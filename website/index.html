@@ -45,7 +45,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="assets/css/style.css?v=20260824b">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260824c">
   <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"></noscript>
 
@@ -141,7 +141,7 @@
         <div class="hero-grid">
           <div>
             <p class="eyebrow hero-eyebrow reveal" data-i18n="hero.eyebrow">Cinema Camera Controller</p>
-            <h1 class="hero-title reveal" data-delay="1" data-i18n="hero.title">셔터를 누르면, <span class="accent">필름룩 사진</span>이 폰에 도착합니다</h1>
+            <h1 class="hero-title reveal reveal--mask" data-delay="1" data-i18n="hero.title">셔터를 누르면, <span class="accent">필름룩 사진</span>이 폰에 도착합니다</h1>
             <p class="hero-sub reveal" data-delay="2" data-i18n="hero.sub">카메라를 USB·Wi-Fi로 연결하고, 촬영과 동시에 필름 시뮬레이션이 입혀진 사진을 받아보세요.</p>
             <div class="hero-actions reveal" data-delay="3">
               <a class="play-badge-link" href="https://play.google.com/store/apps/details?id=com.inik.camcon" target="_blank" rel="noopener" aria-label="Google Play에서 다운로드" data-i18n-attr="aria-label" data-i18n="hero.cta">
@@ -154,7 +154,7 @@
 
           <!-- TODO: 실제 앱 라이브뷰 스크린샷(840x1704) 확보 시 이 블록을 <img class="hero-shot"> 로 교체.
                현재는 브랜드 마크의 조리개 모티프를 확대한 추상 그래픽만 둔다. -->
-          <div class="hero-visual reveal" data-delay="2" aria-hidden="true">
+          <div class="hero-visual reveal reveal--scale" data-delay="2" aria-hidden="true">
             <div class="hero-lens">
               <svg class="hero-iris" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10.2" stroke="#6b5426" stroke-width="0.5"/>
@@ -219,7 +219,7 @@
       <div class="wrap">
         <header class="section-head reveal">
           <p class="eyebrow" data-i18n="features.eyebrow">Features</p>
-          <h2 class="section-title" data-i18n="features.title">촬영부터 색보정까지, 한 번에 끝냅니다</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="features.title">촬영부터 색보정까지, 한 번에 끝냅니다</h2>
         </header>
         <!-- 벤토: 3|1 / 1|2|1 / 2|1|1. 행마다 형태가 다르고 플래그십(필름) 셀이 가장 크다 -->
         <div class="features-grid">
@@ -292,7 +292,7 @@
     <section class="section section-alt" id="films">
       <div class="wrap">
         <header class="section-head center reveal">
-          <h2 class="section-title" data-i18n="films.title">9개 계열, <span class="accent">296종</span>의 필름 시뮬레이션</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="films.title">9개 계열, <span class="accent">296종</span>의 필름 시뮬레이션</h2>
           <p class="section-lead" data-i18n="films.lead">흑백부터 인스턴트, 컬러 네거티브까지. 실제 필름의 톤 커브와 색을 3D LUT로 재현했습니다.</p>
         </header>
 
@@ -320,7 +320,7 @@
           </div>
         </div>
 
-        <div class="films-grid">
+        <div class="films-grid reveal-group">
           <button type="button" class="swatch film-cat reveal" data-before="assets/film/ba-before-alt.webp" data-after="assets/film/ba-after-cat-bw.webp" data-name="Ilford Delta 100"><img class="shot" src="assets/film/cat-bw.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.bw">흑백</span><span class="n">25</span></div></button>
           <button type="button" class="swatch film-cat reveal" data-delay="1" data-before="assets/film/ba-before-grid.webp" data-after="assets/film/ba-after-cat-slide.webp" data-name="Fuji Provia 100"><img class="shot" src="assets/film/cat-slide.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.slide">컬러 슬라이드</span><span class="n">26</span></div></button>
           <button type="button" class="swatch film-cat reveal" data-delay="2" data-before="assets/film/ba-before-hero.webp" data-after="assets/film/ba-after-cat-xtrans.webp" data-name="Fuji Astia"><img class="shot" src="assets/film/cat-xtrans.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.xtrans">후지 X-Trans III</span><span class="n">15</span></div></button>
@@ -346,7 +346,7 @@
     <section class="section section-alt" id="color">
       <div class="wrap">
         <header class="section-head center reveal">
-          <h2 class="section-title" data-i18n="color.title">사진 한 장이 곧 <span class="accent">프리셋</span>이 됩니다</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="color.title">사진 한 장이 곧 <span class="accent">프리셋</span>이 됩니다</h2>
           <p class="section-lead" data-i18n="color.lead">마음에 드는 사진에서 색 분포를 통계로 뽑아 내 사진에 옮깁니다. 카탈로그에 없는 색도 레퍼런스 한 장이면 따라갑니다.</p>
         </header>
 
@@ -396,7 +396,7 @@
     <section class="section is-tight" id="cameras">
       <div class="wrap">
         <header class="section-head reveal">
-          <h2 class="section-title" data-i18n="cameras.title">내 카메라, 쓸 수 있을까요?</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="cameras.title">내 카메라, 쓸 수 있을까요?</h2>
           <p class="section-lead" data-i18n="cameras.lead">USB(PTP) 또는 Wi-Fi STA(공유기) 모드를 지원하는 카메라라면 사용할 수 있습니다.</p>
         </header>
 
@@ -447,7 +447,7 @@
     <section class="section section-alt is-tight" id="connect">
       <div class="wrap">
         <header class="section-head reveal">
-          <h2 class="section-title" data-i18n="connect.title">두 가지 연결 방법</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="connect.title">두 가지 연결 방법</h2>
         </header>
 
         <div class="reveal">
@@ -457,7 +457,7 @@
           </div>
 
           <div class="tab-panel is-active" id="panel-usb" role="tabpanel" aria-labelledby="tab-usb">
-            <ol class="steps">
+            <ol class="steps reveal-group">
               <li class="step"><div class="lbl" data-i18n="connect.usb1Label">케이블 연결</div><p data-i18n="connect.usb1">USB-C(OTG) 케이블로 폰과 카메라를 연결합니다.</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.usb2Label">권한 허용</div><p data-i18n="connect.usb2">앱에서 USB 연결 권한을 허용합니다.</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.usb3Label">촬영 시작</div><p data-i18n="connect.usb3">자동 인식·연결이 완료되면 바로 촬영을 시작합니다.</p></li>
@@ -467,7 +467,7 @@
           </div>
 
           <div class="tab-panel" id="panel-sta" role="tabpanel" aria-labelledby="tab-sta" hidden>
-            <ol class="steps">
+            <ol class="steps reveal-group">
               <li class="step"><div class="lbl" data-i18n="connect.sta1Label">같은 네트워크</div><p data-i18n="connect.sta1">카메라와 폰을 같은 공유기에 연결합니다.</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.sta2Label">카메라 선택</div><p data-i18n="connect.sta2">앱에서 카메라를 검색해 선택합니다.</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.sta3Label">연결 승인</div><p data-i18n="connect.sta3">첫 연결 시 <strong>카메라 본체에서 "연결 허용"을 승인</strong>합니다. 이후에는 자동으로 재연결됩니다.</p></li>
@@ -485,7 +485,7 @@
             <h3 data-i18n="connect.guide.title">카메라별 연결 안내</h3>
             <p data-i18n="connect.guide.lead">위 세 단계는 어느 카메라나 같지만, 카메라에서 눌러야 할 메뉴는 제조사마다 다릅니다. 실제 화면 사진과 함께 하나씩 짚어 드립니다.</p>
           </div>
-          <div class="guide-band-cards">
+          <div class="guide-band-cards reveal-group">
             <a class="gcard" href="/guide-usb.html">
               <span class="gcard-ico" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6M15 3v6"/><path d="M6 9h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6z"/><path d="M12 18v3"/></svg>
@@ -517,11 +517,11 @@
       <div class="wrap">
         <header class="section-head center reveal">
           <p class="eyebrow center" data-i18n="pricing.eyebrow">Pricing</p>
-          <h2 class="section-title" data-i18n="pricing.title">무료로 시작하고, 필요할 때 PRO로</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="pricing.title">무료로 시작하고, 필요할 때 PRO로</h2>
           <p class="section-lead" data-i18n="pricing.lead">무료로 시작하세요. PRO 유료 플랜은 준비 중입니다.</p>
         </header>
 
-        <div class="plans">
+        <div class="plans reveal-group">
           <div class="plan reveal">
             <div class="plan-name">FREE</div>
             <div class="price-free" data-i18n="pricing.freePrice">무료</div>
@@ -552,7 +552,7 @@
     <section class="section section-alt is-tight" id="faq">
       <div class="wrap">
         <header class="section-head center reveal">
-          <h2 class="section-title" data-i18n="faq.title">자주 묻는 질문</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="faq.title">자주 묻는 질문</h2>
         </header>
         <div class="faq-list">
           <div class="acc reveal">
@@ -652,6 +652,6 @@
     </div>
   </footer>
 
-  <script src="assets/js/main.js?v=20260824c" defer></script>
+  <script src="assets/js/main.js?v=20260824d" defer></script>
 </body>
 </html>

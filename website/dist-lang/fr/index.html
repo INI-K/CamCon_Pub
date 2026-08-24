@@ -40,7 +40,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="/assets/css/style.css?v=20260824b">
+  <link rel="stylesheet" href="/assets/css/style.css?v=20260824c">
   <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap"></noscript>
 
@@ -131,7 +131,7 @@
         <div class="hero-grid">
           <div>
             <p class="eyebrow hero-eyebrow reveal" data-i18n="hero.eyebrow">Cinema Camera Controller</p>
-            <h1 class="hero-title reveal" data-delay="1" data-i18n="hero.title">Vous déclenchez, et la <span class="accent">photo au rendu argentique</span> arrive sur votre téléphone</h1>
+            <h1 class="hero-title reveal reveal--mask" data-delay="1" data-i18n="hero.title">Vous déclenchez, et la <span class="accent">photo au rendu argentique</span> arrive sur votre téléphone</h1>
             <p class="hero-sub reveal" data-delay="2" data-i18n="hero.sub">Connectez votre appareil en USB ou Wi-Fi et recevez des photos avec la simulation de pellicule déjà appliquée, dès le déclenchement.</p>
             <div class="hero-actions reveal" data-delay="3">
               <a class="play-badge-link" href="https://play.google.com/store/apps/details?id=com.inik.camcon" target="_blank" rel="noopener" aria-label="Disponible sur Google Play" data-i18n-attr="aria-label" data-i18n="hero.cta">
@@ -141,7 +141,7 @@
             </div>
           </div>
 
-          <div class="hero-visual reveal" data-delay="2" aria-hidden="true">
+          <div class="hero-visual reveal reveal--scale" data-delay="2" aria-hidden="true">
             <div class="hero-lens">
               <svg class="hero-iris" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10.2" stroke="#6b5426" stroke-width="0.5"></circle>
@@ -201,7 +201,7 @@
       <div class="wrap">
         <header class="section-head reveal">
           <p class="eyebrow" data-i18n="features.eyebrow">Features</p>
-          <h2 class="section-title" data-i18n="features.title">De la prise de vue à la couleur, un pont entre l'appareil et le téléphone</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="features.title">De la prise de vue à la couleur, un pont entre l'appareil et le téléphone</h2>
         </header>
         <div class="features-grid">
           <article class="feat span-3 has-visual reveal">
@@ -272,7 +272,7 @@
     <section class="section section-alt" id="films">
       <div class="wrap">
         <header class="section-head center reveal">
-          <h2 class="section-title" data-i18n="films.title">9 familles, <span class="accent">296</span> simulations de pellicule</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="films.title">9 familles, <span class="accent">296</span> simulations de pellicule</h2>
           <p class="section-lead" data-i18n="films.lead">Du noir et blanc à l'instantané et au négatif couleur : courbes de tons et couleurs de vraies pellicules, reproduites en LUT 3D.</p>
         </header>
 
@@ -299,7 +299,7 @@
           </div>
         </div>
 
-        <div class="films-grid">
+        <div class="films-grid reveal-group">
           <button type="button" class="swatch film-cat reveal" data-before="/assets/film/ba-before-alt.webp" data-after="/assets/film/ba-after-cat-bw.webp" data-name="Ilford Delta 100"><img class="shot" src="/assets/film/cat-bw.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.bw">Noir et blanc</span><span class="n">25</span></div></button>
           <button type="button" class="swatch film-cat reveal" data-delay="1" data-before="/assets/film/ba-before-grid.webp" data-after="/assets/film/ba-after-cat-slide.webp" data-name="Fuji Provia 100"><img class="shot" src="/assets/film/cat-slide.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.slide">Diapositive couleur</span><span class="n">26</span></div></button>
           <button type="button" class="swatch film-cat reveal" data-delay="2" data-before="/assets/film/ba-before-hero.webp" data-after="/assets/film/ba-after-cat-xtrans.webp" data-name="Fuji Astia"><img class="shot" src="/assets/film/cat-xtrans.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.xtrans">Fuji X-Trans III</span><span class="n">15</span></div></button>
@@ -322,7 +322,7 @@
     <section class="section section-alt" id="color">
       <div class="wrap">
         <header class="section-head center reveal">
-          <h2 class="section-title" data-i18n="color.title">Une photo devient votre <span class="accent">préréglage</span></h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="color.title">Une photo devient votre <span class="accent">préréglage</span></h2>
           <p class="section-lead" data-i18n="color.lead">CamCon extrait statistiquement la distribution des couleurs d'une photo qui vous plaît et la reporte sur la vôtre. Même un rendu absent du catalogue se retrouve à partir d'une seule référence.</p>
         </header>
 
@@ -369,7 +369,7 @@
     <section class="section is-tight" id="cameras">
       <div class="wrap">
         <header class="section-head reveal">
-          <h2 class="section-title" data-i18n="cameras.title">Mon appareil est-il compatible ?</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="cameras.title">Mon appareil est-il compatible ?</h2>
           <p class="section-lead" data-i18n="cameras.lead">Si votre appareil prend en charge l'USB (PTP) ou le mode Wi-Fi STA (routeur), il est compatible.</p>
         </header>
 
@@ -417,7 +417,7 @@
     <section class="section section-alt is-tight" id="connect">
       <div class="wrap">
         <header class="section-head reveal">
-          <h2 class="section-title" data-i18n="connect.title">Deux façons de se connecter</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="connect.title">Deux façons de se connecter</h2>
         </header>
 
         <div class="reveal">
@@ -427,7 +427,7 @@
           </div>
 
           <div class="tab-panel is-active" id="panel-usb" role="tabpanel" aria-labelledby="tab-usb">
-            <ol class="steps">
+            <ol class="steps reveal-group">
               <li class="step"><div class="lbl" data-i18n="connect.usb1Label">Brancher le câble</div><p data-i18n="connect.usb1">Reliez le téléphone et l'appareil avec un câble USB-C (OTG).</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.usb2Label">Autoriser l’accès</div><p data-i18n="connect.usb2">Autorisez la permission de connexion USB dans l'application.</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.usb3Label">Photographier</div><p data-i18n="connect.usb3">Une fois reconnu et connecté, commencez à photographier aussitôt.</p></li>
@@ -437,7 +437,7 @@
           </div>
 
           <div class="tab-panel" id="panel-sta" role="tabpanel" aria-labelledby="tab-sta" hidden>
-            <ol class="steps">
+            <ol class="steps reveal-group">
               <li class="step"><div class="lbl" data-i18n="connect.sta1Label">Même réseau</div><p data-i18n="connect.sta1">Connectez l'appareil et le téléphone au même routeur.</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.sta2Label">Choisir l’appareil</div><p data-i18n="connect.sta2">Recherchez et sélectionnez l'appareil dans l'application.</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.sta3Label">Valider la connexion</div><p data-i18n="connect.sta3">À la première connexion, <strong>approuvez « Autoriser la connexion » sur le boîtier</strong>. Ensuite, la reconnexion est automatique.</p></li>
@@ -452,7 +452,7 @@
             <h3 data-i18n="connect.guide.title">Guides de connexion par appareil</h3>
             <p data-i18n="connect.guide.lead">Les trois étapes ci-dessus sont identiques sur tous les appareils, mais les menus à utiliser diffèrent selon la marque. Nous les parcourons un par un, avec des photos des écrans réels.</p>
           </div>
-          <div class="guide-band-cards">
+          <div class="guide-band-cards reveal-group">
             <a class="gcard" href="/fr/guide-usb.html">
               <span class="gcard-ico" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6M15 3v6"></path><path d="M6 9h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6z"></path><path d="M12 18v3"></path></svg>
@@ -483,11 +483,11 @@
       <div class="wrap">
         <header class="section-head center reveal">
           <p class="eyebrow center" data-i18n="pricing.eyebrow">Pricing</p>
-          <h2 class="section-title" data-i18n="pricing.title">Commencez gratuitement, passez à PRO au besoin</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="pricing.title">Commencez gratuitement, passez à PRO au besoin</h2>
           <p class="section-lead" data-i18n="pricing.lead">Commencez gratuitement. L'offre PRO arrive bientôt.</p>
         </header>
 
-        <div class="plans">
+        <div class="plans reveal-group">
           <div class="plan reveal">
             <div class="plan-name">FREE</div>
             <div class="price-free" data-i18n="pricing.freePrice">Gratuit</div>
@@ -517,7 +517,7 @@
     <section class="section section-alt is-tight" id="faq">
       <div class="wrap">
         <header class="section-head center reveal">
-          <h2 class="section-title" data-i18n="faq.title">Questions fréquentes</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="faq.title">Questions fréquentes</h2>
         </header>
         <div class="faq-list">
           <div class="acc reveal">
@@ -613,6 +613,6 @@
     </div>
   </footer>
 
-  <script src="/assets/js/main.js?v=20260824c" defer></script>
+  <script src="/assets/js/main.js?v=20260824d" defer></script>
 </body>
 </html>

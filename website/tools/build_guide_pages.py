@@ -119,7 +119,7 @@ def head(slug, tkey, dkey, ogtitle, ldtype, ldname):
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="assets/css/style.css?v=20260824b">
+  <link rel="stylesheet" href="assets/css/style.css?v=20260824c">
   <link rel="stylesheet" href="assets/css/guide.css?v=20260824d">
   <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"></noscript>
@@ -226,7 +226,7 @@ def footer(slug):
     </div>
   </footer>
 
-  <script src="assets/js/main.js?v=20260824c" defer></script>
+  <script src="assets/js/main.js?v=20260824d" defer></script>
 </body>
 </html>
 '''
@@ -348,7 +348,7 @@ def wizard_shots(manual_url):
                     '                  </figure>' % (src, w, h, capattr, cap))
     if not figs:
         return ""
-    return '                <div class="shots">\n' + "\n".join(figs) + '\n                </div>'
+    return '                <div class="shots reveal-group">\n' + "\n".join(figs) + '\n                </div>'
 
 
 def wizard_block(manual_url):
@@ -396,7 +396,7 @@ def vendor_page(v):
         figs = [x for x in (photo(sl, ck) for sl, ck in v.get(key, []) if slot_src(sl)) if x]
         if not figs:
             return ""
-        return '                <div class="shots">\n' + "\n".join(figs) + '\n                </div>'
+        return '                <div class="shots reveal-group">\n' + "\n".join(figs) + '\n                </div>'
 
     s2_seq, s3_seq, s5_seq = seq("s2slots"), seq("s3slots"), seq("s5slots")
 
@@ -404,7 +404,7 @@ def vendor_page(v):
         figs = [photo(sl, ck) for sl, ck in pairs if slot_src(sl)]
         if not figs:
             return ""
-        return '                <div class="shots">\n' + "\n".join(figs) + '\n                </div>'
+        return '                <div class="shots reveal-group">\n' + "\n".join(figs) + '\n                </div>'
 
     s1_seq = fixed([("phone-hotspot-config", "g.ph.config"), ("phone-hotspot-band", "g.ph.band")])
     s4_seq = fixed([("phone-search", "g.ph.search")])
@@ -664,7 +664,7 @@ def wired_vendor_page(v):
     # 여러 장이면 순서가 있는 이동 경로이므로 번호가 붙는 격자에 담는다.
     seq = [x for x in (shot(sl, ck) for sl, ck in v.get("usbslots", [])) if x]
     if seq:
-        usb_shot += ('\n' if usb_shot else '') + '                <div class="shots">\n' \
+        usb_shot += ('\n' if usb_shot else '') + '                <div class="shots reveal-group">\n' \
                     + "\n".join(seq) + '\n                </div>' 
     note_shot = shot(v.get("noteslot"), v["note"] + ".title")
 
@@ -849,7 +849,7 @@ def usb_page():
 
       <section class="guide-sec" id="pick">
         <h2 data-i18n="ghub.pick.title">{t("ghub.pick.title")}</h2>
-        <div class="vgrid">
+        <div class="vgrid reveal-group">
 {cards}
         </div>
       </section>
@@ -901,7 +901,7 @@ def hub_page():
 
       <section class="guide-sec" id="pick" style="border-top:0;margin-top:18px">
         <h2 data-i18n="ghub.pick.title">{t("ghub.pick.title")}</h2>
-        <div class="vgrid">
+        <div class="vgrid reveal-group">
 {chr(10).join(cards)}
         </div>
       </section>

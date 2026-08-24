@@ -40,7 +40,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="/assets/css/style.css?v=20260824b">
+  <link rel="stylesheet" href="/assets/css/style.css?v=20260824c">
   <link rel="stylesheet" media="print" onload="this.media='all';this.onload=null" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap"></noscript>
 
@@ -131,7 +131,7 @@
         <div class="hero-grid">
           <div>
             <p class="eyebrow hero-eyebrow reveal" data-i18n="hero.eyebrow">Cinema Camera Controller</p>
-            <h1 class="hero-title reveal" data-delay="1" data-i18n="hero.title">按下快门，<span class="accent">胶片风格照片</span>随即到达手机</h1>
+            <h1 class="hero-title reveal reveal--mask" data-delay="1" data-i18n="hero.title">按下快门，<span class="accent">胶片风格照片</span>随即到达手机</h1>
             <p class="hero-sub reveal" data-delay="2" data-i18n="hero.sub">用 USB·Wi-Fi 把相机连接起来，在拍摄的同时接收已叠加胶片模拟的照片。</p>
             <div class="hero-actions reveal" data-delay="3">
               <a class="play-badge-link" href="https://play.google.com/store/apps/details?id=com.inik.camcon" target="_blank" rel="noopener" aria-label="在 Google Play 下载" data-i18n-attr="aria-label" data-i18n="hero.cta">
@@ -141,7 +141,7 @@
             </div>
           </div>
 
-          <div class="hero-visual reveal" data-delay="2" aria-hidden="true">
+          <div class="hero-visual reveal reveal--scale" data-delay="2" aria-hidden="true">
             <div class="hero-lens">
               <svg class="hero-iris" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10.2" stroke="#6b5426" stroke-width="0.5"></circle>
@@ -201,7 +201,7 @@
       <div class="wrap">
         <header class="section-head reveal">
           <p class="eyebrow" data-i18n="features.eyebrow">Features</p>
-          <h2 class="section-title" data-i18n="features.title">从拍摄到调色，在相机与手机之间一步到位</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="features.title">从拍摄到调色，在相机与手机之间一步到位</h2>
         </header>
         <div class="features-grid">
           <article class="feat span-3 has-visual reveal">
@@ -272,7 +272,7 @@
     <section class="section section-alt" id="films">
       <div class="wrap">
         <header class="section-head center reveal">
-          <h2 class="section-title" data-i18n="films.title">9 个系列，<span class="accent">296 种</span>胶片模拟</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="films.title">9 个系列，<span class="accent">296 种</span>胶片模拟</h2>
           <p class="section-lead" data-i18n="films.lead">从黑白到拍立得、彩色负片。以 3D LUT 还原真实胶片的色调曲线与色彩。</p>
         </header>
 
@@ -299,7 +299,7 @@
           </div>
         </div>
 
-        <div class="films-grid">
+        <div class="films-grid reveal-group">
           <button type="button" class="swatch film-cat reveal" data-before="/assets/film/ba-before-alt.webp" data-after="/assets/film/ba-after-cat-bw.webp" data-name="Ilford Delta 100"><img class="shot" src="/assets/film/cat-bw.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.bw">黑白</span><span class="n">25</span></div></button>
           <button type="button" class="swatch film-cat reveal" data-delay="1" data-before="/assets/film/ba-before-grid.webp" data-after="/assets/film/ba-after-cat-slide.webp" data-name="Fuji Provia 100"><img class="shot" src="/assets/film/cat-slide.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.slide">彩色反转片</span><span class="n">26</span></div></button>
           <button type="button" class="swatch film-cat reveal" data-delay="2" data-before="/assets/film/ba-before-hero.webp" data-after="/assets/film/ba-after-cat-xtrans.webp" data-name="Fuji Astia"><img class="shot" src="/assets/film/cat-xtrans.webp" alt="" loading="lazy" width="760" height="608"><div class="meta"><span class="name" data-i18n="film.xtrans">富士 X-Trans III</span><span class="n">15</span></div></button>
@@ -322,7 +322,7 @@
     <section class="section section-alt" id="color">
       <div class="wrap">
         <header class="section-head center reveal">
-          <h2 class="section-title" data-i18n="color.title">一张照片，就是一套<span class="accent">预设</span></h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="color.title">一张照片，就是一套<span class="accent">预设</span></h2>
           <p class="section-lead" data-i18n="color.lead">从你喜欢的照片中以统计方式提取色彩分布，再迁移到自己的照片上。片库里没有的色调，一张参考图也能还原。</p>
         </header>
 
@@ -369,7 +369,7 @@
     <section class="section is-tight" id="cameras">
       <div class="wrap">
         <header class="section-head reveal">
-          <h2 class="section-title" data-i18n="cameras.title">我的相机能用吗?</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="cameras.title">我的相机能用吗?</h2>
           <p class="section-lead" data-i18n="cameras.lead">支持 USB(PTP) 或 Wi-Fi STA(路由器) 模式的相机即可使用。</p>
         </header>
 
@@ -417,7 +417,7 @@
     <section class="section section-alt is-tight" id="connect">
       <div class="wrap">
         <header class="section-head reveal">
-          <h2 class="section-title" data-i18n="connect.title">两种连接方式</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="connect.title">两种连接方式</h2>
         </header>
 
         <div class="reveal">
@@ -427,7 +427,7 @@
           </div>
 
           <div class="tab-panel is-active" id="panel-usb" role="tabpanel" aria-labelledby="tab-usb">
-            <ol class="steps">
+            <ol class="steps reveal-group">
               <li class="step"><div class="lbl" data-i18n="connect.usb1Label">连接线缆</div><p data-i18n="connect.usb1">用 USB-C(OTG) 线缆连接手机与相机。</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.usb2Label">允许访问</div><p data-i18n="connect.usb2">在应用中允许 USB 连接权限。</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.usb3Label">开始拍摄</div><p data-i18n="connect.usb3">自动识别并连接完成后，立即开始拍摄。</p></li>
@@ -437,7 +437,7 @@
           </div>
 
           <div class="tab-panel" id="panel-sta" role="tabpanel" aria-labelledby="tab-sta" hidden>
-            <ol class="steps">
+            <ol class="steps reveal-group">
               <li class="step"><div class="lbl" data-i18n="connect.sta1Label">同一网络</div><p data-i18n="connect.sta1">将相机与手机连接到同一路由器。</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.sta2Label">选择相机</div><p data-i18n="connect.sta2">在应用中搜索并选择相机。</p></li>
               <li class="step"><div class="lbl" data-i18n="connect.sta3Label">确认连接</div><p data-i18n="connect.sta3">首次连接时，<strong>在相机机身上确认「允许连接」</strong>。之后会自动重连。</p></li>
@@ -452,7 +452,7 @@
             <h3 data-i18n="connect.guide.title">按相机分类的连接指南</h3>
             <p data-i18n="connect.guide.lead">上面三个步骤对所有相机都相同，但相机上要操作的菜单因品牌而异。我们会配合实际画面照片逐一说明。</p>
           </div>
-          <div class="guide-band-cards">
+          <div class="guide-band-cards reveal-group">
             <a class="gcard" href="/zh/guide-usb.html">
               <span class="gcard-ico" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6M15 3v6"></path><path d="M6 9h12v3a6 6 0 0 1-6 6 6 6 0 0 1-6-6z"></path><path d="M12 18v3"></path></svg>
@@ -483,11 +483,11 @@
       <div class="wrap">
         <header class="section-head center reveal">
           <p class="eyebrow center" data-i18n="pricing.eyebrow">Pricing</p>
-          <h2 class="section-title" data-i18n="pricing.title">免费开始，需要时升级 PRO</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="pricing.title">免费开始，需要时升级 PRO</h2>
           <p class="section-lead" data-i18n="pricing.lead">免费开始使用。PRO 付费方案即将推出。</p>
         </header>
 
-        <div class="plans">
+        <div class="plans reveal-group">
           <div class="plan reveal">
             <div class="plan-name">FREE</div>
             <div class="price-free" data-i18n="pricing.freePrice">免费</div>
@@ -517,7 +517,7 @@
     <section class="section section-alt is-tight" id="faq">
       <div class="wrap">
         <header class="section-head center reveal">
-          <h2 class="section-title" data-i18n="faq.title">常见问题</h2>
+          <h2 class="section-title reveal reveal--mask" data-i18n="faq.title">常见问题</h2>
         </header>
         <div class="faq-list">
           <div class="acc reveal">
@@ -613,6 +613,6 @@
     </div>
   </footer>
 
-  <script src="/assets/js/main.js?v=20260824c" defer></script>
+  <script src="/assets/js/main.js?v=20260824d" defer></script>
 </body>
 </html>
