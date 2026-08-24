@@ -16,7 +16,7 @@
 
   // 정적 자산 캐시 버스터. index.html 의 css/js ?v= 와 같은 값을 유지한다
   // (main.js 자체가 ?v= 로 받아지므로 stale main.js 가 stale ASSET_V 를 들고 있을 수 없다).
-  var ASSET_V = "20260824e";
+  var ASSET_V = "20260824f";
 
   var VERIFIED_URL = "https://asia-northeast3-camcon-67ad7.cloudfunctions.net/getVerifiedCameras";
   var verifiedByKey = {};
@@ -299,6 +299,25 @@ function normalizeCameraKey(input) {
     return base + (LANG_PAGES.indexOf(file) >= 0 ? file : "");
   }
 
+  /* 언어를 바꿀 때 들고 갈 앵커.
+
+     그냥 location.hash 를 붙이면, 예전에 내비를 한 번 눌러 남아 있던 해시 때문에
+     맨 위에 있던 사용자가 언어만 바꿨는데 페이지 중간으로 떨어진다. 실제로 그렇게 됐다.
+
+     대신 "지금 보고 있는 자리"를 기준으로 한다. 맨 위면 앵커를 붙이지 않고,
+     아래로 내려와 있으면 스크롤스파이가 표시 중인 섹션을 쓴다(같은 자리에서 이어보기).
+     스파이가 없는 페이지(안내 문서)는 지금 해시를 그대로 둔다. */
+  function carryAnchor() {
+    if ((window.scrollY || document.documentElement.scrollTop || 0) < 80) return "";
+    var cur = document.querySelector(".nav a.is-current");
+    if (cur) {
+      var href = cur.getAttribute("href") || "";
+      var i = href.indexOf("#");
+      if (i >= 0) return href.slice(i);
+    }
+    return location.hash;
+  }
+
   // zh 는 사전이 간체 1종뿐이라 번체 태그도 zh 로 보낸다. 번체 사전이 생기면 이 표만 고치면 된다.
   var SCRIPT_MAP = {
     "zh-hant": "zh", "zh-tw": "zh", "zh-hk": "zh", "zh-mo": "zh",
@@ -361,7 +380,7 @@ function normalizeCameraKey(input) {
         var next = sel.value;
         if (SUPPORTED.indexOf(next) < 0 || next === lang) return;
         remember("local", CHOSEN_KEY, next); // 명시 선택 — 이후 제안 배너의 기본 후보가 된다
-        location.href = langHref(next) + location.hash;
+        location.href = langHref(next) + carryAnchor();
       });
     }
     loadLang(lang);
@@ -422,7 +441,7 @@ function normalizeCameraKey(input) {
     var close = document.getElementById("langSuggestClose");
     if (!link || !close) return;
 
-    link.href = langHref(want) + location.hash;
+    link.href = langHref(want) + carryAnchor();
     link.setAttribute("lang", want);
     link.setAttribute("hreflang", want);
     link.textContent = LANG_CTA[want] || want;

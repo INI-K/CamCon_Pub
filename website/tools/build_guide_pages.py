@@ -229,7 +229,7 @@ def footer(slug):
     </div>
   </footer>
 
-  <script src="assets/js/main.js?v=20260824e" defer></script>
+  <script src="assets/js/main.js?v=20260824f" defer></script>
 </body>
 </html>
 '''
