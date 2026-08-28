@@ -212,37 +212,9 @@ class PhotoPreviewViewModel @Inject constructor(
         // 초기 상태 설정
         _uiState.update { it.copy(isInitializing = true) }
 
-        // PTPIP 연결 상태에 따라 선택적 이벤트 리스너 관리
-        viewModelScope.launch {
-            try {
-                // PTPIP 연결 상태 확인
-                val isPtpipConnected = cameraRepository.isPtpipConnected().first()
-                Log.d(TAG, "📸 사진 미리보기 탭 진입 - PTPIP 연결 상태: $isPtpipConnected")
-
-                // 앱 모드 해제는 onTabEnter()가 담당한다 — 이 함수는 ViewModel 생성 시 1회만
-                // 실행되므로 여기에 두면 탭 재진입에서 토글이 걸리지 않는다(실측 2026-08-20 09:00).
-
-                if (isPtpipConnected) {
-                    // Wi-Fi(PTPIP)는 이벤트 리스너를 유지한 채 파일 목록을 조회한다.
-                    // 네이티브 커맨드 큐가 FILE_LIST와 EVENT_POLL을 직렬화하므로 안전.
-                    Log.d(TAG, "PTPIP 연결 상태 - 이벤트 리스너 유지")
-                } else {
-                    Log.d(TAG, "USB 연결 상태 - 이벤트 리스너 중지")
-
-                    // 사진 미리보기 모드 활성화 (자동 시작 방지)
-                    cameraRepository.setPhotoPreviewMode(true)
-
-                    // 이벤트 리스너만 중단
-                    cameraRepository.stopCameraEventListener()
-                    Log.d(TAG, "✓ 이벤트 리스너 중단 완료")
-                }
-
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.w(TAG, "이벤트 리스너 관리 실패 (무시하고 계속)", e)
-            }
-        }
+        // 이벤트 리스너 중단·재개와 앱 모드 토글은 모두 onTabEnter()/onTabExit()이 담당한다.
+        // 이 함수는 ViewModel 생성 시 1회만 실행되므로 여기에 두면 탭 재진입에서 토글이 걸리지
+        // 않는다(실측 2026-08-20 09:00). 진입 처리를 한 곳에 모아 USB/Wi-Fi 분기 드리프트도 막는다.
 
         // 옵저버들 설정
         setupObservers()
@@ -785,6 +757,27 @@ class PhotoPreviewViewModel @Inject constructor(
      */
     fun onTabEnter() {
         viewModelScope.launch {
+            // 카드 탐색 중에는 이벤트 폴을 멈춘다 — USB/Wi-Fi 공통.
+            //
+            // 유휴 Nikon PTP/IP 세션의 EVENT_POLL 1회는 `camera_wait_for_event` 안에서
+            // 벤더 이벤트 조회와 전송 큐 확인 왕복을 돈다.
+            // 전송 큐가 비어 있으면 카메라 응답이 늦어 PTPIP_DEFAULT_TIMEOUT(2.5s)이 만료되고,
+            // 폴 1회가 ~5초간 단일 PTP 세션과 커맨드 큐 워커를 점유한다. 그동안 사용자가 낸
+            // FILE_LIST/썸네일은 뒤에 줄을 선다(실측 2026-08-26: 파일 목록 조회가 4.80초
+            // 대기 후 실제 조회는 0ms).
+            //
+            // 기존에는 USB 만 리스너를 껐고 Wi-Fi 는 켠 채로 뒀다. 카드 탐색 구간에는 무선
+            // 수신이 필요 없으므로 두 경로의 동작을 통일한다. 탭 이탈 시 재개한다.
+            try {
+                cameraRepository.setPhotoPreviewMode(true)
+                cameraRepository.stopCameraEventListener()
+                Log.d(TAG, "✓ 카드 탐색 진입 — 이벤트 폴 중단")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "탭 진입 이벤트 리스너 중단 실패 (무시하고 계속)", e)
+            }
+
             try {
                 if (nikonApplicationModeManager.enterCardBrowsing()) {
                     Log.d(TAG, "앱 모드 해제로 저장소 구성 변경 — 사진 목록 재조회")
@@ -815,77 +808,93 @@ class PhotoPreviewViewModel @Inject constructor(
                 // 니콘 사양상 PC 연결 중 본체 재생은 앱 모드에서만 허용된다(벤더 사양).
                 nikonApplicationModeManager.leaveCardBrowsing()
 
-                if (currentConnected) {
-                    if (isPtpipConnected) {
-                        Log.d(TAG, "PTPIP 연결 상태 - 이벤트 리스너 재시작 불필요")
-                        // PTPIP에서는 이벤트 리스너가 계속 실행 중이므로 재시작 불필요.
-                        // 단, USB 상태로 탭에 진입했다가 PTPIP로 전환된 경우 previewMode가 남아
-                        // BackgroundSyncService 재시작 감독을 영구 억제하는 누수를 방지한다.
-                        cameraRepository.setPhotoPreviewMode(false)
-                    } else {
-                        Log.d(TAG, "USB 연결 상태 - 이벤트 리스너 재시작 처리")
-
-                        // 사진 미리보기 모드 비활성화 (먼저 실행)
-                        cameraRepository.setPhotoPreviewMode(false)
-                        Log.d(TAG, "📴 사진 미리보기 모드 비활성화 완료")
-
-                        // 네이티브 작업 재개
-                        try {
-                            resumeNativeOperationsUseCase()
-                            Log.d(TAG, "▶️ 네이티브 작업 재개 완료")
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            Log.w(TAG, "네이티브 작업 재개 실패 (무시)", e)
-                        }
-
-                        // 카메라 연결 상태 재확인
-                        kotlinx.coroutines.delay(200) // 지연 시간
-
-                        val isStillConnected = try {
-                            cameraRepository.isCameraConnected().first()
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            Log.w(TAG, "연결 상태 확인 실패", e)
-                            false
-                        }
-
-                        if (isStillConnected) {
-                            Log.d(TAG, "🔄 카메라 여전히 연결됨, 이벤트 리스너 재시작 시도")
-
-                            try {
-                                cameraRepository.startCameraEventListener()
-                                Log.d(TAG, "✅ 이벤트 리스너 재시작 성공")
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                Log.e(TAG, "이벤트 리스너 재시작 실패", e)
-
-                                // 재시도 1번 더
-                                kotlinx.coroutines.delay(500)
-                                try {
-                                    cameraRepository.startCameraEventListener()
-                                    Log.d(TAG, "✅ 이벤트 리스너 재시작 성공 (재시도)")
-                                } catch (e2: CancellationException) {
-                                    throw e2
-                                } catch (e2: Exception) {
-                                    Log.e(TAG, "이벤트 리스너 재시작 최종 실패", e2)
-                                }
-                            }
-                        } else {
-                            Log.w(TAG, "카메라 연결 해제됨, 이벤트 리스너 재시작 건너뛰기")
-                        }
-                    }
-                } else {
-                    Log.d(TAG, "카메라 연결되지 않음, 이벤트 리스너 작업 건너뛰기")
-                }
+                resumeEventListenerAfterCardBrowsing(currentConnected, isPtpipConnected)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e(TAG, "탭 이탈 시 이벤트 리스너 관리 실패", e)
             }
         }
+    }
+
+    /**
+     * 카드 탐색 이탈 시 이벤트 폴을 되살린다. [onTabExit]·[onCleared] 공통 진입점.
+     *
+     * ⚠️ **Wi-Fi 경로를 [CameraRepository.isCameraConnected] 로 게이팅하면 안 된다.**
+     * 그 Flow 는 `connectionManager.isConnected || eventManager.isEventListenerActive` 이라
+     * ([CameraLifecycleRepositoryImpl] 참조) 우리가 방금 리스너를 끈 상태에서는 false 로 떨어질
+     * 수 있다. 그 값으로 재시작을 게이팅하면 리스너가 영영 살아나지 않는다 — STA 에서
+     * `isPtpipConnected` 가 false 로 남아 미리보기 탭이 USB 분기로 빠지며 Wi-Fi 리스너를
+     * 죽였던 회귀와 정확히 같은 함정이다. Wi-Fi 는 [isPtpipConnected] 로만 판단한다.
+     */
+    private suspend fun resumeEventListenerAfterCardBrowsing(
+        isConnected: Boolean,
+        isPtpipConnected: Boolean
+    ) {
+        if (!isConnected && !isPtpipConnected) {
+            Log.d(TAG, "카메라 연결되지 않음, 이벤트 리스너 작업 건너뛰기")
+            return
+        }
+
+        // 미리보기 모드 해제가 먼저다 — 이 플래그가 남으면 BackgroundSyncService 의 재시작
+        // 감독이 영구 억제된다(USB 로 진입했다가 Wi-Fi 로 전환된 경우 포함).
+        cameraRepository.setPhotoPreviewMode(false)
+        Log.d(TAG, "📴 사진 미리보기 모드 비활성화 완료")
+
+        if (!isPtpipConnected) {
+            // USB 는 네이티브 작업을 재개하고, 케이블이 빠졌을 수 있으므로 연결을 재확인한다.
+            try {
+                resumeNativeOperationsUseCase()
+                Log.d(TAG, "▶️ 네이티브 작업 재개 완료")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "네이티브 작업 재개 실패 (무시)", e)
+            }
+
+            kotlinx.coroutines.delay(200)
+
+            val isStillConnected = try {
+                cameraRepository.isCameraConnected().first()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w(TAG, "연결 상태 확인 실패", e)
+                false
+            }
+            if (!isStillConnected) {
+                Log.w(TAG, "카메라 연결 해제됨, 이벤트 리스너 재시작 건너뛰기")
+                return
+            }
+        }
+
+        Log.d(TAG, "🔄 이벤트 리스너 재시작 시도 (PTPIP=$isPtpipConnected)")
+        startEventListenerWithRetry()
+    }
+
+    /**
+     * 이벤트 리스너 시작을 1회 재시도까지 수행한다.
+     *
+     * `startCameraEventListener()` 는 예외 대신 `Result.failure` 로도 실패를 알리므로 둘 다 본다 —
+     * 예외만 보던 기존 경로는 조용한 실패에서 재시도가 걸리지 않았다.
+     */
+    private suspend fun startEventListenerWithRetry() {
+        repeat(2) { attempt ->
+            val started = try {
+                cameraRepository.startCameraEventListener().getOrDefault(false)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "이벤트 리스너 재시작 예외 (시도 ${attempt + 1})", e)
+                false
+            }
+            if (started) {
+                Log.d(TAG, "✅ 이벤트 리스너 재시작 성공 (시도 ${attempt + 1})")
+                return
+            }
+            if (attempt == 0) kotlinx.coroutines.delay(500)
+        }
+        Log.e(TAG, "이벤트 리스너 재시작 최종 실패")
     }
 
     override fun onCleared() {
@@ -901,71 +910,7 @@ class PhotoPreviewViewModel @Inject constructor(
 
                 Log.d(TAG, "📸 사진 미리보기 탭 종료 - 연결상태: $currentConnected, PTPIP: $isPtpipConnected")
 
-                if (currentConnected) {
-                    if (isPtpipConnected) {
-                        Log.d(TAG, "PTPIP 연결 상태 - 이벤트 리스너 재시작 불필요")
-                        // PTPIP에서는 이벤트 리스너가 계속 실행 중이므로 재시작 불필요.
-                        // 단, USB 상태로 탭에 진입했다가 PTPIP로 전환된 경우 previewMode가 남아
-                        // BackgroundSyncService 재시작 감독을 영구 억제하는 누수를 방지한다.
-                        cameraRepository.setPhotoPreviewMode(false)
-                    } else {
-                        Log.d(TAG, "USB 연결 상태 - 이벤트 리스너 재시작 처리")
-
-                        // 사진 미리보기 모드 비활성화 (먼저 실행)
-                        cameraRepository.setPhotoPreviewMode(false)
-                        Log.d(TAG, "📴 사진 미리보기 모드 비활성화 완료")
-
-                        // 네이티브 작업 재개
-                        try {
-                            resumeNativeOperationsUseCase()
-                            Log.d(TAG, "▶️ 네이티브 작업 재개 완료")
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            Log.w(TAG, "네이티브 작업 재개 실패 (무시)", e)
-                        }
-
-                        // 카메라 연결 상태 재확인
-                        kotlinx.coroutines.delay(200) // 더 긴 지연
-
-                        val isStillConnected = try {
-                            cameraRepository.isCameraConnected().first()
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            Log.w(TAG, "연결 상태 확인 실패", e)
-                            false
-                        }
-
-                        if (isStillConnected) {
-                            Log.d(TAG, "🔄 카메라 여전히 연결됨, 이벤트 리스너 재시작 시도")
-
-                            try {
-                                cameraRepository.startCameraEventListener()
-                                Log.d(TAG, "✅ 이벤트 리스너 재시작 성공")
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                Log.e(TAG, "이벤트 리스너 재시작 실패", e)
-
-                                // 재시도 1번 더
-                                kotlinx.coroutines.delay(500)
-                                try {
-                                    cameraRepository.startCameraEventListener()
-                                    Log.d(TAG, "✅ 이벤트 리스너 재시작 성공 (재시도)")
-                                } catch (e2: CancellationException) {
-                                    throw e2
-                                } catch (e2: Exception) {
-                                    Log.e(TAG, "이벤트 리스너 재시작 최종 실패", e2)
-                                }
-                            }
-                        } else {
-                            Log.w(TAG, "카메라 연결 해제됨, 이벤트 리스너 재시작 건너뛰기")
-                        }
-                    }
-                } else {
-                    Log.d(TAG, "카메라 연결되지 않음, 이벤트 리스너 작업 건너뛰기")
-                }
+                resumeEventListenerAfterCardBrowsing(currentConnected, isPtpipConnected)
             } catch (e: CancellationException) {
                 // NonCancellable 컨텍스트에서는 도달 가능성이 거의 없지만 안전 차원에서 재던짐.
                 throw e
