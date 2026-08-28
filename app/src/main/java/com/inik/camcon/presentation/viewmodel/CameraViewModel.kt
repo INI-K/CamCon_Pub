@@ -564,18 +564,17 @@ class CameraViewModel @Inject constructor(
                     // settingsManager.loadCameraSettings()
                     // settingsManager.loadCameraCapabilities()
 
-                    // EV/Storage 칩 로드. EV 조회는 네이티브에서 단일 config(get_single_config)로
-                    // 처리되어 PTP/IP에서도 가볍다(전체 config walk 제거 — camera_widget_access.cpp).
-                    launch {
-                        try {
-                            settingsManager.loadExposureCompensation()
-                            settingsManager.loadStorageInfo()
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            Log.e(TAG, "EV/Storage 초기 로딩 실패", e)
-                        }
-                    }
+                    // EV/Storage 칩은 연결 시점에 읽지 않는다.
+                    //
+                    // get_single_config 라서 가볍다고 봤지만 실측은 정반대였다. 니콘은
+                    // 디스크립터 캐시를 통째로 채우기 때문에 EV 하나를 물으려 해도
+                    // GetDevicePropDesc(0x1014)가 401회 오간다. Z 6 무선에서 건당 23ms 라
+                    // 9.5초가 통째로 커맨드 큐를 점유했고, 그동안 카드 탐색용 앱 모드 전환과
+                    // 썸네일 요청이 전부 뒤로 밀려 미리보기 탭 첫 사진이 10초 걸렸다
+                    // (실측 2026-08-28).
+                    //
+                    // 두 칩은 카메라 제어 화면에서만 쓰이므로 그 화면이 열릴 때 읽는다.
+                    // 미리보기 탭만 쓰는 사용자는 이 왕복을 아예 치르지 않는다.
 
                     // Firebase에서 최신 구독 티어를 가져와 업데이트
                     // AP 모드에서는 Firebase 오프라인으로 실패할 수 있으며,
@@ -1118,6 +1117,26 @@ class CameraViewModel @Inject constructor(
     fun refreshCameraCapabilities() {
         viewModelScope.launch {
             settingsManager.loadCameraCapabilities()
+        }
+    }
+
+    /**
+     * 카메라 제어 화면의 EV·스토리지 칩 로드.
+     *
+     * 연결 시점에 부르지 않는다. 니콘 무선에서 이 조회 하나가 디스크립터 캐시를 통째로
+     * 채우느라 9.5초 동안 커맨드 큐를 잡아, 미리보기 탭 첫 사진을 그만큼 늦추기 때문이다.
+     * 두 값이 실제로 화면에 필요한 시점에만 호출한다.
+     */
+    fun loadExposureAndStorageChips() {
+        viewModelScope.launch {
+            try {
+                settingsManager.loadExposureCompensation()
+                settingsManager.loadStorageInfo()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "EV/Storage 칩 로딩 실패", e)
+            }
         }
     }
 

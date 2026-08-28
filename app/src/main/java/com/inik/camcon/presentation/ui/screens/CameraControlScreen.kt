@@ -917,6 +917,16 @@ private fun PortraitCameraLayout(
         val cameraStorageInfo by viewModel.cameraStorageInfo.collectAsStateWithLifecycle()
         val exposureCompensation by viewModel.exposureCompensation.collectAsStateWithLifecycle()
 
+        // 무거운 조회는 전부 이 화면이 열릴 때로 미룬다. 연결 시점에 읽으면 커맨드 큐를
+        // 잡아 미리보기 탭의 카드 탐색이 통째로 밀린다(EV·스토리지 칩 9.5초, 기능 정보 7.2초).
+        // 둘 다 이 화면에서만 쓰이고, 없어도 기능이 막히지 않는다.
+        LaunchedEffect(uiState.isConnected) {
+            if (uiState.isConnected) {
+                viewModel.loadExposureAndStorageChips()
+                viewModel.refreshCameraCapabilities()
+            }
+        }
+
         TopControlsBar(
             uiState = uiState,
             cameraFeed = cameraFeed,
