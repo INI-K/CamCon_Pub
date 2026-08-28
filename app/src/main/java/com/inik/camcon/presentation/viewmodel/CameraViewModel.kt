@@ -527,15 +527,19 @@ class CameraViewModel @Inject constructor(
                             .debounce(150L)
                             .collect { settingsManager.refreshCameraSettingsQuiet() }
                     }
-                    // 놓친 이벤트/이벤트 미지원 대비 안전망(자가 치유).
-                    // Sony PTP/IP는 2.5초: dpd 캐시 수명(ptp2 cachetime=2s)보다 짧은 1초 폴은
-                    // 캐시 미스마다 무거운 벤더 프로퍼티 일괄 조회 왕복을 유발해
-                    // LV 프레임과 채널을 경합한다(A7C 세션 붕괴의 공범). 2.5초면 이벤트 폴
-                    // (LV 중 2초 주기)이 갱신한 신선한 캐시에 올라타 wire 비용이 거의 0이 된다.
-                    // 소니 설정 변경은 어차피 위 이벤트 푸시(debounce 150ms) 경로가 즉시 잡는다.
-                    val safetyNetMs =
-                        if (uiState.value.connectedCameraManufacturer?.contains("sony", ignoreCase = true) == true)
-                            2500L else 1000L
+                    // 놓친 이벤트/이벤트 미지원 대비 안전망(자가 치유). 제조사 무관 2.5초다.
+                    //
+                    // 소니는 dpd 캐시 수명(ptp2 cachetime=2s)보다 짧은 1초 폴이 캐시 미스마다
+                    // 무거운 벤더 프로퍼티 일괄 조회 왕복을 유발해 LV 프레임과 채널을
+                    // 경합했다(A7C 세션 붕괴의 공범). 니콘도 같은 이유로 1초는 과했다 — Z 6 무선
+                    // 실측(2026-08-28)에서 LV 중 GetDevicePropDesc(0x1014)가 512회로 프레임
+                    // (0x**** 499회)보다 많았고, 커맨드 큐 대기가 프레임당 149ms(전체 358ms)를
+                    // 차지해 2.8fps에 그쳤다. 같은 카메라의 SnapBridge는 설정 조회를 프레임의
+                    // 절반만 하고 13.2fps를 낸다.
+                    //
+                    // 본체 설정 변경은 위 이벤트 푸시(debounce 150ms)가 즉시 잡으므로, 이 주기는
+                    // 이벤트를 놓쳤을 때만 쓰이는 그물이다. 늘려도 체감 반응성은 그대로다.
+                    val safetyNetMs = 2500L
                     while (isActive) {
                         delay(safetyNetMs)
                         settingsManager.refreshCameraSettingsQuiet()
