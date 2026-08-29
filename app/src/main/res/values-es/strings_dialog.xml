@@ -74,4 +74,21 @@
 
     <string name="notification_settings_title">Ajustes de notificaciones</string>
     <string name="notification_settings_subtitle">Notificaciones push y sonido</string>
+    <!-- SSH 터널 연결 (소니 등 접속 인증이 필요한 카메라) -->
+    <string name="ssh_credentials_title">Inicio de sesión de la cámara</string>
+    <string name="ssh_credentials_guide">Introduzca los valores que se muestran en la cámara en MENU → Red → Ajustes de autenticación de acceso.</string>
+    <string name="ssh_credentials_auth_failed">Error de autenticación. Compruebe los valores de nuevo.</string>
+    <string name="ssh_credentials_store_failed">Este dispositivo no puede guardar el inicio de sesión de forma segura, por lo que deberá introducirlo cada vez que se conecte.</string>
+    <string name="ssh_credentials_user_label">Nombre de usuario</string>
+    <string name="ssh_credentials_password_label">Contraseña</string>
+    <string name="ssh_hostkey_title">Verificar la huella de la cámara</string>
+    <string name="ssh_hostkey_guide">Compruebe que la huella de abajo coincide con la que se muestra en la cámara en MENU → Red → Información de autenticación de acceso.</string>
+    <string name="ssh_hostkey_trust">Coincide - confiar</string>
+    <string name="ssh_hostkey_mismatch_title">La huella de la cámara ha cambiado</string>
+    <string name="ssh_hostkey_mismatch_body">Difiere de la huella guardada. Otro dispositivo podría estar suplantando a la cámara, por lo que se detuvo la conexión.</string>
+    <string name="ssh_hostkey_mismatch_hint">Si restableció la cámara o volvió a configurar la red, elimine la huella guardada en Ajustes y conecte de nuevo.</string>
+    <string name="ssh_tunnel_failed_title">Error de conexión SSH</string>
+    <string name="ssh_tunnel_failed_body">No se pudo alcanzar el puerto SSH de la cámara. Compruebe que está en la misma red que la cámara y que la autenticación de acceso está activada en la cámara.</string>
+    <string name="ssh_retry">Reintentar</string>
+
 </resources>

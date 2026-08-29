@@ -74,4 +74,21 @@
 
     <string name="notification_settings_title">Notifiche</string>
     <string name="notification_settings_subtitle">Notifiche push e suono</string>
+    <!-- SSH 터널 연결 (소니 등 접속 인증이 필요한 카메라) -->
+    <string name="ssh_credentials_title">Accesso alla fotocamera</string>
+    <string name="ssh_credentials_guide">Inserisci i valori mostrati sulla fotocamera in MENU → Rete → Impostazioni di autenticazione accesso.</string>
+    <string name="ssh_credentials_auth_failed">Autenticazione non riuscita. Controlla di nuovo i valori.</string>
+    <string name="ssh_credentials_store_failed">Questo dispositivo non può salvare le credenziali in modo sicuro, quindi dovrai inserirle a ogni connessione.</string>
+    <string name="ssh_credentials_user_label">Nome utente</string>
+    <string name="ssh_credentials_password_label">Password</string>
+    <string name="ssh_hostkey_title">Verifica impronta della fotocamera</string>
+    <string name="ssh_hostkey_guide">Verifica che l\'impronta qui sotto corrisponda a quella mostrata sulla fotocamera in MENU → Rete → Informazioni di autenticazione accesso.</string>
+    <string name="ssh_hostkey_trust">Corrisponde - considera attendibile</string>
+    <string name="ssh_hostkey_mismatch_title">L\'impronta della fotocamera è cambiata</string>
+    <string name="ssh_hostkey_mismatch_body">È diversa dall\'impronta salvata. Un altro dispositivo potrebbe fingersi la fotocamera, quindi la connessione è stata interrotta.</string>
+    <string name="ssh_hostkey_mismatch_hint">Se hai ripristinato la fotocamera o riconfigurato la rete, elimina l\'impronta salvata nelle impostazioni e riconnettiti.</string>
+    <string name="ssh_tunnel_failed_title">Connessione SSH non riuscita</string>
+    <string name="ssh_tunnel_failed_body">Impossibile raggiungere la porta SSH della fotocamera. Verifica di essere sulla stessa rete della fotocamera e che l\'autenticazione accesso sia attiva.</string>
+    <string name="ssh_retry">Riprova</string>
+
 </resources>

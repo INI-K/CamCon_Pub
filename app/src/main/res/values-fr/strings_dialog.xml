@@ -74,4 +74,21 @@
 
     <string name="notification_settings_title">Notifications</string>
     <string name="notification_settings_subtitle">Notifications push et son</string>
+    <!-- SSH 터널 연결 (소니 등 접속 인증이 필요한 카메라) -->
+    <string name="ssh_credentials_title">Identifiants de l\'appareil photo</string>
+    <string name="ssh_credentials_guide">Saisissez les valeurs affichées sur l\'appareil dans MENU → Réseau → Réglages d\'authentification d\'accès.</string>
+    <string name="ssh_credentials_auth_failed">Échec de l\'authentification. Vérifiez à nouveau les valeurs.</string>
+    <string name="ssh_credentials_store_failed">Cet appareil ne peut pas enregistrer les identifiants de façon sécurisée : vous devrez les saisir à chaque connexion.</string>
+    <string name="ssh_credentials_user_label">Nom d\'utilisateur</string>
+    <string name="ssh_credentials_password_label">Mot de passe</string>
+    <string name="ssh_hostkey_title">Vérifier l\'empreinte de l\'appareil</string>
+    <string name="ssh_hostkey_guide">Vérifiez que l\'empreinte ci-dessous correspond à celle affichée sur l\'appareil dans MENU → Réseau → Informations d\'authentification d\'accès.</string>
+    <string name="ssh_hostkey_trust">Correspond - faire confiance</string>
+    <string name="ssh_hostkey_mismatch_title">L\'empreinte de l\'appareil a changé</string>
+    <string name="ssh_hostkey_mismatch_body">Elle diffère de l\'empreinte enregistrée. Un autre appareil pourrait usurper l\'identité de l\'appareil photo, la connexion a donc été interrompue.</string>
+    <string name="ssh_hostkey_mismatch_hint">Si vous avez réinitialisé l\'appareil ou reconfiguré le réseau, supprimez l\'empreinte enregistrée dans les réglages puis reconnectez-vous.</string>
+    <string name="ssh_tunnel_failed_title">Échec de la connexion SSH</string>
+    <string name="ssh_tunnel_failed_body">Impossible d\'atteindre le port SSH de l\'appareil. Vérifiez que vous êtes sur le même réseau que l\'appareil et que l\'authentification d\'accès y est activée.</string>
+    <string name="ssh_retry">Réessayer</string>
+
 </resources>

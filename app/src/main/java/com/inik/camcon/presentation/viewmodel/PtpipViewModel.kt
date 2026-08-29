@@ -21,6 +21,7 @@ import com.inik.camcon.domain.repository.PtpipPreferencesRepository
 import com.inik.camcon.domain.repository.PtpipRepository
 import com.inik.camcon.domain.repository.WifiCapabilityProvider
 import com.inik.camcon.domain.model.PtpipCamera
+import com.inik.camcon.domain.model.PtpipConnectFailure
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
@@ -193,6 +194,25 @@ class PtpipViewModel @Inject constructor(
     private val _selectedCamera = MutableStateFlow<PtpipCamera?>(null)
     val selectedCamera: StateFlow<PtpipCamera?> = _selectedCamera.asStateFlow()
 
+    // ── SSH 연결 조치 요청 ──
+
+    /**
+     * 사용자가 처리해야 하는 SSH 실패. null이면 띄울 다이얼로그가 없다.
+     *
+     * [PtpipRepository.connectFailure]와 [PtpipRepository.sshHostKeyFingerprint]를 짝으로 읽어
+     * 만든다. 지문은 호스트키 계열 실패에서만 값이 차기 때문에 두 값을 따로 노출하면 화면이
+     * 조합 규칙을 다시 알아야 한다.
+     */
+    private val _sshPrompt = MutableStateFlow<SshConnectPrompt?>(null)
+    val sshPrompt: StateFlow<SshConnectPrompt?> = _sshPrompt.asStateFlow()
+
+    /**
+     * 직전에 연결을 시도한 카메라. 조치를 마친 뒤 같은 대상으로 재연결하는 데 쓴다.
+     *
+     * [_selectedCamera]는 연결에 성공해야 채워지므로 실패 경로에서는 비어 있을 수 있다.
+     */
+    private val _lastConnectTarget = MutableStateFlow<PtpipCamera?>(null)
+
     // 자동 파일 다운로드 상태
     private val _autoDownloadEnabled = MutableStateFlow(false)
     val autoDownloadEnabled: StateFlow<Boolean> = _autoDownloadEnabled.asStateFlow()
@@ -269,6 +289,130 @@ class PtpipViewModel @Inject constructor(
                 }
             }
         }
+
+        // SSH 실패 사유를 사용자 조치 요청으로 옮긴다. 데이터소스는 새 연결 시도를 시작할 때마다
+        // 사유를 null로 되돌리므로, 같은 사유가 다시 발생해도 null → 값 전이가 일어나 재방출된다.
+        viewModelScope.launch {
+            ptpipRepository.connectFailure.collect { failure ->
+                _sshPrompt.value = toSshPrompt(failure)
+            }
+        }
+    }
+
+    /**
+     * 실패 사유를 다이얼로그 요청으로 옮긴다.
+     *
+     * 지문은 [PtpipRepository.sshHostKeyFingerprint]에서 같은 순간에 함께 읽는다.
+     * 페어링 대기는 재시도가 계속되는 상태라 다이얼로그 대상이 아니다.
+     */
+    private fun toSshPrompt(failure: PtpipConnectFailure?): SshConnectPrompt? {
+        if (failure == null || failure == PtpipConnectFailure.PAIRING_PENDING) return null
+
+        val camera = _lastConnectTarget.value ?: _selectedCamera.value
+        if (camera == null) {
+            // 대상을 모르면 조치를 마쳐도 어디에 다시 연결할지 정할 수 없다.
+            Log.w(TAG, "SSH 실패($failure)를 받았으나 연결 대상 카메라가 없어 안내를 띄우지 않음")
+            return null
+        }
+        val fingerprint = ptpipRepository.sshHostKeyFingerprint.value
+
+        return when (failure) {
+            PtpipConnectFailure.SSH_CREDENTIALS_REQUIRED ->
+                SshConnectPrompt.Credentials(camera, SshCredentialsPromptReason.REQUIRED)
+
+            PtpipConnectFailure.SSH_AUTH_FAILED ->
+                SshConnectPrompt.Credentials(camera, SshCredentialsPromptReason.AUTH_FAILED)
+
+            PtpipConnectFailure.SSH_HOST_KEY_UNVERIFIED ->
+                if (fingerprint.isNullOrBlank()) {
+                    // 보여 줄 지문이 없으면 사용자가 대조할 수 없다. 대조 없이 신뢰시키는 대신
+                    // 안내를 생략하고 일반 연결 실패로 둔다(TOFU 우회 경로를 만들지 않는다).
+                    Log.w(TAG, "호스트키 미검증인데 지문이 비어 있어 대조 다이얼로그를 띄우지 않음")
+                    null
+                } else {
+                    SshConnectPrompt.HostKeyTrust(camera, fingerprint)
+                }
+
+            PtpipConnectFailure.SSH_HOST_KEY_MISMATCH ->
+                SshConnectPrompt.HostKeyMismatch(camera, fingerprint)
+
+            PtpipConnectFailure.SSH_TUNNEL_FAILED ->
+                SshConnectPrompt.TunnelFailed(camera)
+
+            PtpipConnectFailure.PAIRING_PENDING -> null
+        }
+    }
+
+    /**
+     * 사용자가 입력한 SSH 사용자명·비밀번호를 저장하고 같은 카메라로 다시 연결한다.
+     *
+     * 저장에 실패하면(암호화 저장소 사용 불가) 연결을 시도하지 않고 다이얼로그를 유지한 채
+     * 사유만 [SshCredentialsPromptReason.STORE_FAILED]로 바꾼다. 평문 폴백은 만들지 않는다.
+     */
+    fun submitSshCredentials(user: String, password: String) {
+        val prompt = _sshPrompt.value as? SshConnectPrompt.Credentials ?: return
+        viewModelScope.launch {
+            val saved = try {
+                ptpipRepository.saveSshCredentials(prompt.camera, user.trim(), password)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "SSH 자격증명 저장 중 오류", e)
+                false
+            }
+            if (!saved) {
+                _sshPrompt.value = prompt.copy(reason = SshCredentialsPromptReason.STORE_FAILED)
+                return@launch
+            }
+            _sshPrompt.value = null
+            connectToCamera(prompt.camera)
+        }
+    }
+
+    /**
+     * 사용자가 카메라 본체 화면의 지문과 대조해 승인한 호스트키를 저장하고 다시 연결한다.
+     *
+     * ⚠️ 이 함수는 [SshConnectPrompt.HostKeyTrust] 상태에서만 동작한다. 지문 불일치
+     * ([SshConnectPrompt.HostKeyMismatch])에서는 아무 일도 하지 않는다 — 불일치를 신뢰로
+     * 덮으면 중간자 탐지가 무력화된다.
+     */
+    fun trustSshHostKey() {
+        val prompt = _sshPrompt.value as? SshConnectPrompt.HostKeyTrust ?: return
+        viewModelScope.launch {
+            try {
+                ptpipRepository.trustSshHostKey(prompt.camera, prompt.fingerprint)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "호스트키 지문 저장 중 오류", e)
+                return@launch
+            }
+            _sshPrompt.value = null
+            connectToCamera(prompt.camera)
+        }
+    }
+
+    /** 터널 실패 안내에서 같은 카메라로 다시 연결을 시도한다. */
+    fun retrySshConnect() {
+        val prompt = _sshPrompt.value ?: return
+        _sshPrompt.value = null
+        connectToCamera(prompt.camera)
+    }
+
+    /** 사용자가 조치를 취소했다. 다이얼로그만 닫고 저장소는 건드리지 않는다. */
+    fun dismissSshPrompt() {
+        _sshPrompt.value = null
+    }
+
+    /**
+     * 직전 실패가 SSH 조치를 요구하는가.
+     *
+     * `_sshPrompt` 대신 저장소의 값을 직접 읽는다. 실패 사유의 수집과 `connectToCamera`의 반환은
+     * 서로 다른 코루틴이라 도착 순서가 보장되지 않으므로, 판정은 원본을 봐야 정확하다.
+     */
+    private fun requiresSshAction(): Boolean {
+        val failure = ptpipRepository.connectFailure.value ?: return false
+        return failure != PtpipConnectFailure.PAIRING_PENDING
     }
 
     // ══════════════════════════════════════════════════════════
@@ -551,13 +695,18 @@ class PtpipViewModel @Inject constructor(
                 _isConnecting.value = true
                 _errorMessage.value = null
                 val cam = ptpipRepository.addManualCamera(ip, "Manual ($ip)", 15740)
+                _lastConnectTarget.value = cam
                 val ok = ptpipRepository.connectToCamera(cam, forceApMode = false)
                 if (ok) {
                     _selectedCamera.value = cam
                     _autoDownloadEnabled.value = true
                 } else {
-                    _errorMessage.value =
+                    // SSH 실패는 전용 다이얼로그가 조치를 안내하므로 일반 실패 문구를 겹치지 않는다.
+                    _errorMessage.value = if (requiresSshAction()) {
+                        null
+                    } else {
                         appContext.getString(R.string.progress_camera_connect_failed)
+                    }
                     _isConnecting.value = false
                 }
             } catch (e: CancellationException) {
@@ -573,6 +722,7 @@ class PtpipViewModel @Inject constructor(
     // ── 카메라 연결/해제 (ConnectionHelper) ──
 
     fun connectToCamera(camera: PtpipCamera, forceApMode: Boolean = false) {
+        _lastConnectTarget.value = camera
         viewModelScope.launch {
             try {
                 _isConnecting.value = true
@@ -587,6 +737,10 @@ class PtpipViewModel @Inject constructor(
                 } else {
                     _errorMessage.value = if (userCancelRequested) {
                         null // 사용자 취소로 중단된 시도 — 실패로 표시하지 않는다.
+                    } else if (requiresSshAction()) {
+                        // SSH 실패는 전용 다이얼로그가 구체적인 조치를 안내한다. 여기서 일반
+                        // 실패 스낵바까지 띄우면 같은 사건을 두 곳에서 알리게 된다.
+                        null
                     } else {
                         appContext.getString(R.string.progress_camera_connect_failed)
                     }

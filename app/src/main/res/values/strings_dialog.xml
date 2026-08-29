@@ -75,6 +75,25 @@
     <string name="progress_camera_connect_exception">Error during camera connection: %1$s</string>
     <string name="progress_camera_label_connected">%1$s (connected)</string>
 
+    <!-- SSH 터널 연결 (소니 등 접속 인증이 필요한 카메라) -->
+    <string name="ssh_credentials_title">Camera login</string>
+    <string name="ssh_credentials_guide">Enter the values shown on the camera under MENU → Network → Access authentication settings.</string>
+    <string name="ssh_credentials_auth_failed">Sign-in failed. Please check the values again.</string>
+    <string name="ssh_credentials_store_failed">This device cannot store the login securely, so you will need to enter it every time you connect.</string>
+    <string name="ssh_credentials_user_label">User name</string>
+    <string name="ssh_credentials_password_label">Password</string>
+
+    <string name="ssh_hostkey_title">Verify camera fingerprint</string>
+    <string name="ssh_hostkey_guide">Check that the fingerprint below matches the one shown on the camera under MENU → Network → Access authentication information.</string>
+    <string name="ssh_hostkey_trust">It matches - trust</string>
+    <string name="ssh_hostkey_mismatch_title">The camera fingerprint has changed</string>
+    <string name="ssh_hostkey_mismatch_body">It differs from the saved fingerprint. Another device may be impersonating the camera, so the connection was stopped.</string>
+    <string name="ssh_hostkey_mismatch_hint">If you reset the camera or reconfigured its network, delete the saved fingerprint in Settings and connect again.</string>
+
+    <string name="ssh_tunnel_failed_title">SSH connection failed</string>
+    <string name="ssh_tunnel_failed_body">Could not reach the camera SSH port. Check that you are on the same network as the camera and that access authentication is enabled on the camera.</string>
+    <string name="ssh_retry">Try again</string>
+
     <!-- 알림 설정 -->
     <string name="notification_settings_title">Notification settings</string>
     <string name="notification_settings_subtitle">Push notifications and sound</string>

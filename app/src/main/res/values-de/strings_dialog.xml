@@ -74,4 +74,21 @@
 
     <string name="notification_settings_title">Benachrichtigungseinstellungen</string>
     <string name="notification_settings_subtitle">Push-Benachrichtigungen und Ton</string>
+    <!-- SSH 터널 연결 (소니 등 접속 인증이 필요한 카메라) -->
+    <string name="ssh_credentials_title">Kamera-Anmeldung</string>
+    <string name="ssh_credentials_guide">Geben Sie die Werte ein, die an der Kamera unter MENU → Netzwerk → Zugangsauthentifizierung angezeigt werden.</string>
+    <string name="ssh_credentials_auth_failed">Anmeldung fehlgeschlagen. Bitte prüfen Sie die Werte erneut.</string>
+    <string name="ssh_credentials_store_failed">Dieses Gerät kann die Anmeldedaten nicht sicher speichern. Sie müssen sie bei jeder Verbindung erneut eingeben.</string>
+    <string name="ssh_credentials_user_label">Benutzername</string>
+    <string name="ssh_credentials_password_label">Passwort</string>
+    <string name="ssh_hostkey_title">Kamera-Fingerabdruck prüfen</string>
+    <string name="ssh_hostkey_guide">Prüfen Sie, ob der Fingerabdruck unten mit dem übereinstimmt, der an der Kamera unter MENU → Netzwerk → Zugangsauthentifizierungs-Info angezeigt wird.</string>
+    <string name="ssh_hostkey_trust">Stimmt überein - vertrauen</string>
+    <string name="ssh_hostkey_mismatch_title">Der Kamera-Fingerabdruck hat sich geändert</string>
+    <string name="ssh_hostkey_mismatch_body">Er weicht vom gespeicherten Fingerabdruck ab. Möglicherweise gibt sich ein anderes Gerät als die Kamera aus, daher wurde die Verbindung abgebrochen.</string>
+    <string name="ssh_hostkey_mismatch_hint">Wenn Sie die Kamera zurückgesetzt oder das Netzwerk neu eingerichtet haben, löschen Sie den gespeicherten Fingerabdruck in den Einstellungen und verbinden Sie erneut.</string>
+    <string name="ssh_tunnel_failed_title">SSH-Verbindung fehlgeschlagen</string>
+    <string name="ssh_tunnel_failed_body">Der SSH-Port der Kamera war nicht erreichbar. Prüfen Sie, ob Sie sich im selben Netzwerk wie die Kamera befinden und ob die Zugangsauthentifizierung an der Kamera aktiviert ist.</string>
+    <string name="ssh_retry">Erneut versuchen</string>
+
 </resources>

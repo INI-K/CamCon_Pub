@@ -78,6 +78,24 @@ interface PtpipRepository {
     /** 카메라 연결 해제 */
     suspend fun disconnect()
 
+    // ── SSH 자격증명 / 호스트키 (사용자 조치 반영) ──
+
+    /**
+     * 사용자가 입력한 SSH 사용자명·비밀번호를 저장한다.
+     *
+     * @return 이 기기에서 암호화 저장소를 쓸 수 없으면 false. 이때 평문으로 저장하지 않으므로
+     *   (fail-closed) 호출자는 "연결할 때마다 입력이 필요하다"고 안내해야 한다.
+     */
+    suspend fun saveSshCredentials(camera: PtpipCamera, user: String, password: String): Boolean
+
+    /**
+     * 사용자가 카메라 본체 화면의 지문과 대조해 승인한 호스트키를 저장한다(TOFU).
+     *
+     * ⚠️ 대조 없이 호출하면 TOFU 보호가 사라진다. 사용자가 [sshHostKeyFingerprint]로 표시된 값을
+     * 직접 확인하고 승인한 경로에서만 부른다.
+     */
+    suspend fun trustSshHostKey(camera: PtpipCamera, fingerprint: String)
+
     /**
      * 진행 중 연결의 협조적 취소 요청. mutex를 획득하지 않고 즉시 반환한다.
      *

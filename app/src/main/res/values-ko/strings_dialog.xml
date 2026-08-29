@@ -78,4 +78,21 @@
     <!-- 알림 설정 -->
     <string name="notification_settings_title">알림 설정</string>
     <string name="notification_settings_subtitle">푸시 알림 및 소리 설정</string>
+    <!-- SSH 터널 연결 (소니 등 접속 인증이 필요한 카메라) -->
+    <string name="ssh_credentials_title">카메라 로그인 정보</string>
+    <string name="ssh_credentials_guide">카메라의 MENU → 네트워크 → 접속 인증 설정 화면에 표시된 값을 입력하세요.</string>
+    <string name="ssh_credentials_auth_failed">인증에 실패했습니다. 입력한 값을 다시 확인하세요.</string>
+    <string name="ssh_credentials_store_failed">이 기기에서는 로그인 정보를 안전하게 저장할 수 없어 연결할 때마다 입력이 필요합니다.</string>
+    <string name="ssh_credentials_user_label">사용자 이름</string>
+    <string name="ssh_credentials_password_label">비밀번호</string>
+    <string name="ssh_hostkey_title">카메라 지문 확인</string>
+    <string name="ssh_hostkey_guide">카메라의 MENU → 네트워크 → 접속 인증 정보 화면에 표시된 지문과 아래 값이 같은지 확인하세요.</string>
+    <string name="ssh_hostkey_trust">일치함 - 신뢰</string>
+    <string name="ssh_hostkey_mismatch_title">카메라 지문이 바뀌었습니다</string>
+    <string name="ssh_hostkey_mismatch_body">저장된 지문과 다릅니다. 다른 기기가 카메라를 사칭하고 있을 수 있어 연결을 중단했습니다.</string>
+    <string name="ssh_hostkey_mismatch_hint">카메라를 초기화했거나 네트워크 설정을 다시 했다면, 설정에서 저장된 지문을 삭제한 뒤 다시 연결하세요.</string>
+    <string name="ssh_tunnel_failed_title">SSH 연결에 실패했습니다</string>
+    <string name="ssh_tunnel_failed_body">카메라의 SSH 포트에 접속하지 못했습니다. 카메라와 같은 네트워크에 있는지, 카메라의 접속 인증 설정이 켜져 있는지 확인하세요.</string>
+    <string name="ssh_retry">다시 시도</string>
+
 </resources>
