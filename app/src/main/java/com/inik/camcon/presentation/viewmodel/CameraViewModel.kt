@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.inik.camcon.BuildConfig
 import com.inik.camcon.presentation.viewmodel.state.CameraSettingsManager
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.model.Camera
@@ -92,7 +93,15 @@ class CameraViewModel @Inject constructor(
         // 자동 재연결(CONNECTED 전이) 직후 이벤트 리스너/세션 안정화를 기다리는 지연.
         // 별도 플러시 완료 신호가 없어 소폭 지연으로 근사한다(스펙: 1~2s 허용).
         private const val LIVEVIEW_RESUME_DELAY_MS = 1500L
+
+        // 진단용 라이브뷰 프레임 덤프 상한(앱 실행당). 색 판정에는 몇 장이면 충분하고,
+        // 그 이상은 저장 공간만 먹는다. [dumpLiveViewFrameIfRequested] 참조.
+        private const val LIVEVIEW_DUMP_MAX_FRAMES = 3
     }
+
+    // 이번 실행에서 지금까지 덤프한 라이브뷰 프레임 수. 디코딩이 IO 디스패처에서 도는 동안
+    // 여러 프레임이 겹칠 수 있어 원자적으로 센다.
+    private val liveViewDumpCount = java.util.concurrent.atomic.AtomicInteger(0)
 
     // 화질 변경에 따른 라이브뷰 재시작을 직렬화한다(연타·중복 재시작 차단).
     // stop→폴링→start 2-단계가 원자적이어야 하므로 onEach(직렬) + 이 Mutex로 보호한다.
@@ -511,6 +520,19 @@ class CameraViewModel @Inject constructor(
         viewModelScope.launch {
             settingsManager.cameraSettings.collect { s ->
                 if (s != null) uiStateManager.updateCameraSettings(s)
+            }
+        }
+        // settingsManager.cameraCapabilities → uiState 브리지.
+        //
+        // 기능 정보를 담는 곳이 두 군데다. settingsManager 쪽은 DeviceInfo 기반 이름
+        // ("Sony Corporation ILCE-7M5")과 실제 지원 여부를 갖는 반면, uiState 쪽은
+        // CameraConnectionManager 가 연결 시점에 채우는데 그 조회는 비용 때문에 미뤄져 있다.
+        // 그래서 uiState 쪽이 비어 라이브뷰가 "지원 안됨"으로 보이고 기종명이 abilities 의
+        // 드라이버 이름("PTP/IP Camera")으로 남는 일이 있었다(실기 2026-08-30 a7m5 Wi-Fi).
+        // 값 미러링만 하므로 네이티브 호출이 늘지 않는다.
+        viewModelScope.launch {
+            settingsManager.cameraCapabilities.collect { capabilities ->
+                if (capabilities != null) uiStateManager.updateCameraCapabilities(capabilities)
             }
         }
         // 라이브뷰일 때만: seed + 이벤트 구동 재조회 + 1초 안전망. LV off 시 collectLatest 가 자식까지 전부 취소.
@@ -1226,6 +1248,7 @@ class CameraViewModel @Inject constructor(
     private suspend fun decodeLiveViewFrameAsync(frame: LiveViewFrame) {
         try {
             val decodedBitmap = withContext(ioDispatcher) {
+                dumpLiveViewFrameIfRequested(frame.data)
                 val bitmapOptions = BitmapFactory.Options().apply {
                     inMutable = true
                     inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
@@ -1269,6 +1292,39 @@ class CameraViewModel @Inject constructor(
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "라이브뷰 프레임 처리 중 오류", e)
+        }
+    }
+
+    /**
+     * 라이브뷰 프레임의 **원본 바이트**를 파일로 남긴다. 색·화질 이상을 진단할 때만 쓰는
+     * 디버그 빌드 전용 통로다.
+     *
+     * 색이 이상하다는 신고는 "카메라가 보낸 JPEG 자체가 그런 것"과 "우리가 잘못 디코딩한 것"이
+     * 육안으로 구분되지 않는다. 그래서 [BitmapFactory] 에 넘기는 것과 완전히 같은 바이트를 그대로
+     * 저장해, PC 에서 열어 보고 두 경우를 갈라낸다.
+     *
+     * 켜는 방법(테스터가 명시적으로 켜야만 동작한다):
+     * ```
+     * adb shell touch /sdcard/Android/data/com.inik.camcon/files/lvdump
+     * ```
+     * 앱 실행마다 앞의 [LIVEVIEW_DUMP_MAX_FRAMES] 장만 저장하고 스스로 멈춘다. 저장 위치는
+     * 같은 디렉터리의 `lvframe_0.jpg` 형식이며, `adb pull` 로 그대로 가져올 수 있다.
+     *
+     * 네이티브는 프레임마다 같은 ByteArray 를 재사용하므로 반드시 복사한 뒤 기록한다.
+     */
+    private fun dumpLiveViewFrameIfRequested(data: ByteArray) {
+        if (!BuildConfig.DEBUG) return
+        val seq = liveViewDumpCount.get()
+        if (seq >= LIVEVIEW_DUMP_MAX_FRAMES) return
+        try {
+            val dir = context.getExternalFilesDir(null) ?: return
+            if (!java.io.File(dir, "lvdump").exists()) return
+            if (!liveViewDumpCount.compareAndSet(seq, seq + 1)) return
+            val copy = data.copyOf()
+            java.io.File(dir, "lvframe_$seq.jpg").writeBytes(copy)
+            Log.i(TAG, "라이브뷰 프레임 덤프 저장: lvframe_$seq.jpg (${copy.size}바이트)")
+        } catch (e: Exception) {
+            Log.w(TAG, "라이브뷰 프레임 덤프 실패", e)
         }
     }
 

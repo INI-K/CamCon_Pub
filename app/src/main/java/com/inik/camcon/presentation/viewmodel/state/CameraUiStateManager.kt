@@ -683,11 +683,21 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                     showNikonStaWarning = abilities.needsStaAuthentication()
                 ),
 
-                // 연결된 카메라 정보
-                connection = currentState.connection.copy(
-                    connectedCameraModel = abilities.model,
-                    connectedCameraManufacturer = abilities.getManufacturer()
-                )
+                // 연결된 카메라 정보.
+                //
+                // abilities.model 은 libgphoto2 드라이버 이름이라 PTP/IP 에서는 범용
+                // "PTP/IP Camera" 가 오고, 제조사 추론이 "Unknown" 이 되어 설정 화면에
+                // "Unknown PTP/IP Camera" 로 보인다(실기 2026-08-30 a7m5). DeviceInfo 로 얻은
+                // 실제 이름이 이미 들어와 있으면 그것을 덮지 않는다. updateCameraCapabilities 의
+                // 같은 취지 주석과 짝을 이룬다.
+                connection = if (currentState.connection.connectedCameraModel.isNullOrBlank()) {
+                    currentState.connection.copy(
+                        connectedCameraModel = abilities.model,
+                        connectedCameraManufacturer = abilities.getManufacturer()
+                    )
+                } else {
+                    currentState.connection
+                }
             )
         }
 

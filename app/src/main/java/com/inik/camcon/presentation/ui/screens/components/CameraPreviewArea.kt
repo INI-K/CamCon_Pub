@@ -555,8 +555,16 @@ fun CameraConnectedState(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center
     ) {
-        // 라이브뷰 지원 여부 확인
-        val supportsLiveView = cameraCapabilities?.canLiveView ?: false
+        // 라이브뷰 지원 여부 확인.
+        //
+        // null 은 "미지원"이 아니라 "아직 모름"이다. `CameraConnectionManager.updatePtpipConnectionStatus`
+        // 는 연결 시점에 기능 정보를 읽지 않는다(설정 트리 전체를 읽어 니콘 무선에서 7.2초가 걸린다).
+        // 그 주석도 "null 이면 통과하는 구조라 기능이 막히지 않는다"를 전제로 두고 있는데, 여기서
+        // false 로 접으면 그 전제가 깨져 실제로는 지원하는 카메라에 "지원 안됨" 화면이 뜬다
+        // (실기 2026-08-30 a7m5 Wi-Fi: 능력 조회는 라이브뷰=true 인데 이 화면이 표시됐다).
+        // 미지원 화면은 카메라가 명시적으로 false 를 보고했을 때만 띄운다. 값을 모르면 버튼을
+        // 보여 주고, 실제 가부는 시작 시점에 `CameraOperationsManager` 가 다시 판정한다.
+        val supportsLiveView = cameraCapabilities?.canLiveView ?: true
 
         if (supportsLiveView) {
             Icon(
