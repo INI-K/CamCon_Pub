@@ -57,7 +57,7 @@
   "film.print": "Stampa",
   "films.freeLabel": "Free Signature: 5 pellicole signature, gratuite",
   "films.note": "Il look viene applicato dalla pipeline di ricezione nell'istante dello scatto e i RAW originali restano intatti. <strong>PRO</strong> apre il catalogo completo e pellicola + colore insieme.",
-  "films.credit": "I preset di simulazione pellicola si basano sulle emulazioni del progetto open source G'MIC (CC BY-SA 4.0). I nomi delle pellicole mostrati sono marchi dei rispettivi proprietari; CamCon non è affiliata né approvata da alcun produttore di pellicole.",
+  "films.credit": "I preset di simulazione pellicola si basano sulle emulazioni del progetto open source G'MIC. L'attribuzione degli autori originali è riportata nella schermata delle licenze open source dell'app. I nomi delle pellicole mostrati sono marchi dei rispettivi proprietari; CamCon non è affiliata né approvata da alcun produttore di pellicole.",
   "films.baBefore": "Originale",
   "films.afterAlt": "Con pellicola",
   "films.baHint": "Tocca una pellicola per cambiarla e trascina la maniglia per confrontare prima e dopo.",
