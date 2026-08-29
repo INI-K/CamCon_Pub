@@ -607,6 +607,8 @@ main { position: relative; z-index: var(--z-content); }
 .swatch.is-active::before { box-shadow: inset 0 0 0 2px var(--amber-hi); }
 .films-note { margin-top: 30px; color: var(--ink-dim); font-size: var(--t-body-sm); text-align: center; }
 .films-note strong { color: var(--amber); }
+/* 출처·상표 고지 — 본문 노트 바로 아래에 붙는 법적 고지라 한 티어 낮춘다. */
+.films-credit { margin-top: 12px; font-size: var(--t-meta); }
 
 /* ============================================================
    COLOR TRANSFER

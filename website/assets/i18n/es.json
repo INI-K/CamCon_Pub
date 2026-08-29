@@ -57,6 +57,7 @@
   "film.print": "Impresión",
   "films.freeLabel": "Free Signature: 5 películas emblemáticas, de uso gratuito",
   "films.note": "El look se aplica en la propia canalización de recepción en el momento del disparo y tus originales RAW no se tocan. <strong>PRO</strong> abre el catálogo completo y película + color a la vez.",
+  "films.credit": "Los ajustes de simulación de película se basan en las emulaciones del proyecto de código abierto G'MIC (CC BY-SA 4.0). Los nombres de película mostrados son marcas de sus respectivos propietarios; CamCon no está afiliado ni respaldado por ningún fabricante de película.",
   "films.baBefore": "Original",
   "films.afterAlt": "Con película",
   "films.baHint": "Toca una película para cambiarla y arrastra el control para comparar el antes y el después.",

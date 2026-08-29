@@ -57,6 +57,7 @@
   "film.print": "Print",
   "films.freeLabel": "Free Signature: 5 signature films, free to use",
   "films.note": "The look is baked in by the receiving pipeline the instant you shoot, and your RAW originals are never touched. <strong>PRO</strong> opens the full catalog and film + color applied together.",
+  "films.credit": "The film simulation presets are based on film emulations from the open-source G'MIC project (CC BY-SA 4.0). Film names shown here are trademarks of their respective owners; CamCon is not affiliated with or endorsed by any film manufacturer.",
   "films.baBefore": "Original",
   "films.afterAlt": "Film applied",
   "films.baHint": "Tap a film to switch, and drag the handle to compare before and after.",

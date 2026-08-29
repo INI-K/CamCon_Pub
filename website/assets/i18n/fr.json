@@ -57,6 +57,7 @@
   "film.print": "Tirage",
   "films.freeLabel": "Free Signature : 5 pellicules signature, gratuites",
   "films.note": "Le rendu est appliqué par le pipeline de réception au moment du déclenchement, et vos originaux RAW restent intacts. <strong>PRO</strong> ouvre le catalogue complet et l'application simultanée pellicule + couleur.",
+  "films.credit": "Les préréglages de simulation argentique reposent sur les émulations du projet open source G'MIC (CC BY-SA 4.0). Les noms de films affichés sont des marques de leurs propriétaires respectifs ; CamCon n'est ni affilié ni approuvé par un fabricant de films.",
   "films.baBefore": "Original",
   "films.afterAlt": "Avec le film",
   "films.baHint": "Touchez une pellicule pour en changer, puis faites glisser la poignée pour comparer l'avant et l'après.",

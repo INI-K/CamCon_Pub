@@ -57,6 +57,7 @@
   "film.print": "冲印",
   "films.freeLabel": "Free Signature：5 款免费招牌胶片",
   "films.note": "胶片在拍摄后的接收流程中即时应用，RAW 原始文件不做任何改动。<strong>PRO</strong> 开放完整片库，并可同时应用胶片与色调。",
+  "films.credit": "胶片模拟预设基于开源 G'MIC 项目的胶片模拟（CC BY-SA 4.0）。此处显示的胶片名称均为各自商标所有者的财产，CamCon 与任何胶片制造商没有隶属或背书关系。",
   "films.baBefore": "原图",
   "films.afterAlt": "应用胶片后",
   "films.baHint": "点按胶片即可切换，拖动滑块对比应用前后的效果。",

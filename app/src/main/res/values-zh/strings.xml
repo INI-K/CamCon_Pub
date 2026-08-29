@@ -360,6 +360,11 @@
     <string name="licenses_modified_badge">CamCon 修改版</string>
     <string name="licenses_lgpl_offer_title">提供修改后的 LGPL 源代码</string>
     <string name="licenses_lgpl_offer_body">CamCon 内含经过修改并重新编译的 libgphoto2 与 libgphoto2_port，二者均采用 LGPL-2.1-or-later 许可。依照该许可，我们会向任何提出请求的人提供这些修改版对应的完整源代码，期限为本版本发布之日起三年。请求时请一并告知应用版本号。</string>
+    <string name="licenses_view_full_text">查看许可证全文</string>
+    <string name="licenses_fonts_section">随附字体</string>
+    <string name="licenses_film_luts_section">胶片模拟预设</string>
+    <string name="licenses_film_luts_title">预设来源</string>
+    <string name="licenses_film_luts_body">胶片模拟 LUT 源自 G\'MIC 项目的胶片模拟预设，由 Film-Luts 仓库转换为 .cube 格式。CamCon 未作任何修改，直接随附该转换版本，并完整保留每个文件中的原始版权声明。</string>
     <string name="licenses_trademark_title">商标声明</string>
     <string name="licenses_trademark_body">胶片模拟中显示的胶片与相机品牌名称均为各自商标所有者的财产。CamCon 与这些所有者没有任何隶属、赞助或背书关系；这些名称仅用于描述各预设所要还原的色彩特性。</string>
     <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->

@@ -364,6 +364,11 @@
     <string name="licenses_modified_badge">CamCon による改変版</string>
     <string name="licenses_lgpl_offer_title">改変した LGPL ソースの提供</string>
     <string name="licenses_lgpl_offer_body">CamCon には、LGPL-2.1-or-later で提供される libgphoto2 および libgphoto2_port を改変してビルドしたバイナリが含まれています。ライセンスの定めに従い、改変版に対応する完全なソースコードをご請求いただいた方に提供します。提供期間は、このバージョンを配布した日から3年間です。ご請求の際はアプリのバージョンをお知らせください。</string>
+    <string name="licenses_view_full_text">ライセンス全文を表示</string>
+    <string name="licenses_fonts_section">同梱フォント</string>
+    <string name="licenses_film_luts_section">フィルムシミュレーションプリセット</string>
+    <string name="licenses_film_luts_title">プリセットの出典</string>
+    <string name="licenses_film_luts_body">フィルムシミュレーションの LUT は、G\'MIC プロジェクトのフィルムエミュレーションプリセットを Film-Luts リポジトリが .cube 形式に変換したものです。CamCon はこの変換物を改変せずに同梱し、各ファイルに含まれる元の著作権表示もそのまま保持しています。</string>
     <string name="licenses_trademark_title">商標について</string>
     <string name="licenses_trademark_body">フィルムシミュレーションに表示されるフィルム名およびカメラのブランド名は、各商標権者の財産です。CamCon はこれらの権利者と提携・後援・推奨のいずれの関係もありません。名称は、各プリセットが再現しようとする色の特性を説明する目的でのみ使用しています。</string>
     <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->

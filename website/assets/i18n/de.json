@@ -57,6 +57,7 @@
   "film.print": "Print",
   "films.freeLabel": "Free Signature: 5 Signature-Filme, kostenlos nutzbar",
   "films.note": "Der Look entsteht direkt in der Empfangs-Pipeline beim Auslösen, die RAW-Originale bleiben unangetastet. <strong>PRO</strong> öffnet den vollständigen Katalog und Film + Farbe gleichzeitig.",
+  "films.credit": "Die Filmsimulations-Presets basieren auf Filmemulationen des Open-Source-Projekts G'MIC (CC BY-SA 4.0). Die gezeigten Filmnamen sind Marken ihrer jeweiligen Inhaber; CamCon ist mit keinem Filmhersteller verbunden oder von ihm autorisiert.",
   "films.baBefore": "Original",
   "films.afterAlt": "Mit Film",
   "films.baHint": "Tippe auf einen Film, um zu wechseln, und zieh den Griff, um Vorher und Nachher zu vergleichen.",

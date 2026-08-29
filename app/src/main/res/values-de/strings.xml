@@ -360,6 +360,11 @@
     <string name="licenses_modified_badge">Von CamCon modifiziert</string>
     <string name="licenses_lgpl_offer_title">Modifizierter LGPL-Quellcode</string>
     <string name="licenses_lgpl_offer_body">CamCon enthält modifizierte Builds von libgphoto2 und libgphoto2_port, die unter LGPL-2.1-or-later stehen. Wie diese Lizenz es verlangt, stellen wir den vollständigen zugehörigen Quellcode dieser modifizierten Versionen jeder anfragenden Person zur Verfügung, und zwar drei Jahre lang ab dem Tag, an dem diese Version verteilt wurde. Bitte geben Sie in der Anfrage die App-Version an.</string>
+    <string name="licenses_view_full_text">Vollständigen Lizenztext anzeigen</string>
+    <string name="licenses_fonts_section">Mitgelieferte Schrift</string>
+    <string name="licenses_film_luts_section">Filmsimulations-Presets</string>
+    <string name="licenses_film_luts_title">Herkunft der Presets</string>
+    <string name="licenses_film_luts_body">Die Filmsimulations-LUTs sind Filmemulations-Presets des G\'MIC-Projekts, die vom Film-Luts-Repository in das .cube-Format konvertiert wurden. CamCon liefert diese Konvertierung unverändert mit und bewahrt den in jeder Datei enthaltenen ursprünglichen Copyright-Hinweis.</string>
     <string name="licenses_trademark_title">Marken</string>
     <string name="licenses_trademark_body">Die in den Filmsimulationen gezeigten Film- und Kameramarken sind Eigentum der jeweiligen Markeninhaber. CamCon steht in keiner Verbindung zu ihnen und wird von ihnen weder gesponsert noch unterstützt. Die Namen dienen ausschließlich dazu, die Farbcharakteristik zu beschreiben, die die jeweilige Voreinstellung nachbilden möchte.</string>
     <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->
