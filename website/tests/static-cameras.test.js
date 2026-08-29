@@ -48,12 +48,23 @@ test("대표 기종 큐레이션(data-cam)은 전부 카탈로그에 실존한�
   }
 });
 
-test("큐레이션 Wi-Fi 배지는 카탈로그 wifi 플래그와 일치한다 (비검증 무선 표기 금지)", () => {
+/* 큐레이션 카드의 Wi-Fi 배지 근거 목록 — 카드에 무선을 표기하려면 여기에 근거와 함께 추가해야 한다.
+   근거 = 개발 실기 검증 또는 getVerifiedCameras 실사용 보고(wifi:true). 추측·드라이버 등재만으로는 불가. */
+const WIFI_VERIFIED = new Set([
+  "Nikon Z8",                    // 개발 실기 검증 (USB·Wi-Fi) + 실사용 보고 nikon:z8
+  "Nikon Z6",                    // 개발 실기 검증 (USB·Wi-Fi) + 실사용 보고 nikon:z6
+  "Sony ILCE-7C (Control)",      // 실사용 보고 sony:ilce7c (usb+wifi, 2026-08-29 실측)
+  "Sony Alpha-A7 IV",            // 실사용 보고 sony:alphaa7iv (wifi, 2026-08-29 실측)
+]);
+
+test("큐레이션 Wi-Fi 배지는 근거 목록(WIFI_VERIFIED)에 있어야 한다 (비검증 무선 표기 금지)", () => {
   const known = new Map(catalog.cameras.map((c) => [c.vendor + " " + c.model, c]));
   for (const [, key, body] of indexHtml.matchAll(/<li data-cam="([^"]+)">([\s\S]*?)<\/li>/g)) {
     const claimsWifi = /Wi-Fi/.test(body);
-    const isWifi = !!(known.get(key) || {}).wifi;
-    assert.equal(claimsWifi, isWifi, `${key}: Wi-Fi 표기(${claimsWifi})와 카탈로그(${isWifi}) 불일치`);
+    const allowed = WIFI_VERIFIED.has(key) || !!(known.get(key) || {}).wifi;
+    if (claimsWifi) assert.ok(allowed, `${key}: 근거 없는 Wi-Fi 배지`);
+    // 카탈로그 wifi 큐레이션(Nikon Z)에 든 카드는 무선을 감추지 않는다.
+    if ((known.get(key) || {}).wifi) assert.ok(claimsWifi, `${key}: 카탈로그 wifi 기종인데 배지 누락`);
   }
 });
 

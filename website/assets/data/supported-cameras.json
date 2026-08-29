@@ -4151,6 +4151,11 @@
   },
   {
    "vendor": "Sony",
+   "model": "Alpha-A7 V (ILCE-7M5)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
    "model": "Alpha-A77 M2 (Control)",
    "connection": "usb"
   },
@@ -4617,11 +4622,6 @@
   {
    "vendor": "Sony",
    "model": "ILCE-7M2 (Control)",
-   "connection": "usb"
-  },
-  {
-   "vendor": "Sony",
-   "model": "ILCE-7M5",
    "connection": "usb"
   },
   {

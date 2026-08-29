@@ -83,8 +83,9 @@ WIFI_SUPPORTED = {
 
 # 실기 검증으로 확인됐으나 pin된 libgphoto2(2.5.34) 모델 테이블에 아직 없는 기종 수동 추가.
 # 항목 추가 조건 = 실물 카메라 연결 확인. (ILCE-7M5: 2026-08-29 USB 테더링 실기 확인)
+# 표기는 기존 소니 행("Alpha-A7 IV")과 통일하고 "A7"/"7M5" 검색이 걸리도록 통칭+코드 병기.
 EXTRA_MODELS = [
-    ("Sony", "ILCE-7M5", "usb"),
+    ("Sony", "Alpha-A7 V (ILCE-7M5)", "usb"),
 ]
 
 # ptpip 을 제외한 camlib 는 전부 USB 유선.

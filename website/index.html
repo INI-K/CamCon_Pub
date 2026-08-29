@@ -229,25 +229,26 @@
           <p class="section-lead" data-i18n="cameras.lead">USB(PTP) 또는 Wi-Fi STA(공유기) 모드를 지원하는 카메라라면 사용할 수 있습니다.</p>
         </header>
 
-        <!-- 대표 기종 큐레이션 — 접힌 전체 목록과 달리 항상 노출되는 정적 카드(SEO 텍스트 겸용).
-             data-cam 은 supported-cameras.json 의 "vendor model" 원문 — 실존 여부와 Wi-Fi 배지 정합성을
-             tests/static-cameras.test.js 가 검증한다. 표시명은 소비자 통칭을 쓸 수 있다(예: ILCE-7M5 → A7 V).
-             니콘 외 무선은 실기 검증 전이므로 Wi-Fi 배지를 붙이지 않는다. -->
+        <!-- 실사용 검증 기종 큐레이션 — 접힌 전체 목록과 달리 항상 노출되는 정적 카드(SEO 텍스트 겸용).
+             구성 기준 = 검증 이력이 있는 기종만: getVerifiedCameras 실측 보고 + 개발 실기 검증(Z6·Z8·A7 V).
+             배지는 확인된 연결 방식만 표기한다(무선 미확인 기종에 Wi-Fi 배지 금지).
+             data-cam 은 supported-cameras.json 의 "vendor model" 원문 — 실존 여부와 Wi-Fi 배지 근거를
+             tests/static-cameras.test.js(WIFI_VERIFIED)가 검증한다. 표시명은 소비자 통칭을 쓸 수 있다. -->
         <div class="cam-top reveal">
-          <p class="cam-top-title" data-i18n="cameras.topTitle">대표 지원 기종</p>
+          <p class="cam-top-title" data-i18n="cameras.topTitle">실사용 검증 기종</p>
           <ul class="cam-top-grid">
             <li data-cam="Nikon Z8"><span class="cam-vendor">Nikon</span><span class="cam-model">Z8</span><span class="cam-wifi">USB · Wi-Fi</span></li>
-            <li data-cam="Nikon Z6 III"><span class="cam-vendor">Nikon</span><span class="cam-model">Z6 III</span><span class="cam-wifi">USB · Wi-Fi</span></li>
-            <li data-cam="Nikon Zf"><span class="cam-vendor">Nikon</span><span class="cam-model">Zf</span><span class="cam-wifi">USB · Wi-Fi</span></li>
-            <li data-cam="Canon EOS R5"><span class="cam-vendor">Canon</span><span class="cam-model">EOS R5</span><span class="cam-conn">USB</span></li>
-            <li data-cam="Canon EOS R6 Mark III"><span class="cam-vendor">Canon</span><span class="cam-model">EOS R6 Mark III</span><span class="cam-conn">USB</span></li>
-            <li data-cam="Canon EOS R8"><span class="cam-vendor">Canon</span><span class="cam-model">EOS R8</span><span class="cam-conn">USB</span></li>
-            <li data-cam="Sony ILCE-7M5"><span class="cam-vendor">Sony</span><span class="cam-model">A7 V</span><span class="cam-conn">USB</span></li>
-            <li data-cam="Sony Alpha-A7 IV"><span class="cam-vendor">Sony</span><span class="cam-model">A7 IV</span><span class="cam-conn">USB</span></li>
-            <li data-cam="Fujifilm X-T5"><span class="cam-vendor">Fujifilm</span><span class="cam-model">X-T5</span><span class="cam-conn">USB</span></li>
-            <li data-cam="Fujifilm X100VI"><span class="cam-vendor">Fujifilm</span><span class="cam-model">X100VI</span><span class="cam-conn">USB</span></li>
-            <li data-cam="Olympus OM-1"><span class="cam-vendor">OM System</span><span class="cam-model">OM-1</span><span class="cam-conn">USB</span></li>
-            <li data-cam="Ricoh GR III"><span class="cam-vendor">Ricoh</span><span class="cam-model">GR III</span><span class="cam-conn">USB</span></li>
+            <li data-cam="Nikon Z6"><span class="cam-vendor">Nikon</span><span class="cam-model">Z6</span><span class="cam-wifi">USB · Wi-Fi</span></li>
+            <li data-cam="Sony Alpha-A7 V (ILCE-7M5)"><span class="cam-vendor">Sony</span><span class="cam-model">A7 V</span><span class="cam-conn">USB</span></li>
+            <li data-cam="Sony ILCE-7C (Control)"><span class="cam-vendor">Sony</span><span class="cam-model">A7C</span><span class="cam-wifi">USB · Wi-Fi</span></li>
+            <li data-cam="Sony Alpha-A7 IV"><span class="cam-vendor">Sony</span><span class="cam-model">A7 IV</span><span class="cam-wifi">Wi-Fi</span></li>
+            <li data-cam="Canon EOS R7"><span class="cam-vendor">Canon</span><span class="cam-model">EOS R7</span><span class="cam-conn">USB</span></li>
+            <li data-cam="Canon EOS 7D"><span class="cam-vendor">Canon</span><span class="cam-model">EOS 7D</span><span class="cam-conn">USB</span></li>
+            <li data-cam="Canon EOS 500D"><span class="cam-vendor">Canon</span><span class="cam-model">EOS 500D</span><span class="cam-conn">USB</span></li>
+            <li data-cam="Fujifilm GFX 100S"><span class="cam-vendor">Fujifilm</span><span class="cam-model">GFX 100S</span><span class="cam-conn">USB</span></li>
+            <li data-cam="Fujifilm X-T1"><span class="cam-vendor">Fujifilm</span><span class="cam-model">X-T1</span><span class="cam-conn">USB</span></li>
+            <li data-cam="Panasonic DC-GH5"><span class="cam-vendor">Panasonic</span><span class="cam-model">GH5</span><span class="cam-conn">USB</span></li>
+            <li data-cam="Nikon DSC D70s"><span class="cam-vendor">Nikon</span><span class="cam-model">D70s</span><span class="cam-conn">USB</span></li>
           </ul>
         </div>
 
@@ -259,8 +260,8 @@
           </div>
           <div class="cam-row">
             <div class="conn"><svg viewBox="0 0 24 24"><path d="M12 20a8 8 0 0 0 8-8M12 20a8 8 0 0 1-8-8M12 20v-3M2 12a10 10 0 0 1 20 0"/><circle cx="12" cy="12" r="1.4"/></svg><b data-i18n="cameras.wifiRow">Wi-Fi 무선</b></div>
-            <p class="desc" data-i18n="cameras.wifiDesc">무선(Wi-Fi) 연결은 현재 <strong>Nikon Z 시리즈에서 지원</strong>됩니다(Z6·Z8 실기 검증). <strong>Canon·Sony·Fujifilm 무선은 검증 진행 중</strong>이며, 지원 확대 예정입니다. 그 외 제조사는 USB 유선으로 바로 연결할 수 있습니다.</p>
-            <div class="cam-badges"><span class="badge wifi" data-i18n="cameras.badgeNikon">Nikon 검증됨</span><span class="badge" data-i18n="cameras.badgeExpand">그 외 확대 중</span></div>
+            <p class="desc" data-i18n="cameras.wifiDesc">무선(Wi-Fi) 연결은 표준 PTP/IP를 지원하는 카메라에서 사용할 수 있습니다. <strong>실기·실사용으로 확인된 기종</strong>에는 목록에 <strong>Wi-Fi 배지</strong>가 붙으며, 확인 기종은 계속 늘어나고 있습니다. 무선이 어려운 기종도 USB 유선으로 바로 연결할 수 있습니다.</p>
+            <div class="cam-badges"><span class="badge wifi" data-i18n="cameras.badgeVerified">검증 기종 배지 표시</span><span class="badge" data-i18n="cameras.badgeExpand">확인 기종 확대 중</span></div>
           </div>
         </div>
         <p class="cam-unified reveal" data-i18n="cameras.unified">USB로 연결하든 Wi-Fi로 연결하든, 촬영·수신·필름 적용 등 모든 기능은 동일합니다.</p>
@@ -1115,6 +1116,7 @@
               <li><span class="cam-vendor">Sony</span><span class="cam-model">Alpha-A7 (Control)</span></li>
               <li><span class="cam-vendor">Sony</span><span class="cam-model">Alpha-A7 III</span></li>
               <li><span class="cam-vendor">Sony</span><span class="cam-model">Alpha-A7 IV</span></li>
+              <li><span class="cam-vendor">Sony</span><span class="cam-model">Alpha-A7 V (ILCE-7M5)</span></li>
               <li><span class="cam-vendor">Sony</span><span class="cam-model">Alpha-A77 M2 (Control)</span></li>
               <li><span class="cam-vendor">Sony</span><span class="cam-model">Alpha-A7III (Control)</span></li>
               <li><span class="cam-vendor">Sony</span><span class="cam-model">Alpha-A7r (Control)</span></li>
@@ -1209,7 +1211,6 @@
               <li><span class="cam-vendor">Sony</span><span class="cam-model">ILCE-6400</span></li>
               <li><span class="cam-vendor">Sony</span><span class="cam-model">ILCE-7C (Control)</span></li>
               <li><span class="cam-vendor">Sony</span><span class="cam-model">ILCE-7M2 (Control)</span></li>
-              <li><span class="cam-vendor">Sony</span><span class="cam-model">ILCE-7M5</span></li>
               <li><span class="cam-vendor">Sony</span><span class="cam-model">ILCE-7R M2</span></li>
               <li><span class="cam-vendor">Sony</span><span class="cam-model">ILCE-7RM3A</span></li>
               <li><span class="cam-vendor">Sony</span><span class="cam-model">ILCE-7RM4A</span></li>
