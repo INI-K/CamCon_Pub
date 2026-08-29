@@ -81,6 +81,12 @@ WIFI_SUPPORTED = {
     ("Nikon", "Z50"), ("Nikon", "Z30"), ("Nikon", "Zfc"), ("Nikon", "Zf"),
 }
 
+# 실기 검증으로 확인됐으나 pin된 libgphoto2(2.5.34) 모델 테이블에 아직 없는 기종 수동 추가.
+# 항목 추가 조건 = 실물 카메라 연결 확인. (ILCE-7M5: 2026-08-29 USB 테더링 실기 확인)
+EXTRA_MODELS = [
+    ("Sony", "ILCE-7M5", "usb"),
+]
+
 # ptpip 을 제외한 camlib 는 전부 USB 유선.
 def read(path):
     with open(path, encoding="utf-8", errors="ignore") as fh:
@@ -258,6 +264,11 @@ def main():
     # 유명 카메라 제조사만 큐레이션
     kept_rows = [row for row in all_rows if row[0].lower() in VENDOR_WHITELIST]
     excluded = len(all_rows) - len(kept_rows)
+
+    # 테이블 미등재 실기 검증 기종 수동 추가 (같은 vendor+model이 이미 있으면 건너뜀)
+    known = {(v, mo) for (v, mo, _c) in kept_rows}
+    kept_rows += [row for row in EXTRA_MODELS if (row[0], row[1]) not in known]
+    kept_rows.sort(key=lambda x: (x[0].lower(), x[1].lower()))
 
     cameras = [
         {"vendor": v, "model": mo, "connection": c,

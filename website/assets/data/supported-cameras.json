@@ -1,6 +1,6 @@
 {
  "generated": "standard PTP camera driver model tables (CamCon arm64-v8a bundled camlibs, curated to major camera brands)",
- "total": 945,
+ "total": 955,
  "cameras": [
   {
    "vendor": "Canon",
@@ -629,6 +629,11 @@
   },
   {
    "vendor": "Canon",
+   "model": "EOS R1",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
    "model": "EOS R10",
    "connection": "usb"
   },
@@ -665,6 +670,11 @@
   {
    "vendor": "Canon",
    "model": "EOS R6",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Canon",
+   "model": "EOS R6 Mark III",
    "connection": "usb"
   },
   {
@@ -1439,12 +1449,12 @@
   },
   {
    "vendor": "Canon",
-   "model": "Powershot S60",
+   "model": "PowerShot S60",
    "connection": "usb"
   },
   {
    "vendor": "Canon",
-   "model": "PowerShot S60",
+   "model": "Powershot S60",
    "connection": "usb"
   },
   {
@@ -1954,6 +1964,11 @@
   },
   {
    "vendor": "Fujifilm",
+   "model": "FinePix S4200",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
    "model": "FinePix S4300",
    "connection": "usb"
   },
@@ -2109,6 +2124,11 @@
   },
   {
    "vendor": "Fujifilm",
+   "model": "X-E5",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Fujifilm",
    "model": "X-H1",
    "connection": "usb"
   },
@@ -2240,6 +2260,11 @@
   {
    "vendor": "Leica",
    "model": "SL (Typ 601)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Leica",
+   "model": "SL3",
    "connection": "usb"
   },
   {
@@ -2609,6 +2634,11 @@
   },
   {
    "vendor": "Nikon",
+   "model": "Coolpix P1100",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
    "model": "Coolpix P2",
    "connection": "usb"
   },
@@ -2775,6 +2805,11 @@
   {
    "vendor": "Nikon",
    "model": "Coolpix S3300",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Coolpix S3500",
    "connection": "usb"
   },
   {
@@ -3219,6 +3254,11 @@
    "model": "Z50",
    "connection": "usb",
    "wifi": true
+  },
+  {
+   "vendor": "Nikon",
+   "model": "Z50_2",
+   "connection": "usb"
   },
   {
    "vendor": "Nikon",
@@ -4561,6 +4601,11 @@
   },
   {
    "vendor": "Sony",
+   "model": "ILCE-1M2",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
    "model": "ILCE-6400",
    "connection": "usb"
   },
@@ -4572,6 +4617,11 @@
   {
    "vendor": "Sony",
    "model": "ILCE-7M2 (Control)",
+   "connection": "usb"
+  },
+  {
+   "vendor": "Sony",
+   "model": "ILCE-7M5",
    "connection": "usb"
   },
   {
@@ -4706,12 +4756,12 @@
   },
   {
    "vendor": "Sony",
-   "model": "SLT-A99v",
+   "model": "SLT-A99V",
    "connection": "usb"
   },
   {
    "vendor": "Sony",
-   "model": "SLT-A99V",
+   "model": "SLT-A99v",
    "connection": "usb"
   },
   {
