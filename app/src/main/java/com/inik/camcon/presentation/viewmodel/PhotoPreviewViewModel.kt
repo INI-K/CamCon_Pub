@@ -168,6 +168,12 @@ class PhotoPreviewViewModel @Inject constructor(
     val allPhotos = photoListManager.allPhotos
     val isLoadingPhotos = photoListManager.isLoading
     val isStorageUnsupported = photoListManager.isStorageUnsupported
+
+    // 카드 보기(소니 콘텐츠 전송 모드) 전환 상태와 실패 사유.
+    // ACTIVE 인 동안 촬영·라이브뷰가 카메라 쪽에서 막히므로 화면이 그 사실을 알려야 한다.
+    val cardBrowseState = photoListManager.cardBrowseState
+    val cardBrowseError = photoListManager.cardBrowseError
+
     val isLoadingMorePhotos = photoListManager.isLoadingMore
     val hasNextPage = photoListManager.hasNextPage
     val currentFilter = photoListManager.currentFilter
@@ -310,6 +316,9 @@ class PhotoPreviewViewModel @Inject constructor(
                     // 여기서 별도로 호출하지 않음
                 } else if (!isConnected && previousConnected) {
                     Log.d(TAG, "카메라 연결 해제됨")
+                    // 카드 보기가 켜진 상태로 연결이 끊겼다면 앱 상태를 되돌린다. 카메라는 이미
+                    // 사라져 전환 명령을 보낼 수 없고, 다음에 켜질 때 기본 모드로 시작한다.
+                    photoListManager.resetCardBrowseOnDisconnect()
                     _uiState.update { it.copy(isInitialized = false) }
                     errorHandlingManager.emitError(
                         com.inik.camcon.domain.manager.ErrorType.CONNECTION,
@@ -448,6 +457,30 @@ class PhotoPreviewViewModel @Inject constructor(
     fun refreshPhotos() {
         Log.d(TAG, "사진 목록 새로고침")
         photoListManager.refreshPhotos(_uiState.value.isConnected)
+    }
+
+    /**
+     * 카드 보기로 전환 (PhotoListManager에 위임).
+     *
+     * 성공하면 카드가 보이는 대신 촬영·라이브뷰가 멈춘다. 화면은 [cardBrowseState] 를 보고
+     * 그 사실을 사용자에게 알려야 한다.
+     */
+    fun enterCardBrowse() {
+        Log.d(TAG, "카드 보기 전환 요청")
+        photoListManager.enterCardBrowse()
+    }
+
+    /**
+     * 카드 보기에서 나와 촬영 모드로 복귀 (PhotoListManager에 위임).
+     */
+    fun exitCardBrowse() {
+        Log.d(TAG, "카드 보기 이탈 요청")
+        photoListManager.exitCardBrowse()
+    }
+
+    /** 카드 보기 전환 실패 안내를 사용자가 확인했을 때 호출한다. */
+    fun clearCardBrowseError() {
+        photoListManager.clearCardBrowseError()
     }
 
     /**

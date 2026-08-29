@@ -201,6 +201,15 @@
     <string name="no_photos">사진이 없습니다</string>
     <string name="preview_card_browse_unsupported_title">카드 탐색 미지원</string>
     <string name="preview_card_browse_unsupported_desc">이 카메라는 원격 제어 중 메모리 카드 접근을 허용하지 않습니다.\n촬영한 사진은 자동으로 수신되어 갤러리에 저장됩니다.\n카드 속 사진을 보려면 카메라의 USB 연결 설정을 MTP로 바꾸고 USB로 연결하세요 (원격 촬영은 불가).</string>
+    <string name="preview_card_browse_available_desc">이 카메라는 메모리 카드의 사진을 보여줄 수 있지만, 원격 촬영을 잠시 멈춰야 합니다.\n카드 보기를 끝낼 때까지 촬영과 라이브뷰가 멈춥니다.</string>
+    <string name="preview_card_browse_enter">카드 보기</string>
+    <string name="preview_card_browse_exit">카드 보기 끝내기</string>
+    <string name="preview_card_browse_entering">카드 보기로 전환하는 중…</string>
+    <string name="preview_card_browse_leaving">촬영 모드로 돌아가는 중…</string>
+    <string name="preview_card_browse_active">카드 보기 중 — 촬영과 라이브뷰가 멈춰 있습니다.</string>
+    <string name="preview_card_browse_enter_failed">카드 보기로 전환하지 못했습니다. 카메라는 촬영 모드 그대로입니다.</string>
+    <string name="preview_card_browse_stuck">카메라가 카드 보기에서 빠져나오지 못해 촬영이 계속 막혀 있습니다. 다시 시도하거나, 카메라 전원을 껐다 켜 주세요.</string>
+    <string name="preview_card_browse_retry_exit">다시 시도</string>
     <string name="connect_camera_and_capture">카메라를 USB로 연결하고\n사진을 촬영해보세요</string>
     <string name="check_camera_connection">• 카메라가 연결되어 있는지 확인하세요\n• 위로 당겨서 새로고침하세요</string>
     <string name="image_load_failed">이미지를 불러올 수 없습니다</string>

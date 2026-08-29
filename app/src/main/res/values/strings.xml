@@ -196,6 +196,16 @@
     <string name="no_photos">No photos</string>
     <string name="preview_card_browse_unsupported_title">Card browsing not available</string>
     <string name="preview_card_browse_unsupported_desc">This camera does not allow memory card access during remote control.\nPhotos you shoot are received automatically and saved to the gallery.\nTo browse the card, set the camera\'s USB connection mode to MTP and connect via USB (remote shooting will be unavailable).</string>
+    <!-- 카드 보기(소니 콘텐츠 전송 모드). 진입하면 촬영·라이브뷰가 멈추므로 사용자가 알고 선택해야 한다. -->
+    <string name="preview_card_browse_available_desc">This camera can show memory card photos, but only while remote shooting is paused.\nCapture and live view stop until you exit card browsing.</string>
+    <string name="preview_card_browse_enter">Browse card</string>
+    <string name="preview_card_browse_exit">Exit card browsing</string>
+    <string name="preview_card_browse_entering">Switching to card browsing…</string>
+    <string name="preview_card_browse_leaving">Returning to shooting mode…</string>
+    <string name="preview_card_browse_active">Card browsing on — capture and live view are paused.</string>
+    <string name="preview_card_browse_enter_failed">Could not switch to card browsing. The camera is still in shooting mode.</string>
+    <string name="preview_card_browse_stuck">The camera is stuck in card browsing mode, so capture stays blocked. Try again, or turn the camera off and on.</string>
+    <string name="preview_card_browse_retry_exit">Try again</string>
     <string name="connect_camera_and_capture">Connect your camera via USB\nand capture photos</string>
     <string name="check_camera_connection">• Check if camera is connected\n• Swipe down to refresh</string>
     <string name="image_load_failed">Cannot load image</string>

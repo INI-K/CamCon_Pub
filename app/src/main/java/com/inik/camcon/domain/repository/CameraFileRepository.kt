@@ -20,6 +20,15 @@ interface CameraFileRepository {
     suspend fun getDetailedStorageInfo(): Result<DetailedStorageInfo>
     suspend fun initializeCache(): Result<Boolean>
     suspend fun invalidateFileCache(): Result<Boolean>
+
+    /**
+     * 소니 콘텐츠 전송 모드를 켜고 끈다.
+     *
+     * 켜면 카메라가 메모리 카드를 스토어로 노출해 기존 목록·다운로드 경로가 동작하고, 켜져
+     * 있는 동안은 촬영·라이브뷰가 카메라 쪽에서 막힌다. 지원하지 않는 카메라에서는 실패를
+     * 반환하며, 그 판정 비용은 왕복 한 번이다.
+     */
+    suspend fun setSonyContentsTransferMode(enabled: Boolean): Result<Boolean>
     suspend fun getRecentCapturedPaths(maxCount: Int): Result<List<String>>
     suspend fun clearRecentCapturedPaths(): Result<Boolean>
     suspend fun setFileInfo(folder: String, filename: String, info: CameraFileInfoModel): Result<Boolean>

@@ -201,6 +201,15 @@
     <string name="no_photos">Keine Fotos</string>
     <string name="preview_card_browse_unsupported_title">Kartenansicht nicht verfügbar</string>
     <string name="preview_card_browse_unsupported_desc">Diese Kamera erlaubt während der Fernsteuerung keinen Zugriff auf die Speicherkarte.\nAufgenommene Fotos werden automatisch empfangen und in der Galerie gespeichert.\nUm die Karte zu durchsuchen, stellen Sie den USB-Verbindungsmodus der Kamera auf MTP und verbinden Sie sie per USB (Fernaufnahmen sind dann nicht möglich).</string>
+    <string name="preview_card_browse_available_desc">Diese Kamera kann Fotos von der Speicherkarte zeigen, aber nur bei pausierter Fernauslösung.\nAufnahme und Live-View bleiben gestoppt, bis Sie die Kartenansicht beenden.</string>
+    <string name="preview_card_browse_enter">Karte durchsuchen</string>
+    <string name="preview_card_browse_exit">Kartenansicht beenden</string>
+    <string name="preview_card_browse_entering">Wechsel zur Kartenansicht…</string>
+    <string name="preview_card_browse_leaving">Zurück in den Aufnahmemodus…</string>
+    <string name="preview_card_browse_active">Kartenansicht aktiv — Aufnahme und Live-View sind pausiert.</string>
+    <string name="preview_card_browse_enter_failed">Wechsel zur Kartenansicht fehlgeschlagen. Die Kamera bleibt im Aufnahmemodus.</string>
+    <string name="preview_card_browse_stuck">Die Kamera hängt in der Kartenansicht, die Aufnahme bleibt blockiert. Versuchen Sie es erneut oder schalten Sie die Kamera aus und wieder ein.</string>
+    <string name="preview_card_browse_retry_exit">Erneut versuchen</string>
     <string name="connect_camera_and_capture">Verbinden Sie Ihre Kamera über USB\nund nehmen Sie Fotos auf</string>
     <string name="check_camera_connection">• Prüfen Sie, ob die Kamera verbunden ist\n• Nach unten wischen zum Aktualisieren</string>
     <string name="image_load_failed">Bild kann nicht geladen werden</string>

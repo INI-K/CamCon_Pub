@@ -201,6 +201,15 @@
     <string name="no_photos">Nessuna foto</string>
     <string name="preview_card_browse_unsupported_title">Esplorazione della scheda non disponibile</string>
     <string name="preview_card_browse_unsupported_desc">Questa fotocamera non consente l\'accesso alla scheda di memoria durante il controllo remoto.\nLe foto scattate vengono ricevute automaticamente e salvate nella galleria.\nPer esplorare la scheda, imposta la modalità di connessione USB della fotocamera su MTP e collegala via USB (lo scatto remoto non sarà disponibile).</string>
+    <string name="preview_card_browse_available_desc">Questa fotocamera può mostrare le foto della scheda, ma solo con lo scatto remoto in pausa.\nScatto e live view restano fermi finché non esci dalla vista scheda.</string>
+    <string name="preview_card_browse_enter">Sfoglia scheda</string>
+    <string name="preview_card_browse_exit">Esci dalla vista scheda</string>
+    <string name="preview_card_browse_entering">Passaggio alla vista scheda…</string>
+    <string name="preview_card_browse_leaving">Ritorno alla modalità di scatto…</string>
+    <string name="preview_card_browse_active">Vista scheda attiva: scatto e live view sono in pausa.</string>
+    <string name="preview_card_browse_enter_failed">Impossibile passare alla vista scheda. La fotocamera resta in modalità di scatto.</string>
+    <string name="preview_card_browse_stuck">La fotocamera è bloccata nella vista scheda e lo scatto resta impedito. Riprova oppure spegni e riaccendi la fotocamera.</string>
+    <string name="preview_card_browse_retry_exit">Riprova</string>
     <string name="connect_camera_and_capture">Collega la fotocamera tramite USB\ne scatta foto</string>
     <string name="check_camera_connection">• Verifica se la fotocamera è collegata\n• Scorri verso il basso per aggiornare</string>
     <string name="image_load_failed">Impossibile caricare l\'immagine</string>

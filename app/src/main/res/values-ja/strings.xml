@@ -201,6 +201,15 @@
     <string name="no_photos">写真がありません</string>
     <string name="preview_card_browse_unsupported_title">カード内の閲覧非対応</string>
     <string name="preview_card_browse_unsupported_desc">このカメラはリモート制御中のメモリーカードへのアクセスを許可していません。\n撮影した写真は自動で受信され、ギャラリーに保存されます。\nカード内の写真を見るには、カメラのUSB接続設定をMTPに変更してUSBで接続してください（リモート撮影は使用できません）。</string>
+    <string name="preview_card_browse_available_desc">このカメラはメモリーカードの写真を表示できますが、リモート撮影を一時停止する必要があります。\nカード表示を終えるまで撮影とライブビューは停止します。</string>
+    <string name="preview_card_browse_enter">カードを見る</string>
+    <string name="preview_card_browse_exit">カード表示を終了</string>
+    <string name="preview_card_browse_entering">カード表示に切り替え中…</string>
+    <string name="preview_card_browse_leaving">撮影モードに戻しています…</string>
+    <string name="preview_card_browse_active">カード表示中 — 撮影とライブビューは停止しています。</string>
+    <string name="preview_card_browse_enter_failed">カード表示に切り替えられませんでした。カメラは撮影モードのままです。</string>
+    <string name="preview_card_browse_stuck">カメラがカード表示モードのままで、撮影がブロックされています。再試行するか、カメラの電源を入れ直してください。</string>
+    <string name="preview_card_browse_retry_exit">再試行</string>
     <string name="connect_camera_and_capture">USB経由でカメラを接続し\n写真を撮影してください</string>
     <string name="check_camera_connection">• カメラが接続されているか確認してください\n• 下にスワイプして更新</string>
     <string name="image_load_failed">画像を読み込めません</string>

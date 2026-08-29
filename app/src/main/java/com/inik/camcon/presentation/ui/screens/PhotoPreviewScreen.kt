@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -76,6 +77,8 @@ import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.viewmodel.photo.CardBrowseState
+import com.inik.camcon.presentation.viewmodel.photo.CardBrowseError
 import com.inik.camcon.presentation.ui.components.v2.EmptyState
 import com.inik.camcon.presentation.ui.components.v2.FilterChipV2
 import com.inik.camcon.presentation.ui.components.v2.IconButtonV2
@@ -121,6 +124,8 @@ fun PhotoPreviewScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val photos by viewModel.photos.collectAsStateWithLifecycle()
     val isStorageUnsupported by viewModel.isStorageUnsupported.collectAsStateWithLifecycle()
+    val cardBrowseState by viewModel.cardBrowseState.collectAsStateWithLifecycle()
+    val cardBrowseError by viewModel.cardBrowseError.collectAsStateWithLifecycle()
     val isLoadingPhotos by viewModel.isLoadingPhotos.collectAsStateWithLifecycle()
     val isLoadingMore by viewModel.isLoadingMorePhotos.collectAsStateWithLifecycle()
     val hasNextPage by viewModel.hasNextPage.collectAsStateWithLifecycle()
@@ -203,10 +208,29 @@ fun PhotoPreviewScreen(
 
                     !uiState.isConnected && !isPtpipConnected -> CameraDisconnectedState()
                     isLoadingPhotos && photos.isEmpty() -> PhotoSkeletonGrid()
-                    // 카드 탐색 미지원 세션(Sony PC리모트) — 일반 빈 상태 대신 이유+해결 경로 상시 안내
-                    photos.isEmpty() && isStorageUnsupported -> CardBrowsingUnsupportedState()
+                    // 카드 탐색 미지원 세션(Sony PC리모트) — 일반 빈 상태 대신 이유+해결 경로 상시 안내.
+                    // 카드 보기로 전환했는데 카드가 비어 있는 경우도 여기로 온다. 그때
+                    // isStorageUnsupported 는 이미 풀려 있으므로 전환 상태를 함께 본다.
+                    photos.isEmpty() &&
+                            (isStorageUnsupported || cardBrowseState != CardBrowseState.IDLE) ->
+                        CardBrowsingUnsupportedState(
+                            cardBrowseState = cardBrowseState,
+                            cardBrowseError = cardBrowseError,
+                            onEnterCardBrowse = viewModel::enterCardBrowse,
+                            onExitCardBrowse = viewModel::exitCardBrowse
+                        )
+
                     photos.isEmpty() -> EmptyPhotosV2()
                     else -> Column(modifier = Modifier.fillMaxSize()) {
+                        // 카드 보기 중에는 그 사실과 빠져나갈 길을 그리드 위에 항상 띄운다.
+                        // 이게 없으면 사진이 뜬 순간 CardBrowsingUnsupportedState 가 사라져
+                        // 촬영 모드로 돌아갈 방법이 화면에서 없어진다.
+                        if (cardBrowseState != CardBrowseState.IDLE) {
+                            CardBrowseBanner(
+                                cardBrowseState = cardBrowseState,
+                                onExitCardBrowse = viewModel::exitCardBrowse
+                            )
+                        }
                         PhotoGrid(
                             photos = photos,
                             isLoadingMore = isLoadingMore,
@@ -690,16 +714,106 @@ private fun CameraDisconnectedState() {
  * 토스트는 놓치기 쉬워 빈 화면 자리에 이유와 해결 경로(USB+MTP)를 상시 표시한다.
  */
 @Composable
-private fun CardBrowsingUnsupportedState() {
+private fun CardBrowsingUnsupportedState(
+    cardBrowseState: CardBrowseState,
+    cardBrowseError: CardBrowseError?,
+    onEnterCardBrowse: () -> Unit,
+    onExitCardBrowse: () -> Unit
+) {
+    // 자동 진입은 하지 않는다 — 들어가면 촬영·라이브뷰가 멈추므로 사용자가 알고 골라야 한다.
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        EmptyState(
-            icon = Icons.Outlined.PhotoLibrary,
-            title = stringResource(R.string.preview_card_browse_unsupported_title),
-            description = stringResource(R.string.preview_card_browse_unsupported_desc)
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = Spacing.lg)
+        ) {
+            EmptyState(
+                icon = Icons.Outlined.PhotoLibrary,
+                title = stringResource(R.string.preview_card_browse_unsupported_title),
+                description = stringResource(
+                    when (cardBrowseState) {
+                        CardBrowseState.STUCK -> R.string.preview_card_browse_stuck
+                        CardBrowseState.ENTERING -> R.string.preview_card_browse_entering
+                        CardBrowseState.LEAVING -> R.string.preview_card_browse_leaving
+                        CardBrowseState.ACTIVE -> R.string.preview_card_browse_active
+                        CardBrowseState.IDLE ->
+                            if (cardBrowseError == CardBrowseError.ENTER_FAILED) {
+                                R.string.preview_card_browse_enter_failed
+                            } else {
+                                R.string.preview_card_browse_available_desc
+                            }
+                    }
+                )
+            )
+            Spacer(modifier = Modifier.height(Spacing.lg))
+            when (cardBrowseState) {
+                // 전환 중에는 조작을 막는다. 커맨드 큐를 점유하는 구간이다.
+                CardBrowseState.ENTERING, CardBrowseState.LEAVING -> Unit
+
+                CardBrowseState.ACTIVE -> SecondaryButton(
+                    text = stringResource(R.string.preview_card_browse_exit),
+                    onClick = onExitCardBrowse
+                )
+
+                // 갇힌 상태에서 조용히 IDLE로 돌리지 않는다. 촬영이 계속 막혀 있으므로
+                // 사용자가 재시도하거나 카메라를 껐다 켜야 한다는 것을 알아야 한다.
+                CardBrowseState.STUCK -> PrimaryButton(
+                    text = stringResource(R.string.preview_card_browse_retry_exit),
+                    onClick = onExitCardBrowse
+                )
+
+                CardBrowseState.IDLE -> PrimaryButton(
+                    text = stringResource(R.string.preview_card_browse_enter),
+                    onClick = onEnterCardBrowse
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 카드 보기 중임을 알리고 빠져나갈 길을 항상 제공하는 배너.
+ *
+ * 사진이 뜨고 나면 [CardBrowsingUnsupportedState] 는 그려지지 않는다. 이 배너가 없으면
+ * 카드 보기가 켜져 있다는 사실도, 촬영 모드로 돌아가는 버튼도 화면에서 사라진다.
+ */
+@Composable
+private fun CardBrowseBanner(
+    cardBrowseState: CardBrowseState,
+    onExitCardBrowse: () -> Unit
+) {
+    SurfaceV2(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        tier = 2
+    ) {
+        Row(
+            modifier = Modifier.padding(Spacing.md),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(
+                    when (cardBrowseState) {
+                        CardBrowseState.LEAVING -> R.string.preview_card_browse_leaving
+                        CardBrowseState.STUCK -> R.string.preview_card_browse_stuck
+                        else -> R.string.preview_card_browse_active
+                    }
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f)
+            )
+            // 전환 중(LEAVING)에는 버튼을 내린다. 커맨드 큐를 점유하는 구간이라 조작을 막는다.
+            if (cardBrowseState == CardBrowseState.ACTIVE || cardBrowseState == CardBrowseState.STUCK) {
+                Spacer(modifier = Modifier.width(Spacing.sm))
+                SecondaryButton(
+                    text = stringResource(R.string.preview_card_browse_exit),
+                    onClick = onExitCardBrowse
+                )
+            }
+        }
     }
 }
 
