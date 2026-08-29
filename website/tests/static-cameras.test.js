@@ -98,3 +98,10 @@ test("index.html 인라인 한국어(hero.brands·meta.desc)가 ko 사전과 일
   const desc = indexHtml.match(/data-i18n="meta.desc" content="([^"]+)"/);
   assert.equal(desc[1], dicts.ko["meta.desc"]);
 });
+
+test("개발 실기 검증 기종(A7 V)은 카탈로그에 verified 필드로 기록되어 있다", () => {
+  // 이 필드가 빠지면 대표 카드에는 검증 표기가 있는데 전체 목록에는 배지가 없는 불일치가 재발한다.
+  const a7v = catalog.cameras.find((c) => c.model === "Alpha-A7 V (ILCE-7M5)");
+  assert.ok(a7v, "카탈로그에 A7 V 가 있어야 한다");
+  assert.equal(a7v.verified && a7v.verified.usb, true);
+});

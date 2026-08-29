@@ -88,6 +88,12 @@ EXTRA_MODELS = [
     ("Sony", "Alpha-A7 V (ILCE-7M5)", "usb"),
 ]
 
+# 개발 실기 검증 이력 — CF 실사용 집계(getVerifiedCameras)에 없어도 홈페이지 목록에
+# "사용 확인됨" 배지가 붙도록 JSON 항목에 verified 필드로 기록한다(main.js 가 병합).
+DEV_VERIFIED = {
+    ("Sony", "Alpha-A7 V (ILCE-7M5)"): {"usb": True},   # 2026-08-29 USB 테더링 실기 확인
+}
+
 # ptpip 을 제외한 camlib 는 전부 USB 유선.
 def read(path):
     with open(path, encoding="utf-8", errors="ignore") as fh:
@@ -273,7 +279,8 @@ def main():
 
     cameras = [
         {"vendor": v, "model": mo, "connection": c,
-         **({"wifi": True} if (v, mo) in WIFI_SUPPORTED else {})}
+         **({"wifi": True} if (v, mo) in WIFI_SUPPORTED else {}),
+         **({"verified": DEV_VERIFIED[(v, mo)]} if (v, mo) in DEV_VERIFIED else {})}
         for (v, mo, c) in kept_rows
     ]
     out = {

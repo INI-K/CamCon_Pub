@@ -4152,7 +4152,10 @@
   {
    "vendor": "Sony",
    "model": "Alpha-A7 V (ILCE-7M5)",
-   "connection": "usb"
+   "connection": "usb",
+   "verified": {
+    "usb": true
+   }
   },
   {
    "vendor": "Sony",
