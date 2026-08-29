@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon | Film-look photos on your phone, the instant you shoot",
-  "meta.desc": "CamCon links your DSLR or mirrorless camera to Android over USB or Wi-Fi and delivers film-simulated photos to your phone the moment you press the shutter. A cinema camera controller.",
+  "meta.desc": "CamCon links your DSLR or mirrorless camera to Android over USB or Wi-Fi and delivers film-simulated photos to your phone the moment you press the shutter. A cinema camera controller. Supports 955 camera models from Nikon, Canon, Sony, Fujifilm and more.",
   "a11y.skip": "Skip to content",
   "a11y.navMain": "Main navigation",
   "a11y.navMobile": "Mobile navigation",
@@ -21,6 +21,7 @@
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Press the shutter, and the <span class=\"accent\">film-look photo</span> lands on your phone",
   "hero.sub": "Connect your camera over USB or Wi-Fi and receive photos with a film simulation already applied, right as you shoot.",
+  "hero.brands": "Nikon · Canon · Sony · Fujifilm · Panasonic · OM System and more: <b class=\"n\">955</b> supported models",
   "hero.cta": "Get it on Google Play",
   "hero.explore": "Explore features",
   "hero.specRaw": "Untouched",
@@ -78,6 +79,7 @@
   "color.note": "At 0% you get the original untouched; at 100% the color distribution matches the reference exactly. Like film, it is applied only to the JPG copy, so your RAW originals are never touched. <strong>PRO</strong> lets you run film and color together.",
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "Will my camera work?",
+  "cameras.topTitle": "Popular supported models",
   "cameras.lead": "If your camera supports USB (PTP) or Wi-Fi STA (router) mode, it works with CamCon.",
   "cameras.colConn": "Connection",
   "cameras.colScope": "Coverage",

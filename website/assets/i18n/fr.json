@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon | Des photos au rendu argentique sur votre téléphone, à l'instant du déclenchement",
-  "meta.desc": "CamCon relie votre reflex ou hybride à Android en USB ou Wi-Fi et envoie sur votre téléphone des photos avec simulation de pellicule appliquée, au moment du déclenchement. Un contrôleur d'appareil photo cinéma.",
+  "meta.desc": "CamCon relie votre reflex ou hybride à Android en USB ou Wi-Fi et envoie sur votre téléphone des photos avec simulation de pellicule appliquée, au moment du déclenchement. Un contrôleur d'appareil photo cinéma. Compatible avec 955 modèles Nikon, Canon, Sony, Fujifilm et plus.",
   "a11y.skip": "Aller au contenu",
   "a11y.navMain": "Navigation principale",
   "a11y.navMobile": "Navigation mobile",
@@ -21,6 +21,7 @@
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Vous déclenchez, et la <span class=\"accent\">photo au rendu argentique</span> arrive sur votre téléphone",
   "hero.sub": "Connectez votre appareil en USB ou Wi-Fi et recevez des photos avec la simulation de pellicule déjà appliquée, dès le déclenchement.",
+  "hero.brands": "Nikon · Canon · Sony · Fujifilm · Panasonic · OM System et plus : <b class=\"n\">955</b> modèles compatibles",
   "hero.cta": "Disponible sur Google Play",
   "hero.explore": "Voir les fonctions",
   "hero.specRaw": "Original intact",
@@ -78,6 +79,7 @@
   "color.note": "À 0 %, l'original reste intact ; à 100 %, la distribution des couleurs correspond exactement à la référence. Comme pour la pellicule, seule la copie JPG est modifiée : vos originaux RAW restent intacts. <strong>PRO</strong> permet d'appliquer pellicule et couleur ensemble.",
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "Mon appareil est-il compatible ?",
+  "cameras.topTitle": "Modèles populaires pris en charge",
   "cameras.lead": "Si votre appareil prend en charge l'USB (PTP) ou le mode Wi-Fi STA (routeur), il est compatible.",
   "cameras.colConn": "Connexion",
   "cameras.colScope": "Couverture",

@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon | Fotos con look de película en tu móvil, en el instante del disparo",
-  "meta.desc": "CamCon conecta tu cámara réflex o sin espejo a Android por USB o Wi-Fi y entrega fotos con simulación de película aplicada a tu móvil en el momento de disparar. Un controlador de cámara de cine.",
+  "meta.desc": "CamCon conecta tu cámara réflex o sin espejo a Android por USB o Wi-Fi y entrega fotos con simulación de película aplicada a tu móvil en el momento de disparar. Un controlador de cámara de cine. Compatible con 955 modelos de Nikon, Canon, Sony, Fujifilm y más.",
   "a11y.skip": "Saltar al contenido",
   "a11y.navMain": "Navegación principal",
   "a11y.navMobile": "Navegación móvil",
@@ -21,6 +21,7 @@
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Pulsa el obturador y la <span class=\"accent\">foto con look de película</span> llega a tu móvil",
   "hero.sub": "Conecta tu cámara por USB o Wi-Fi y recibe fotos con la simulación de película ya aplicada, justo al disparar.",
+  "hero.brands": "Nikon · Canon · Sony · Fujifilm · Panasonic · OM System y más: <b class=\"n\">955</b> modelos compatibles",
   "hero.cta": "Disponible en Google Play",
   "hero.explore": "Ver funciones",
   "hero.specRaw": "Original intacto",
@@ -78,6 +79,7 @@
   "color.note": "Al 0 % obtienes el original intacto; al 100 % la distribución de color coincide exactamente con la referencia. Igual que con la película, solo se aplica a la copia JPG y tus originales RAW no se tocan. <strong>PRO</strong> permite aplicar película y color a la vez.",
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "¿Funcionará mi cámara?",
+  "cameras.topTitle": "Modelos populares compatibles",
   "cameras.lead": "Si tu cámara admite USB (PTP) o el modo Wi-Fi STA (router), es compatible.",
   "cameras.colConn": "Conexión",
   "cameras.colScope": "Cobertura",

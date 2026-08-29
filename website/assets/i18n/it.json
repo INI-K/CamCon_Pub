@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon | Foto con look pellicola sul telefono, nell'istante dello scatto",
-  "meta.desc": "CamCon collega la tua reflex o mirrorless ad Android via USB o Wi-Fi e invia al telefono foto con simulazione pellicola già applicata, nel momento dello scatto. Un controller per fotocamere cinema.",
+  "meta.desc": "CamCon collega la tua reflex o mirrorless ad Android via USB o Wi-Fi e invia al telefono foto con simulazione pellicola già applicata, nel momento dello scatto. Un controller per fotocamere cinema. Supporta 955 modelli di Nikon, Canon, Sony, Fujifilm e altri.",
   "a11y.skip": "Vai al contenuto",
   "a11y.navMain": "Navigazione principale",
   "a11y.navMobile": "Navigazione mobile",
@@ -21,6 +21,7 @@
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Premi l'otturatore e la <span class=\"accent\">foto con look pellicola</span> arriva sul telefono",
   "hero.sub": "Collega la fotocamera via USB o Wi-Fi e ricevi foto con la simulazione pellicola già applicata, proprio mentre scatti.",
+  "hero.brands": "Nikon · Canon · Sony · Fujifilm · Panasonic · OM System e altri: <b class=\"n\">955</b> modelli supportati",
   "hero.cta": "Disponibile su Google Play",
   "hero.explore": "Scopri le funzioni",
   "hero.specRaw": "Originale intatto",
@@ -78,6 +79,7 @@
   "color.note": "A 0% resta l'originale intatto, a 100% la distribuzione dei colori corrisponde esattamente alla referenza. Come per la pellicola, viene applicato solo alla copia JPG e i RAW originali restano intatti. <strong>PRO</strong> consente di applicare pellicola e colore insieme.",
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "La mia fotocamera funzionerà?",
+  "cameras.topTitle": "Modelli supportati più diffusi",
   "cameras.lead": "Se la tua fotocamera supporta USB (PTP) o la modalità Wi-Fi STA (router), è supportata.",
   "cameras.colConn": "Connessione",
   "cameras.colScope": "Copertura",

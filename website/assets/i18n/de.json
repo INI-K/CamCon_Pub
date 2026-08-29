@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon | Film-Look-Fotos auf dem Handy, im Moment der Aufnahme",
-  "meta.desc": "CamCon verbindet DSLR- und spiegellose Kameras per USB oder WLAN mit Android und liefert Fotos mit angewandter Filmsimulation aufs Handy, genau beim Auslösen. Ein Cinema Camera Controller.",
+  "meta.desc": "CamCon verbindet DSLR- und spiegellose Kameras per USB oder WLAN mit Android und liefert Fotos mit angewandter Filmsimulation aufs Handy, genau beim Auslösen. Ein Cinema Camera Controller. Unterstützt 955 Kameramodelle von Nikon, Canon, Sony, Fujifilm und mehr.",
   "a11y.skip": "Zum Inhalt springen",
   "a11y.navMain": "Hauptnavigation",
   "a11y.navMobile": "Mobile Navigation",
@@ -21,6 +21,7 @@
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "Auslösen, und das <span class=\"accent\">Film-Look-Foto</span> landet auf dem Handy",
   "hero.sub": "Verbinde deine Kamera per USB oder WLAN und erhalte Fotos mit bereits angewandter Filmsimulation, direkt beim Auslösen.",
+  "hero.brands": "Nikon · Canon · Sony · Fujifilm · Panasonic · OM System und mehr: <b class=\"n\">955</b> unterstützte Modelle",
   "hero.cta": "Jetzt bei Google Play",
   "hero.explore": "Funktionen ansehen",
   "hero.specRaw": "Original bleibt",
@@ -78,6 +79,7 @@
   "color.note": "Bei 0 % bleibt das Original unangetastet, bei 100 % entspricht die Farbverteilung exakt der Referenz. Wie beim Film wird nur die JPG-Kopie bearbeitet, die RAW-Originale bleiben unberührt. <strong>PRO</strong> erlaubt Film und Farbe gleichzeitig.",
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "Funktioniert meine Kamera?",
+  "cameras.topTitle": "Beliebte unterstützte Modelle",
   "cameras.lead": "Kameras, die USB (PTP) oder den Wi-Fi-STA-(Router-)Modus unterstützen, funktionieren mit CamCon.",
   "cameras.colConn": "Verbindung",
   "cameras.colScope": "Abdeckung",

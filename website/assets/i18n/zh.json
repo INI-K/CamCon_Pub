@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon | 按下快门的瞬间，胶片风格照片就到手机",
-  "meta.desc": "CamCon 将单反·微单相机通过 USB·Wi-Fi 连接到 Android，在拍摄的同时把应用了胶片模拟的照片传到手机。一款影院级相机控制器。",
+  "meta.desc": "CamCon 将单反·微单相机通过 USB·Wi-Fi 连接到 Android，在拍摄的同时把应用了胶片模拟的照片传到手机。一款影院级相机控制器。 支持 Nikon、Canon、Sony、Fujifilm 等 955 款机型。",
   "a11y.skip": "跳到正文",
   "a11y.navMain": "主菜单",
   "a11y.navMobile": "移动端菜单",
@@ -21,6 +21,7 @@
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "按下快门，<span class=\"accent\">胶片风格照片</span>随即到达手机",
   "hero.sub": "用 USB·Wi-Fi 把相机连接起来，在拍摄的同时接收已叠加胶片模拟的照片。",
+  "hero.brands": "支持 Nikon · Canon · Sony · Fujifilm · Panasonic · OM System 等 <b class=\"n\">955</b> 款机型",
   "hero.cta": "在 Google Play 下载",
   "hero.explore": "查看功能",
   "hero.specRaw": "原始保留",
@@ -78,6 +79,7 @@
   "color.note": "强度 0% 保持原图不变，100% 则完全匹配参考图的色彩分布。与胶片一样，只作用于 JPG 副本，RAW 原始文件不做任何改动。<strong>PRO</strong> 可同时应用胶片与色调。",
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "我的相机能用吗?",
+  "cameras.topTitle": "主要支持机型",
   "cameras.lead": "支持 USB(PTP) 或 Wi-Fi STA(路由器) 模式的相机即可使用。",
   "cameras.colConn": "连接方式",
   "cameras.colScope": "支持范围",

@@ -35,6 +35,7 @@ website/
 │   ├── build_legal_pages.py        legal_content.json → privacy/terms/delete.html
 │   ├── legal_content.json          법적 문서 원문 (ko + en)
 │   ├── generate_supported_cameras.py  supported-cameras.json 생성기
+│   ├── inject_camera_list.py       supported-cameras.json → index.html 정적 목록 주입기 (SEO)
 │   ├── render_film_examples.py     필름 예시·전후 비교 이미지 렌더러
 │   ├── gen_playstore_graphics.py   Play Console 그래픽 렌더러
 │   ├── og-card.html                og-card.png 렌더 템플릿 (헤드리스 크롬, 렌더법은 파일 상단 주석)
@@ -119,6 +120,11 @@ python3 tools/generate_supported_cameras.py <카메라-드라이버-소스>/caml
 - **유명 카메라 제조사만 큐레이션**한다. 스크립트의 `VENDOR_WHITELIST`(Canon · Nikon · Sony · Fujifilm · Panasonic · Olympus · OM System · Pentax · Ricoh · Leica · Sigma · Hasselblad · Casio 등)에 없는 벤더는 제외된다. 유지할 브랜드를 바꾸려면 이 상수를 수정한다.
 - 카메라 드라이버 라이브러리를 재빌드해 신규 기종이 추가되면 이 스크립트를 다시 돌려 JSON을 갱신한다.
 - 목록은 USB 유선 기준이다. Wi-Fi 실기 검증 현황은 별개(페이지 상단 표).
+- **JSON을 갱신했다면 반드시 `python3 tools/inject_camera_list.py` 를 이어서 실행한다.** 이 스크립트가
+  기종 목록을 `index.html` 의 CAM-STATIC 마커 사이에 `<li>` 로 미리 굽는다(기종명 검색 SEO + JS 실패 대비).
+  이후 `build_i18n_pages.py` 재실행으로 7개 언어 페이지에도 전파한다. 히어로 문구·meta.desc 의 기종 수
+  숫자는 8개 언어 사전에 있으므로 total 이 바뀌면 사전도 갱신한다 — 불일치는
+  `tests/static-cameras.test.js` 가 잡는다(`node --test "website/tests/*.test.js"`).
 
 ## 다국어 (i18n) — URL이 정본
 
