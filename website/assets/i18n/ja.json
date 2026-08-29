@@ -1,6 +1,6 @@
 {
   "meta.title": "CamCon | シャッターを切った瞬間、フィルムルックの写真がスマホに",
-  "meta.desc": "CamConは一眼レフ・ミラーレスカメラをAndroidにUSB・Wi-Fiで接続し、撮影と同時にフィルムシミュレーションを適用した写真を受け取れるシネマカメラコントローラーです。",
+  "meta.desc": "CamConは一眼レフ・ミラーレスカメラをAndroidにUSB・Wi-Fiで接続し、撮影と同時にフィルムシミュレーションを適用した写真を受け取れるシネマカメラコントローラーです。 Nikon・Canon・Sony・Fujifilmなど955機種に対応。",
   "a11y.skip": "本文へスキップ",
   "a11y.navMain": "メインメニュー",
   "a11y.navMobile": "モバイルメニュー",
@@ -21,6 +21,7 @@
   "hero.eyebrow": "Cinema Camera Controller",
   "hero.title": "シャッターを切ると、<span class=\"accent\">フィルムルックの写真</span>がスマホに届く",
   "hero.sub": "カメラをUSB・Wi-Fiでつなぎ、撮影と同時にフィルムシミュレーションを施した写真を受け取りましょう。",
+  "hero.brands": "Nikon · Canon · Sony · Fujifilm · Panasonic · OM System など<b class=\"n\">955</b>機種に対応",
   "hero.cta": "Google Play で手に入れよう",
   "hero.explore": "機能を見る",
   "hero.specRaw": "原本を保存",
@@ -78,6 +79,7 @@
   "color.note": "強さ 0% は元画像のまま、100% でレファレンスの色分布に完全に合わせます。フィルムと同じく JPG のコピーだけに適用され、RAW 原本には手を加えません。<strong>PRO</strong> ではフィルムと色調を同時に適用できます。",
   "cameras.eyebrow": "Supported Cameras",
   "cameras.title": "私のカメラ、使えますか?",
+  "cameras.topTitle": "主な対応機種",
   "cameras.lead": "USB(PTP)またはWi-Fi STA(ルーター)モードに対応したカメラならお使いいただけます。",
   "cameras.colConn": "接続方式",
   "cameras.colScope": "対応範囲",

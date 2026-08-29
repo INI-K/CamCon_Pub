@@ -326,6 +326,10 @@ main { position: relative; z-index: var(--z-content); }
   margin-top: 26px; max-width: 520px; line-height: 1.62; text-wrap: pretty;
 }
 .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 36px; }
+/* 지원 기종 신뢰 스트립 — 첫 화면에서 "내 카메라도 되나?"에 답한다. 로고 대신 텍스트(상표권·로딩 부담 회피). */
+.hero-brands { display: inline-block; margin-top: 26px; font-family: var(--mono); font-size: var(--t-label); letter-spacing: .06em; color: var(--ink-mute); text-decoration: none; transition: color .15s; }
+.hero-brands .n { font-family: var(--num); font-weight: 700; color: var(--amber); font-size: 1.1em; letter-spacing: -.02em; }
+.hero-brands:hover { color: var(--ink-dim); }
 /* 히어로 배지: 공식 배지 PNG의 내장 여백 탓에 78px면 과대 — 보이는 배지 높이가 고스트 버튼(52px)과 맞도록 */
 .hero-actions .play-badge { height: 66px; }
 
@@ -820,6 +824,18 @@ main { position: relative; z-index: var(--z-content); }
 .cam-list--unlisted li:hover, .cam-list--unlisted li:nth-child(odd):hover { background: var(--amber-12); box-shadow: inset 2px 0 0 var(--amber); }
 .cam-help { margin-top: 22px; color: var(--ink-dim); font-size: var(--t-body-sm); max-width: 62ch; }
 .cam-help a { color: var(--amber); border-bottom: 1px solid var(--amber-35); }
+/* 대표 지원 기종 큐레이션 — 접힌 전체 목록과 달리 항상 노출되는 정적 카드(SEO 텍스트 겸용).
+   카드 재질 규약(§.feat 주석)에 따라 헤어라인 테두리만 쓰고 그라디언트 재질은 주지 않는다. */
+.cam-top { margin: 0 0 28px; }
+.cam-top-title { font-family: var(--mono); font-size: var(--t-label); letter-spacing: .16em; text-transform: uppercase; color: var(--ink-mute); margin: 0 0 12px; }
+.cam-top-grid { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.cam-top-grid li {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  border: 1px solid var(--hair); border-radius: var(--r-md);
+  transition: background .15s, border-color .15s;
+}
+.cam-top-grid li:hover { background: var(--amber-06); border-color: var(--amber-35); }
+.cam-top-grid .cam-model { color: var(--ink); font-weight: 600; }
 
 /* ============================================================
    CONNECT
@@ -969,6 +985,7 @@ main { position: relative; z-index: var(--z-content); }
   .hero-visual { display: none; }
   .cam-list { grid-template-columns: 1fr; }
   .cam-list li:nth-child(odd) { box-shadow: none; }
+  .cam-top-grid { grid-template-columns: repeat(3, 1fr); }
 }
 @media (min-width: 861px) { .mobile-nav { display: none !important; } }
 @media (max-width: 860px) {
@@ -979,6 +996,7 @@ main { position: relative; z-index: var(--z-content); }
   .plans { grid-template-columns: 1fr; }
   .cam-row { grid-template-columns: 1fr; gap: 14px; }
   .cam-badges { flex-direction: row; align-items: flex-start; }
+  .cam-top-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 560px) {
   .wrap { padding-inline: 20px; }
@@ -997,6 +1015,9 @@ main { position: relative; z-index: var(--z-content); }
   .free-strip .swatch { flex: 0 0 42%; scroll-snap-align: start; }
   .cam-explorer-head { justify-content: flex-start; }
   .cam-explorer-head .cam-toggle { flex: 1 1 100%; justify-content: center; }
+  .cam-top-grid { gap: 8px; }
+  .cam-top-grid li { padding: 10px 11px; gap: 8px; }
+  .cam-top-grid .cam-vendor { min-width: 0; }
 }
 
 /* ══════════════ 연결 섹션의 안내 블록 ══════════════

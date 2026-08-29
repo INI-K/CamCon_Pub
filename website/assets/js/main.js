@@ -16,7 +16,7 @@
 
   // 정적 자산 캐시 버스터. index.html 의 css/js ?v= 와 같은 값을 유지한다
   // (main.js 자체가 ?v= 로 받아지므로 stale main.js 가 stale ASSET_V 를 들고 있을 수 없다).
-  var ASSET_V = "20260829a";
+  var ASSET_V = "20260829b";
 
   var VERIFIED_URL = "https://asia-northeast3-camcon-67ad7.cloudfunctions.net/getVerifiedCameras";
   var verifiedByKey = {};
@@ -550,8 +550,9 @@ function normalizeCameraKey(input) {
     }
 
     // 로딩 구간에 검색창만 있고 결과가 없는 공백을 남기지 않는다.
+    // 정적 목록(inject_camera_list.py 주입)이 이미 있으면 그대로 노출하고 스켈레톤을 그리지 않는다.
     var listEl = document.getElementById("camList");
-    if (listEl) {
+    if (listEl && !listEl.getElementsByTagName("li").length) {
       var skel = "";
       for (var s = 0; s < 8; s++) skel += '<li class="cam-skel" aria-hidden="true"></li>';
       listEl.innerHTML = skel;
@@ -579,6 +580,8 @@ function normalizeCameraKey(input) {
         });
       })
       .catch(function () {
+        // 정적 목록이 있으면 그대로 둔다 — 검색·필터만 빠진 완전한 목록이라 오류 안내보다 낫다(총계도 정적 값 유지).
+        if (listEl && listEl.querySelector("li:not(.cam-skel)")) return;
         // 실패를 침묵하면 검색창만 있고 결과가 영원히 없는 패널이 남는다 → 스켈레톤을 걷고 사유를 노출한다.
         var totalEl = document.getElementById("camTotal");
         if (totalEl) totalEl.textContent = "-";
