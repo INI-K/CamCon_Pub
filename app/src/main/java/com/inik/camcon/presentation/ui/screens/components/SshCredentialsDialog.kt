@@ -13,6 +13,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,7 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import com.inik.camcon.R
@@ -38,6 +42,24 @@ import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.PrimaryButton
 import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.viewmodel.SshCredentialsPromptReason
+import kotlinx.coroutines.delay
+
+/** 마지막 글자를 보여 주는 시간. 어깨너머 노출을 줄이려고 짧게 잡는다. */
+private const val LAST_CHAR_REVEAL_MS = 1_000L
+
+/** 마지막 한 글자만 원문으로 두고 나머지는 가린다. 길이가 1:1이라 오프셋 매핑은 항등이다. */
+private object LastCharVisibleTransformation : VisualTransformation {
+    private const val MASK = '•'
+
+    override fun filter(text: AnnotatedString): TransformedText {
+        val masked = if (text.isEmpty()) {
+            ""
+        } else {
+            MASK.toString().repeat(text.length - 1) + text.last()
+        }
+        return TransformedText(AnnotatedString(masked), OffsetMapping.Identity)
+    }
+}
 
 /**
  * SSH 로그인 정보 입력 다이얼로그.
@@ -60,6 +82,22 @@ fun SshCredentialsDialog(
     var user by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+
+    // 방금 입력한 한 글자만 잠깐 보여 준다(오타 확인용). 글자가 늘어난 경우에만 켜고,
+    // 지우거나 시간이 지나면 다시 가린다.
+    var revealLastChar by remember { mutableStateOf(false) }
+    var previousLength by remember { mutableStateOf(0) }
+    LaunchedEffect(password) {
+        val grew = password.length > previousLength
+        previousLength = password.length
+        if (!grew) {
+            revealLastChar = false
+            return@LaunchedEffect
+        }
+        revealLastChar = true
+        delay(LAST_CHAR_REVEAL_MS)
+        revealLastChar = false
+    }
 
     AppDialog(
         modifier = modifier,
@@ -112,10 +150,10 @@ fun SshCredentialsDialog(
                             style = BodySmall
                         )
                     },
-                    visualTransformation = if (passwordVisible) {
-                        VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
+                    visualTransformation = when {
+                        passwordVisible -> VisualTransformation.None
+                        revealLastChar -> LastCharVisibleTransformation
+                        else -> PasswordVisualTransformation()
                     },
                     trailingIcon = {
                         val stateDesc = if (passwordVisible) {
