@@ -99,6 +99,7 @@ class PtpipViewModelHotspotTest {
         every { ptpipRepository.connectFailure } returns
             MutableStateFlow<PtpipConnectFailure?>(null)
         every { ptpipRepository.sshHostKeyFingerprint } returns MutableStateFlow<String?>(null)
+        every { ptpipRepository.connectingCamera } returns MutableStateFlow<PtpipCamera?>(null)
 
         every { globalManager.globalConnectionState } returns
             MutableStateFlow(GlobalCameraConnectionState())

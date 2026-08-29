@@ -294,26 +294,45 @@ class PtpipViewModel @Inject constructor(
         // 사유를 null로 되돌리므로, 같은 사유가 다시 발생해도 null → 값 전이가 일어나 재방출된다.
         viewModelScope.launch {
             ptpipRepository.connectFailure.collect { failure ->
-                _sshPrompt.value = toSshPrompt(failure)
+                val prompt = toSshPrompt(failure)
+                if (prompt == null && failure != null &&
+                    failure != PtpipConnectFailure.PAIRING_PENDING
+                ) {
+                    // 다이얼로그를 만들지 못한 SSH 실패. 이 자리에서만 기록한다 — toSshPrompt는
+                    // 스낵바 억제 판정에서도 불리므로 순수 함수로 두어야 로그가 중복되지 않는다.
+                    Log.w(
+                        TAG,
+                        "SSH 실패($failure)를 안내로 옮기지 못함(대상 카메라 또는 지문 없음) - " +
+                            "일반 연결 실패 안내로 대체됨"
+                    )
+                }
+                _sshPrompt.value = prompt
             }
         }
     }
 
     /**
-     * 실패 사유를 다이얼로그 요청으로 옮긴다.
+     * 실패 사유를 다이얼로그 요청으로 옮긴다. 옮길 수 없으면 null이다.
      *
      * 지문은 [PtpipRepository.sshHostKeyFingerprint]에서 같은 순간에 함께 읽는다.
      * 페어링 대기는 재시도가 계속되는 상태라 다이얼로그 대상이 아니다.
+     *
+     * ⚠️ 순수 함수로 유지한다(로그·상태 변경 금지). [requiresSshAction]이 "이 실패가 다이얼로그로
+     * 표현되는가"를 판정하려고 같은 함수를 다시 부르기 때문이다.
      */
     private fun toSshPrompt(failure: PtpipConnectFailure?): SshConnectPrompt? {
         if (failure == null || failure == PtpipConnectFailure.PAIRING_PENDING) return null
 
-        val camera = _lastConnectTarget.value ?: _selectedCamera.value
-        if (camera == null) {
-            // 대상을 모르면 조치를 마쳐도 어디에 다시 연결할지 정할 수 없다.
-            Log.w(TAG, "SSH 실패($failure)를 받았으나 연결 대상 카메라가 없어 안내를 띄우지 않음")
-            return null
-        }
+        // 대상을 모르면 조치를 마쳐도 어디에 다시 연결할지 정할 수 없다.
+        //
+        // 데이터 레이어의 connectingCamera를 먼저 본다. 자동 재연결·Wi-Fi 폴링·자동 연결은
+        // ViewModel을 거치지 않고 연결을 시작하므로 [_lastConnectTarget]이 비어 있고, 그 경로의
+        // 실패에서 다이얼로그가 뜨지 않던 것이 실기 버그였다(2026-08-29). 뒤의 둘은 데이터 레이어가
+        // 아직 시도를 시작하기 전 단계에서 실패한 경우를 위한 폴백이다.
+        val camera = ptpipRepository.connectingCamera.value
+            ?: _lastConnectTarget.value
+            ?: _selectedCamera.value
+            ?: return null
         val fingerprint = ptpipRepository.sshHostKeyFingerprint.value
 
         return when (failure) {
@@ -324,10 +343,9 @@ class PtpipViewModel @Inject constructor(
                 SshConnectPrompt.Credentials(camera, SshCredentialsPromptReason.AUTH_FAILED)
 
             PtpipConnectFailure.SSH_HOST_KEY_UNVERIFIED ->
+                // 보여 줄 지문이 없으면 사용자가 대조할 수 없다. 대조 없이 신뢰시키는 대신
+                // 안내를 포기하고 일반 연결 실패로 둔다(TOFU 우회 경로를 만들지 않는다).
                 if (fingerprint.isNullOrBlank()) {
-                    // 보여 줄 지문이 없으면 사용자가 대조할 수 없다. 대조 없이 신뢰시키는 대신
-                    // 안내를 생략하고 일반 연결 실패로 둔다(TOFU 우회 경로를 만들지 않는다).
-                    Log.w(TAG, "호스트키 미검증인데 지문이 비어 있어 대조 다이얼로그를 띄우지 않음")
                     null
                 } else {
                     SshConnectPrompt.HostKeyTrust(camera, fingerprint)
@@ -365,7 +383,7 @@ class PtpipViewModel @Inject constructor(
                 return@launch
             }
             _sshPrompt.value = null
-            connectToCamera(prompt.camera)
+            reconnectAfterUserAction(prompt.camera)
         }
     }
 
@@ -388,7 +406,7 @@ class PtpipViewModel @Inject constructor(
                 return@launch
             }
             _sshPrompt.value = null
-            connectToCamera(prompt.camera)
+            reconnectAfterUserAction(prompt.camera)
         }
     }
 
@@ -396,7 +414,21 @@ class PtpipViewModel @Inject constructor(
     fun retrySshConnect() {
         val prompt = _sshPrompt.value ?: return
         _sshPrompt.value = null
-        connectToCamera(prompt.camera)
+        reconnectAfterUserAction(prompt.camera)
+    }
+
+    /**
+     * 사용자 조치를 마친 뒤의 재연결.
+     *
+     * 데이터 레이어는 실패한 SSH 시도를 일정 시간 억제한다(자동 경로가 4초마다 되풀이하며 카메라를
+     * 세션 잠금으로 몰아넣는 것을 막기 위해서다). 자격증명·호스트키 계열은 사용자 조치가 있어야
+     * 풀리는 실패라 억제 시간이 특히 길다. **먼저 풀지 않으면** 방금 저장한 자격증명으로 시도한
+     * 재연결이 억제 분기에서 같은 사유로 되돌아와, 사용자에게는 입력해도 아무 변화가 없는 것처럼
+     * 보인다. 조치 자체가 "조건이 달라졌다"는 뜻이므로 기다릴 이유가 없다.
+     */
+    private fun reconnectAfterUserAction(camera: PtpipCamera) {
+        ptpipRepository.clearSshAttemptThrottle()
+        connectToCamera(camera)
     }
 
     /** 사용자가 조치를 취소했다. 다이얼로그만 닫고 저장소는 건드리지 않는다. */
@@ -405,15 +437,17 @@ class PtpipViewModel @Inject constructor(
     }
 
     /**
-     * 직전 실패가 SSH 조치를 요구하는가.
+     * 직전 실패를 SSH 다이얼로그가 대신 안내하는가. 참이면 일반 실패 스낵바를 띄우지 않는다.
      *
-     * `_sshPrompt` 대신 저장소의 값을 직접 읽는다. 실패 사유의 수집과 `connectToCamera`의 반환은
-     * 서로 다른 코루틴이라 도착 순서가 보장되지 않으므로, 판정은 원본을 봐야 정확하다.
+     * "사유가 SSH 계열인가"가 아니라 **"다이얼로그가 실제로 만들어지는가"**로 판정한다. 사유는
+     * SSH인데 대상 카메라나 지문이 없어 다이얼로그를 띄우지 못하는 경우까지 억제하면 연결이 조용히
+     * 실패하고 사용자에게 아무 안내도 남지 않는다(실기에서 실제로 나온 증상).
+     *
+     * `_sshPrompt` 대신 저장소의 값으로 다시 계산한다. 실패 사유의 수집과 `connectToCamera`의
+     * 반환은 서로 다른 코루틴이라 도착 순서가 보장되지 않으므로, 판정은 원본을 봐야 정확하다.
      */
-    private fun requiresSshAction(): Boolean {
-        val failure = ptpipRepository.connectFailure.value ?: return false
-        return failure != PtpipConnectFailure.PAIRING_PENDING
-    }
+    private fun requiresSshAction(): Boolean =
+        toSshPrompt(ptpipRepository.connectFailure.value) != null
 
     // ══════════════════════════════════════════════════════════
     // 공개 API — 기존 시그니처 유지, 내부 로직은 헬퍼에 위임

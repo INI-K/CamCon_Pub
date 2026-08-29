@@ -55,6 +55,23 @@ interface PtpipRepository {
      */
     val sshHostKeyFingerprint: StateFlow<String?>
 
+    /**
+     * SSH 연결 시도 억제를 즉시 해제한다.
+     *
+     * 실패한 SSH 연결은 자동 경로가 되풀이하지 못하도록 일정 시간 억제된다. 사용자가 자격증명을
+     * 입력했거나 지문을 신뢰했거나 연결을 다시 누른 뒤에는 이 함수로 억제를 풀고 시도한다.
+     */
+    fun clearSshAttemptThrottle()
+
+    /**
+     * 지금 연결을 시도 중인(또는 직전에 시도한) 카메라. 시도가 없었으면 null이다.
+     *
+     * [connectFailure]가 "무엇이 실패했는지"를, 이 값이 "어느 카메라의 실패인지"를 알려 준다.
+     * 자동 재연결·Wi-Fi 폴링·자동 연결처럼 화면을 거치지 않고 시작된 연결의 실패에도 조치 대상을
+     * 특정할 수 있어야 하므로, 이 값은 데이터 레이어가 채운다.
+     */
+    val connectingCamera: StateFlow<PtpipCamera?>
+
     /** 현재 활성화된 사용자 시나리오 (AP / STA_ROUTER / STA_PHONE_HOTSPOT). */
     val activeConnectionMethod: StateFlow<ConnectionMethod?>
 
