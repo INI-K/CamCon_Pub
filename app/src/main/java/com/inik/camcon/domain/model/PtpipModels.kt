@@ -100,6 +100,37 @@ data class VendorVerdict(
 enum class NikonConnectionProfile { CAMERA_CONTROL, IMAGE_TRANSFER, UNKNOWN }
 
 /**
+ * 연결 전 UPnP 설명 XML(dd.xml → DigitalImagingDesc.xml)로 판정한 접속 게이트.
+ *
+ * ⚠️ [probed]가 false이면 "SSH 불필요"가 아니라 "아직 판정하지 못함"이다.
+ * 이 경우 반드시 기존 무인증 경로로 폴백해야 한다. false를 "불필요"로 읽으면
+ * SSH 전용 카메라가 15740 직결을 반복하며 영영 붙지 않는다.
+ * [VendorConfidence]의 UNKNOWN이 "해당 제조사 아님"이 아닌 것과 같은 원칙이다.
+ *
+ * 분기 판정은 [requiresSshTunnel] 한 곳에서만 한다. 호출부에서 `probed && sshRequired`를
+ * 다시 조합하면 probed를 빠뜨린 분기가 생긴다.
+ */
+data class PtpipAccessGate(
+    val probed: Boolean = false,
+    val sshRequired: Boolean = false,
+    val pairingRequired: Boolean = false,
+    val serverVersion: String? = null,
+    /** dd.xml의 UDN. 자격증명·호스트키의 안정 식별자로 쓴다(IP는 DHCP라 불안정하다). */
+    val udn: String? = null
+) {
+    /**
+     * SSH 터널 경로로 분기해야 하는지 판정한다.
+     *
+     * 판정에 성공했고([probed]) 그 결과가 SSH 필요일 때만 true다.
+     */
+    fun requiresSshTunnel(): Boolean = probed && sshRequired
+
+    companion object {
+        fun unprobed() = PtpipAccessGate()
+    }
+}
+
+/**
  * PTPIP 카메라 정보
  *
  * ⚠️ 불변식 — [name]과 [displayName]의 역할을 절대 섞지 않는다:
@@ -125,7 +156,9 @@ data class PtpipCamera(
     val displayName: String? = null,  // 표시 전용(게이트 입력 아님). null이면 UI가 폴백 체인 적용
     val discoverySource: CameraDiscoverySource = CameraDiscoverySource.UNKNOWN,
     // mDNS TXT `apps` 로 읽은 연결 프로파일. 바디 조작 가능 여부를 좌우한다(NikonConnectionProfile 참조).
-    val connectionProfile: NikonConnectionProfile = NikonConnectionProfile.UNKNOWN
+    val connectionProfile: NikonConnectionProfile = NikonConnectionProfile.UNKNOWN,
+    // 연결 전 UPnP 설명 XML 로 판정한 접속 게이트. 동일성 판정에는 쓰지 않는다(PtpipAccessGate 참조).
+    val accessGate: PtpipAccessGate = PtpipAccessGate.unprobed()
 )
 
 /**
