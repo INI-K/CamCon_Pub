@@ -291,7 +291,7 @@
     <string name="licenses_fonts_section">Bundled font</string>
     <string name="licenses_film_luts_section">Film simulation presets</string>
     <string name="licenses_film_luts_title">Preset attribution</string>
-    <string name="licenses_film_luts_body">The film simulation LUTs are film emulation presets from the G\'MIC project, converted to .cube format by the Film-Luts repository. CamCon bundles that conversion unmodified and preserves the original copyright notice contained in every file.</string>
+    <string name="licenses_film_luts_body">The film simulation LUTs are film emulation presets from the G\'MIC project, converted to .cube format by the Film-Luts repository. The MIT license covers that repository\'s packaging, not the copyright in the LUT data itself. The original authors are listed below. CamCon bundles the conversion unmodified and preserves the original copyright notice contained in every file.</string>
     <string name="licenses_trademark_title">Trademarks</string>
     <string name="licenses_trademark_body">Film and camera brand names shown in the film simulations are trademarks of their respective owners. CamCon is not affiliated with, sponsored by, or endorsed by any of them. The names are used only to describe the color characteristics each preset aims to reproduce.</string>
     <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->

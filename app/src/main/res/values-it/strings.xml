@@ -365,7 +365,7 @@
     <string name="licenses_fonts_section">Font incluso</string>
     <string name="licenses_film_luts_section">Preset di simulazione pellicola</string>
     <string name="licenses_film_luts_title">Origine dei preset</string>
-    <string name="licenses_film_luts_body">Le LUT di simulazione pellicola sono preset di emulazione del progetto G\'MIC, convertiti in formato .cube dal repository Film-Luts. CamCon include tale conversione senza modifiche e conserva l\'avviso di copyright originale contenuto in ogni file.</string>
+    <string name="licenses_film_luts_body">Le LUT di simulazione pellicola sono preset di emulazione del progetto G\'MIC, convertiti in formato .cube dal repository Film-Luts. La licenza MIT si applica al confezionamento di quel repository, non alla titolarità dei diritti sui dati delle LUT. Gli autori originali sono elencati di seguito. CamCon include tale conversione senza modifiche e conserva l\'avviso di copyright originale contenuto in ogni file.</string>
     <string name="licenses_trademark_title">Marchi</string>
     <string name="licenses_trademark_body">I nomi delle pellicole e dei marchi di fotocamere mostrati nelle simulazioni pellicola sono di proprietà dei rispettivi titolari. CamCon non è affiliata a essi né da essi sponsorizzata o approvata. I nomi sono usati solo per descrivere le caratteristiche cromatiche che ogni preset intende riprodurre.</string>
     <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->

@@ -366,7 +366,7 @@
     <string name="licenses_fonts_section">Police incluse</string>
     <string name="licenses_film_luts_section">Préréglages de simulation argentique</string>
     <string name="licenses_film_luts_title">Origine des préréglages</string>
-    <string name="licenses_film_luts_body">Les LUT de simulation argentique sont des préréglages d\'émulation du projet G\'MIC, convertis au format .cube par le dépôt Film-Luts. CamCon intègre cette conversion sans modification et conserve la mention de copyright d\'origine présente dans chaque fichier.</string>
+    <string name="licenses_film_luts_body">Les LUT de simulation argentique sont des préréglages d\'émulation du projet G\'MIC, convertis au format .cube par le dépôt Film-Luts. La licence MIT couvre l\'empaquetage de ce dépôt et non la titularité des droits sur les données des LUT elles-mêmes. Les auteurs d\'origine sont indiqués ci-dessous. CamCon intègre cette conversion sans modification et conserve la mention de copyright d\'origine présente dans chaque fichier.</string>
     <string name="licenses_trademark_title">Marques</string>
     <string name="licenses_trademark_body">Les noms de films et de marques d\'appareils photo affichés dans les simulations de film appartiennent à leurs détenteurs respectifs. CamCon n\'est ni affiliée à ces derniers, ni sponsorisée ou approuvée par eux. Ces noms servent uniquement à décrire le rendu colorimétrique que chaque préréglage cherche à reproduire.</string>
     <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->

@@ -184,16 +184,18 @@ fun OpenSourceLicensesScreen(
     )
 
     // 번들 필름 시뮬레이션 프리셋 — assets/luts 의 .cube 296개에 대한 귀속 고지다.
-    // 세 항목은 배포 사슬을 그대로 옮긴 것이라 하나라도 빠뜨리면 귀속 의무가 깨진다.
-    //   Film-Luts(MIT)  = HaldCLUT → .cube 변환본을 묶은 저장소. 전문 동봉 대상.
+    // 배포 사슬을 그대로 옮긴 것이라 한 항목이라도 빠뜨리면 귀속 의무가 깨진다.
+    //   Film-Luts(MIT)  = HaldCLUT → .cube 변환본을 묶은 저장소. MIT 는 이 패키징에만 걸린다.
     //   G'MIC           = 프리셋을 생성·배포하는 프로젝트. 각 .cube 첫 줄의 저작권 고지 주체다.
-    //   Film Emulation Presets = 원 프리셋 저작자(gmic.eu/color_presets 명시), CC BY-SA 4.0.
+    //   원 프리셋 저작자 3인 = 라이선스가 제각각이라 한 항목으로 묶어 표기하면 사실과 어긋난다.
+    //     Pat David      — 개인 사이트 전역 고지 기준 CC BY-SA 4.0 (근거가 gmic.eu 가 아니라 그쪽이라 URL 도 개인 사이트).
+    //     Stuart Sowerby — 배포 페이지에 All Rights Reserved 명시.
+    //     Juan Melara    — 라이선스 무표기.
     // ⚠️ .cube 파일 첫 줄의 "# Created by: G'MIC" 주석은 저작권 고지 그 자체다.
     //    용량 최적화로 주석을 스트립하면 그 순간 고지 의무 위반이 되므로 제거 금지.
     val filmLutLicenses = listOf(
         NativeLicense(
             name = "Film-Luts",
-            version = "2024.03",
             license = "MIT",
             copyright = "Copyright (c) 2024 Yahia",
             url = "https://github.com/YahiaAngelo/Film-Luts"
@@ -206,10 +208,22 @@ fun OpenSourceLicensesScreen(
             url = "https://gmic.eu"
         ),
         NativeLicense(
-            name = "G'MIC Film Emulation Presets",
+            name = "G'MIC Film Emulation Presets — Pat David",
             license = "CC BY-SA 4.0",
-            copyright = "Pat David, Stuart Sowerby, Juan Melara",
-            url = "https://gmic.eu/color_presets/"
+            copyright = "Pat David",
+            url = "https://patdavid.net"
+        ),
+        NativeLicense(
+            name = "Fuji X-Trans III presets — Stuart Sowerby",
+            license = "All Rights Reserved",
+            copyright = "Stuart Sowerby",
+            url = "https://blog.sowerby.me/fuji-film-simulation-profiles/"
+        ),
+        NativeLicense(
+            name = "Print film presets — Juan Melara",
+            license = "License not stated",
+            copyright = "Juan Melara",
+            url = "https://juanmelara.com.au"
         )
     )
 

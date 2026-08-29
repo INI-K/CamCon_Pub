@@ -364,7 +364,7 @@
     <string name="licenses_fonts_section">随附字体</string>
     <string name="licenses_film_luts_section">胶片模拟预设</string>
     <string name="licenses_film_luts_title">预设来源</string>
-    <string name="licenses_film_luts_body">胶片模拟 LUT 源自 G\'MIC 项目的胶片模拟预设，由 Film-Luts 仓库转换为 .cube 格式。CamCon 未作任何修改，直接随附该转换版本，并完整保留每个文件中的原始版权声明。</string>
+    <string name="licenses_film_luts_body">胶片模拟 LUT 源自 G\'MIC 项目的胶片模拟预设，由 Film-Luts 仓库转换为 .cube 格式。MIT 许可适用于该仓库的打包，并不代表 LUT 数据本身的著作权归属。原作者见下方各项。CamCon 未作任何修改，直接随附该转换版本，并完整保留每个文件中的原始版权声明。</string>
     <string name="licenses_trademark_title">商标声明</string>
     <string name="licenses_trademark_body">胶片模拟中显示的胶片与相机品牌名称均为各自商标所有者的财产。CamCon 与这些所有者没有任何隶属、赞助或背书关系；这些名称仅用于描述各预设所要还原的色彩特性。</string>
     <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->

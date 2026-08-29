@@ -363,7 +363,7 @@
     <string name="licenses_fonts_section">Fuente incluida</string>
     <string name="licenses_film_luts_section">Ajustes de simulación de película</string>
     <string name="licenses_film_luts_title">Origen de los ajustes</string>
-    <string name="licenses_film_luts_body">Las LUT de simulación de película son ajustes de emulación del proyecto G\'MIC, convertidos al formato .cube por el repositorio Film-Luts. CamCon incluye esa conversión sin modificarla y conserva el aviso de copyright original contenido en cada archivo.</string>
+    <string name="licenses_film_luts_body">Las LUT de simulación de película son ajustes de emulación del proyecto G\'MIC, convertidos al formato .cube por el repositorio Film-Luts. La licencia MIT se aplica al empaquetado de ese repositorio, no a la titularidad de los derechos sobre los datos de las LUT. Los autores originales se indican a continuación. CamCon incluye esa conversión sin modificarla y conserva el aviso de copyright original contenido en cada archivo.</string>
     <string name="licenses_trademark_title">Marcas registradas</string>
     <string name="licenses_trademark_body">Los nombres de películas y marcas de cámaras que aparecen en las simulaciones de película son propiedad de sus respectivos titulares. CamCon no está afiliada a ellos ni cuenta con su patrocinio o respaldo. Los nombres se usan únicamente para describir las características de color que cada preajuste intenta reproducir.</string>
     <!-- 연락처 접근성 라벨 + 메일 앱 부재 시 폴백 안내 -->

@@ -10,10 +10,12 @@ import java.io.File
  *
  * 단위테스트 작업 디렉터리 = app 모듈이라 `src/main/assets/...` 상대 경로로 자산 원본을 직접 읽는다.
  *
- * 왜 테스트로 막는가 — LUT 는 G'MIC(CeCILL) · 원 프리셋 저작자(CC BY-SA 4.0) · Film-Luts(MIT)
- * 세 층의 라이선스를 타고 들어온 자산이고, 세 라이선스가 공통으로 요구하는 것이 저작권 고지 보존이다.
- * 그 고지는 각 .cube 첫 줄 주석과 MIT 전문 사본 두 곳에만 남아 있어서, 용량 최적화로 주석을
- * 스트립하거나 자산을 옮기는 순간 조용히 라이선스 위반이 된다. 주석 한 줄로는 지켜지지 않으므로
+ * 왜 테스트로 막는가 — LUT 는 G'MIC(CeCILL) · 원 프리셋 저작자 · Film-Luts(MIT) 세 층을 타고
+ * 들어온 자산이다. MIT 는 저장소 패키징에만 걸릴 뿐 LUT 데이터의 저작권 귀속이 아니고,
+ * 원 프리셋 저작자 3인의 조건은 제각각이라(Pat David = CC BY-SA 4.0, Stuart Sowerby =
+ * All Rights Reserved, Juan Melara = 무표기) 어느 쪽으로도 일괄 표기할 수 없다. 다만 세 층이
+ * 공통으로 기대는 최소선이 저작권 고지 보존이고, 그 고지는 각 .cube 첫 줄 주석과 MIT 전문 사본
+ * 두 곳에만 남아 있다. 용량 최적화로 주석을 스트립하거나 자산을 옮기는 순간 조용히 위반이 되므로
  * 빌드 단계에서 잡는다. 고지 화면 문구는 [OpenSourceLicensesActivity] 의 filmLutLicenses 가 짝이다.
  */
 class FilmLutAttributionTest {
