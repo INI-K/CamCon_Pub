@@ -178,3 +178,20 @@ test("정상 응답은 done 으로 전달되고 캐시에 저장된다", async (
     assert.deepEqual(JSON.parse(store[site.VERIFIED_CACHE_KEY]).data, payload);
   });
 });
+
+/* 카탈로그 정적 검증 이력(verified 필드) — CF 집계에 없는 개발 실기 확인 기종의 배지 공급원.
+   대표 카드에는 검증 표기가 있는데 전체 목록에는 배지가 없는 불일치(2026-08-29 보고)의 회귀 방지. */
+test("카탈로그 verified 필드는 CF 집계에 없어도 사용 확인으로 합쳐진다", () => {
+  const expected = catalog.cameras.filter((c) => c.verified).length;
+  assert.ok(expected >= 1, "정적 검증 이력이 최소 1종은 있어야 한다(A7 V)");
+  site.setVerified({});
+  site.seedStaticVerified();
+  assert.equal(site.countVerifiedMatches(), expected);
+  assert.deepEqual(site.unlistedVerified(), []); // 전부 카탈로그 행에 매칭되어야 한다
+});
+
+test("정적 검증 이력이 CF 보고와 겹쳐도 중복 집계되지 않는다", () => {
+  site.setVerified(report([["Sony Alpha-A7 V (ILCE-7M5)", { wifi: true }]]));
+  site.seedStaticVerified();
+  assert.equal(site.countVerifiedMatches(), catalog.cameras.filter((c) => c.verified).length);
+});

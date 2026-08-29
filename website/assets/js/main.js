@@ -16,7 +16,7 @@
 
   // 정적 자산 캐시 버스터. index.html 의 css/js ?v= 와 같은 값을 유지한다
   // (main.js 자체가 ?v= 로 받아지므로 stale main.js 가 stale ASSET_V 를 들고 있을 수 없다).
-  var ASSET_V = "20260829b";
+  var ASSET_V = "20260829c";
 
   var VERIFIED_URL = "https://asia-northeast3-camcon-67ad7.cloudfunctions.net/getVerifiedCameras";
   var verifiedByKey = {};
@@ -562,6 +562,7 @@ function normalizeCameraKey(input) {
       .then(function (r) { if (!r.ok) throw new Error("http " + r.status); return r.json(); })
       .then(function (data) {
         camData = data;
+        seedStaticVerified();
         var totalEl = document.getElementById("camTotal");
         if (totalEl) totalEl.textContent = (data.total || data.cameras.length).toLocaleString();
         buildVendorChips();
@@ -573,6 +574,7 @@ function normalizeCameraKey(input) {
             if (!c || typeof c.key !== "string") return; // 손상 캐시 한 줄이 목록 전체를 지우지 않게
             verifiedByKey[c.key] = { usb: c.usb, wifi: c.wifi, model: c.model || "" };
           });
+          seedStaticVerified();
           verifiedCount = countVerifiedMatches();
           renderVerifiedCount();
           renderUnlisted();
@@ -642,6 +644,21 @@ function normalizeCameraKey(input) {
      ("N종") 배지는 카탈로그 행마다 붙는데, 표기가 다른 같은 기종이 서로 다른 행으로 존재해
      같은 키로 접히는 그룹이 있다(예: "Canon MVX 3i" / "Canon MVX3i"). "종" 표기에는 중복 제거가
      맞으므로 의도된 차이다. */
+  /* 카탈로그에 정적으로 기록된 검증 이력(생성기 DEV_VERIFIED → JSON verified 필드).
+     CF 실사용 집계에 아직 없는 개발 실기 확인 기종도 목록에서 "사용 확인됨" 배지가 붙도록
+     verifiedByKey 에 합친다. CF 값과 겹치면 방식(usb/wifi)을 합집합으로 만든다. */
+  function seedStaticVerified() {
+    if (!camData) return;
+    camData.cameras.forEach(function (c) {
+      if (!c.verified) return;
+      var k = camKey(c);
+      var v = verifiedByKey[k] || { usb: false, wifi: false, model: c.vendor + " " + c.model };
+      v.usb = v.usb || !!c.verified.usb;
+      v.wifi = v.wifi || !!c.verified.wifi;
+      verifiedByKey[k] = v;
+    });
+  }
+
   function countVerifiedMatches() {
     if (!camData) return 0;
     var seen = {}, n = 0;
@@ -909,6 +926,7 @@ function normalizeCameraKey(input) {
       loadVerified: loadVerified,
       VERIFIED_CACHE_KEY: VERIFIED_CACHE_KEY,
       VERIFIED_MIN: VERIFIED_MIN,
+      seedStaticVerified: seedStaticVerified,
       setCamData: function (d) { camData = d; },
       setVerified: function (m) { verifiedByKey = m; verifiedCount = countVerifiedMatches(); },
       setI18n: function (d) { I18N = d; }
