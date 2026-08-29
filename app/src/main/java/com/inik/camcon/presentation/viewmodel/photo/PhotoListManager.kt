@@ -203,7 +203,11 @@ class PhotoListManager @Inject constructor(
         }
         _cardBrowseError.value = null
 
-        managerScope.launch {
+        // ⚠️ 매니저 scope 가 아니라 앱 scope 다. 이탈은 카메라를 촬영 모드로 되돌리는 명령이라
+        // 중간에 잘리면 카메라가 콘텐츠 전송 모드에 갇혀 촬영과 라이브뷰가 계속 막힌다.
+        // 이 함수는 화면을 떠나는 길목([cleanup] 포함)에서 불리는데, 매니저 scope 는 바로 그
+        // 자리에서 취소되므로 진입([enterCardBrowse])과 달리 취소되지 않는 scope 를 쓴다.
+        appScope.launch {
             var result = setSonyContentsTransferModeUseCase(false)
 
             if (result.exceptionOrNull() is PtpTimeoutException) {
@@ -622,20 +626,18 @@ class PhotoListManager @Inject constructor(
      */
     fun cleanup() {
         // 카드 보기를 켠 채로 화면을 벗어나면 카메라가 콘텐츠 전송 모드에 갇혀 촬영과
-        // 라이브뷰가 계속 막힌 상태로 남는다. 바로 아래에서 매니저 scope 를 취소하므로
-        // 이탈 명령만은 취소되지 않는 앱 scope 로 띄운다.
-        if (_cardBrowseState.value == CardBrowseState.ACTIVE) {
+        // 라이브뷰가 계속 막힌 상태로 남는다. [exitCardBrowse] 는 앱 scope 에서 돌기 때문에
+        // 바로 아래의 매니저 scope 취소에 잘려나가지 않는다. 실패하면 그 안에서 STUCK 으로
+        // 두므로 UI 가 전원 재기동을 안내한다 — 여기서 상태를 IDLE 로 덮어쓰면 안 된다.
+        val leaving = _cardBrowseState.value == CardBrowseState.ACTIVE ||
+                _cardBrowseState.value == CardBrowseState.STUCK
+        if (leaving) {
             Log.w(TAG, "카드 보기가 켜진 채 정리됨 — 촬영 모드로 되돌린다")
-            appScope.launch {
-                setSonyContentsTransferModeUseCase(false)
-                    .onFailure {
-                        Log.e(TAG, "정리 중 카드 보기 이탈 실패 — 카메라 전원 재기동이 필요하다", it)
-                    }
-                invalidateFileCacheUseCase()
-            }
+            exitCardBrowse()
+        } else {
+            _cardBrowseState.value = CardBrowseState.IDLE
+            _cardBrowseError.value = null
         }
-        _cardBrowseState.value = CardBrowseState.IDLE
-        _cardBrowseError.value = null
 
         // 진행 중 작업 취소 → scope 재생성 후 즉시 재활성화하여
         // @Singleton 재진입(미리보기 재진입) 시 목록 로딩이 영구 차단되지 않도록 한다.(F20)

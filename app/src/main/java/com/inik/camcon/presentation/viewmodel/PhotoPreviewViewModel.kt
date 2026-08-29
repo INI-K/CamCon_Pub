@@ -830,6 +830,13 @@ class PhotoPreviewViewModel @Inject constructor(
         // 탭을 떠나면 진행 중인 썸네일 순차 로딩을 즉시 중단(카메라 큐 점유 해제).
         photoImageManager.cancelThumbnailLoading()
 
+        // 카드 보기(소니 콘텐츠 전송 모드)를 켠 채 탭을 떠나면 카메라가 그 모드에 갇혀 촬영과
+        // 라이브뷰가 계속 막힌다. 이탈은 카메라 왕복이 필요한데 아래 viewModelScope 는 탭 전환
+        // 직후 취소될 수 있으므로, 앱 scope 에서 처리하는 매니저에 위임한다. 카드 보기가 꺼져
+        // 있으면 매니저가 상태를 보고 그냥 돌아간다. 아래 이벤트 리스너 재시작보다 먼저 명령을
+        // 걸어야 카메라가 촬영 모드로 돌아간 뒤 리스너가 붙는다.
+        photoListManager.exitCardBrowse()
+
         viewModelScope.launch {
             try {
                 val currentConnected = _uiState.value.isConnected
@@ -952,7 +959,9 @@ class PhotoPreviewViewModel @Inject constructor(
             }
         }
 
-        // 매니저들 정리
+        // 매니저들 정리.
+        // [PhotoListManager.cleanup] 은 카드 보기가 켜져 있으면 이탈 명령을 앱 scope 로 걸어
+        // 카메라를 촬영 모드로 되돌린다 — onCleared 에서 카드 보기가 갇히지 않는 경로가 여기다.
         try {
             photoListManager.cleanup()
             photoImageManager.cleanup()
