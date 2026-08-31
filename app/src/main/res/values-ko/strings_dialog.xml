@@ -56,6 +56,8 @@
     <string name="progress_ptpip_connecting">카메라에 연결 중...</string>
     <string name="progress_ptpip_connection_start">카메라 연결 시작...</string>
     <string name="progress_ptpip_authenticating_nikon">Nikon 카메라 인증 중...</string>
+    <string name="progress_ptpip_pairing_first">카메라 화면에서 연결을 허용해 주세요</string>
+    <string name="progress_ptpip_pairing_forgotten">카메라가 이 기기 등록을 잊었습니다. 카메라 화면에서 다시 승인해 주세요</string>
     <string name="progress_ptpip_camera_confirm">📷 카메라 화면에서 ‘연결 허용(OK)’을 눌러주세요</string>
     <string name="progress_ptpip_checking_info">카메라 정보 확인 중...</string>
     <string name="progress_ptpip_listener_start">이벤트 리스너 시작 중...</string>
