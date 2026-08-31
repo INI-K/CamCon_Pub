@@ -162,10 +162,21 @@ class PhotoImageManager @Inject constructor(
     // 작업 취소를 위한 플래그
     private var isManagerActive = true
 
-    // 썸네일 순차 로딩 잡 — 단일 잡으로 유지(목록 갱신 시 이전 루프 취소·재시작,
-    // 탭 이탈 시 취소). 이전에는 목록 변화마다 루프가 중첩 실행되어 탭을 떠나도
-    // 계속 받는 문제가 있었다(2026-07-03 실측).
+    // 썸네일 순차 로딩 잡 — 단일 잡으로 유지(탭 이탈 시 취소). 이전에는 목록 변화마다 루프가
+    // 중첩 실행되어 탭을 떠나도 계속 받는 문제가 있었다(2026-07-03 실측).
     private var thumbnailLoadJob: kotlinx.coroutines.Job? = null
+
+    // 아직 받지 않은 썸네일 대기열. 목록이 늘어날 때 **처음부터 다시 받지 않기 위한** 장치다.
+    //
+    // 페이징은 목록을 51 → 101 → 151 로 늘리는데, 예전에는 그때마다 진행 중 잡을 취소하고
+    // 0번부터 다시 시작했다. 그래서 사용자가 스크롤할수록 앞쪽 썸네일을 반복해서 받고 정작
+    // 지금 보는 구간은 계속 뒤로 밀렸다. 이제는 새로 들어온 것만 뒤에 붙이고 워커 하나가
+    // 이어서 비운다.
+    private val pendingLock = Any()
+    private val pendingThumbnails = ArrayDeque<CameraPhoto>()
+
+    // 대기열에 이미 들어간 경로. 목록 갱신이 같은 사진을 다시 실어 보내도 중복 적재를 막는다.
+    private val queuedPaths = HashSet<String>()
 
     /**
      * 진행 중인 썸네일 로딩 취소 (탭 이탈 시). 캐시는 유지해 재진입 시 재사용.
@@ -176,6 +187,10 @@ class PhotoImageManager @Inject constructor(
         }
         thumbnailLoadJob?.cancel()
         thumbnailLoadJob = null
+        synchronized(pendingLock) {
+            pendingThumbnails.clear()
+            queuedPaths.clear()
+        }
         synchronized(thumbnailCacheLock) {
             _loadingThumbnails.value = emptySet()
         }
@@ -201,33 +216,67 @@ class PhotoImageManager @Inject constructor(
     }
 
     /**
-     * 썸네일 로드
+     * 썸네일 로드.
+     *
+     * 목록이 바뀔 때마다 **처음부터 다시 받지 않는다.** 아직 받지 않은 사진만 대기열 뒤에 붙이고,
+     * 워커가 이미 돌고 있으면 그대로 이어서 처리한다. 페이징으로 목록이 51 → 101 → 151 로 늘 때
+     * 앞쪽을 반복해서 받느라 지금 보는 구간이 뒤로 밀리던 문제를 없앤다.
      */
     fun loadThumbnailsForPhotos(photos: List<CameraPhoto>) {
-        Log.d(TAG, "썸네일 로딩 시작: ${photos.size}개 사진")
+        if (_thumbnailUnsupported.value) {
+            Log.d(TAG, "썸네일 미지원 세션 — 로딩을 건너뛴다")
+            return
+        }
 
-        thumbnailLoadJob?.cancel()
+        val added = synchronized(pendingLock) {
+            var n = 0
+            for (photo in photos) {
+                // 이미 받았거나 대기열에 있으면 넣지 않는다.
+                if (_thumbnailCache.value.containsKey(photo.path)) continue
+                if (!queuedPaths.add(photo.path)) continue
+                pendingThumbnails.addLast(photo)
+                n++
+            }
+            n
+        }
+
+        val queueSize = synchronized(pendingLock) { pendingThumbnails.size }
+        Log.d(TAG, "썸네일 대기열에 ${added}개 추가 (대기 ${queueSize}개 / 목록 ${photos.size}개)")
+
+        if (added == 0) return
+
+        // 워커가 이미 돌고 있으면 대기열만 늘리고 끝낸다. 취소·재시작하지 않는 것이 핵심이다.
+        if (thumbnailLoadJob?.isActive == true) return
+
         thumbnailLoadJob = managerScope.launch {
             if (!isManagerActive) {
                 Log.d(TAG, "썸네일 로딩 중단됨 (매니저 비활성)")
                 return@launch
             }
 
-            // 이 카메라가 쓸 수 있는 썸네일을 못 준다고 이미 판정됐다면 요청 자체를 하지 않는다.
-            if (_thumbnailUnsupported.value) {
-                Log.d(TAG, "썸네일 미지원 세션 — 로딩을 건너뛴다")
-                return@launch
-            }
+            while (true) {
+                val photo = synchronized(pendingLock) { pendingThumbnails.removeFirstOrNull() }
+                    ?: break
 
-            // 순차적으로 처리 (동시 실행 방지)
-            photos.forEach { photo ->
-                // 이미 캐시에 있거나 로딩 중인 경우 건너뛰기 — 캐시·로딩 상태 모두 최신 StateFlow 값 기준으로 판정(F31)
-                if (_thumbnailCache.value.containsKey(photo.path) || _loadingThumbnails.value.contains(photo.path)) {
-                    return@forEach
+                // 대기 중에 다른 경로로 이미 받았을 수 있다.
+                if (_thumbnailCache.value.containsKey(photo.path) ||
+                    _loadingThumbnails.value.contains(photo.path)
+                ) {
+                    synchronized(pendingLock) { queuedPaths.remove(photo.path) }
+                    continue
                 }
 
                 // 매니저 비활성화 체크
                 if (!isManagerActive) {
+                    return@launch
+                }
+
+                // 이 세션이 쓸 수 없는 썸네일을 준다고 판정되면 남은 대기열을 통째로 버린다.
+                if (_thumbnailUnsupported.value) {
+                    synchronized(pendingLock) {
+                        pendingThumbnails.clear()
+                        queuedPaths.clear()
+                    }
                     return@launch
                 }
 
@@ -341,10 +390,11 @@ class PhotoImageManager @Inject constructor(
                     synchronized(thumbnailCacheLock) {
                         _loadingThumbnails.value = _loadingThumbnails.value - photo.path
                     }
+                    synchronized(pendingLock) { queuedPaths.remove(photo.path) }
                 }
             }
 
-            Log.d(TAG, "썸네일 로딩 완료: ${photos.size}개 사진")
+            Log.d(TAG, "썸네일 대기열 비움")
         }
     }
 
