@@ -508,13 +508,17 @@ fun MyPhotosScreen(
                 val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                     type = "application/json"
                     putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                    // 읽기 권한 플래그는 data/clipData 의 URI 에만 적용된다. EXTRA_STREAM 만
+                    // 실으면 시스템 공유 시트의 미리보기(uid=1000)가 URI 를 읽다 SecurityException
+                    // 으로 거절당한다(실기 2026-08-31). clipData 에 같은 URI 를 실어야 한다.
+                    clipData = android.content.ClipData.newRawUri(null, uri)
                     addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
                 shareContext.startActivity(
                     android.content.Intent.createChooser(
                         intent,
                         shareContext.getString(R.string.gallery_export_select_info_title)
-                    )
+                    ).addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 )
                 selectInfoDoneCount = share.photoCount
             } catch (e: Exception) {
