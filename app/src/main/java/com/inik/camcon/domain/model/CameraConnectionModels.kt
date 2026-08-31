@@ -18,7 +18,15 @@ data class GlobalCameraConnectionState(
     val wifiNetworkState: WifiNetworkState = WifiNetworkState(false, false, null, null),
     val discoveredCameras: List<PtpipCamera> = emptyList(),
     val activeConnectionType: CameraConnectionType? = null,
-    val isAnyConnectionActive: Boolean = false
+    val isAnyConnectionActive: Boolean = false,
+    /**
+     * 지금 **자동** 재연결을 돌고 있는가.
+     *
+     * 자동 시도는 사용자가 요청하지 않은 배경 작업이다. 시도마다 CONNECTING↔ERROR 가 토글되는데,
+     * 그 CONNECTING 으로 차단 오버레이를 띄우면 사용자가 아무것도 안 했는데 화면이 반복해서
+     * 깜빡인다. UI 는 이 값이 true 인 동안 차단 오버레이를 띄우지 않는다.
+     */
+    val isAutoReconnecting: Boolean = false
 )
 
 /**
