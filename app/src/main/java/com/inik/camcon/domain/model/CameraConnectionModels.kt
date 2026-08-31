@@ -26,7 +26,15 @@ data class GlobalCameraConnectionState(
      * 그 CONNECTING 으로 차단 오버레이를 띄우면 사용자가 아무것도 안 했는데 화면이 반복해서
      * 깜빡인다. UI 는 이 값이 true 인 동안 차단 오버레이를 띄우지 않는다.
      */
-    val isAutoReconnecting: Boolean = false
+    val isAutoReconnecting: Boolean = false,
+    /**
+     * 자동 재연결 단계. 무인 수신 세션이 "아직 붙는 중"을 판정하는 축이다.
+     *
+     * ⚠️ **[isAnyConnectionActive] 계산식에 절대 섞지 않는다.** 그 필드는 촬영 게이트라
+     * (CameraCaptureRepositoryImpl·PhotoPreviewViewModel·UsbAutoConnectManager·MainActivity),
+     * 재연결 중을 "연결됨"으로 치면 세션 없는 핸들로 촬영 명령이 통과한다.
+     */
+    val reconnectPhase: ReconnectPhase = ReconnectPhase.Idle
 )
 
 /**

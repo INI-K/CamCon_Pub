@@ -400,6 +400,11 @@
     <string name="notif_bg_sync_title">CamCon 백그라운드 동기화</string>
     <string name="notif_bg_sync_active">카메라 이벤트 리스너 활성 상태 - 화면이 꺼져도 사진 수신 가능</string>
     <string name="notif_bg_sync_listener_active">카메라 이벤트 리스너 활성 - 사진 수신 대기 중</string>
+    <string name="notif_bg_session_reconnecting">연결이 끊겼습니다 - 다시 연결하는 중</string>
+    <string name="notif_bg_session_recovering">세션을 복구하는 중</string>
+    <string name="notif_bg_session_ended_reconnect_failed">다시 연결하지 못해 수신을 중단했습니다</string>
+    <string name="notif_bg_session_ended_link_lost">카메라 연결이 끊겨 수신을 중단했습니다</string>
+    <string name="notif_bg_session_ended_restart_unrecovered">앱이 다시 시작돼 수신을 이어가지 못했습니다</string>
     <string name="notif_bg_sync_checking">카메라 연결 확인 중…</string>
     <string name="notif_bg_sync_waiting">카메라 연결 대기 중…</string>
     <string name="ptpip_please_enable_wifi">Wi-Fi를 켜주세요</string>

@@ -33,6 +33,8 @@ import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.domain.manager.CameraStateObserver
 import com.inik.camcon.domain.manager.ErrorNotifier
+import com.inik.camcon.data.manager.UnattendedSessionManagerImpl
+import com.inik.camcon.domain.manager.UnattendedSessionManager
 import com.inik.camcon.domain.manager.NativeErrorCallbackRegistrar
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.repository.AppSettingsRepository
@@ -229,6 +231,17 @@ abstract class RepositoryModule {
     abstract fun bindErrorNotifier(
         impl: ErrorHandlingManager
     ): ErrorNotifier
+
+    /**
+     * 무인 수신 세션 매니저. 서비스(FGS·WakeLock)의 수명이 이 상태를 따른다.
+     *
+     * 도메인 포트에 바인딩해 서비스·UseCase 가 구현체를 모르게 한다(C1 규약).
+     */
+    @Binds
+    @Singleton
+    abstract fun bindUnattendedSessionManager(
+        impl: UnattendedSessionManagerImpl
+    ): UnattendedSessionManager
 
     @Binds
     @Singleton

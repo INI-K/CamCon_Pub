@@ -376,6 +376,11 @@
     <string name="notif_bg_sync_title">Synchronisation en arrière-plan de CamCon</string>
     <string name="notif_bg_sync_active">Écouteur d\'événements actif - les photos peuvent être reçues écran éteint</string>
     <string name="notif_bg_sync_listener_active">Écouteur d\'événements actif - en attente de photos</string>
+    <string name="notif_bg_session_reconnecting">Connexion perdue - reconnexion en cours</string>
+    <string name="notif_bg_session_recovering">Restauration de la session</string>
+    <string name="notif_bg_session_ended_reconnect_failed">Échec de la reconnexion - réception arrêtée</string>
+    <string name="notif_bg_session_ended_link_lost">Appareil photo déconnecté - réception arrêtée</string>
+    <string name="notif_bg_session_ended_restart_unrecovered">L\'application a redémarré et n\'a pas pu reprendre la réception</string>
     <string name="notif_bg_sync_checking">Vérification de la connexion de l\'appareil photo…</string>
     <string name="notif_bg_sync_waiting">En attente de la connexion de l\'appareil photo…</string>
     <string name="ptpip_please_enable_wifi">Veuillez activer le Wi-Fi</string>

@@ -376,6 +376,11 @@
     <string name="notif_bg_sync_title">CamCon バックグラウンド同期</string>
     <string name="notif_bg_sync_active">イベントリスナー稼働中 - 画面がオフでも写真を受信できます</string>
     <string name="notif_bg_sync_listener_active">イベントリスナー稼働中 - 写真の受信を待機中</string>
+    <string name="notif_bg_session_reconnecting">接続が切れました - 再接続中</string>
+    <string name="notif_bg_session_recovering">セッションを復旧中</string>
+    <string name="notif_bg_session_ended_reconnect_failed">再接続できず受信を停止しました</string>
+    <string name="notif_bg_session_ended_link_lost">カメラとの接続が切れ受信を停止しました</string>
+    <string name="notif_bg_session_ended_restart_unrecovered">アプリが再起動し受信を再開できませんでした</string>
     <string name="notif_bg_sync_checking">カメラ接続を確認中…</string>
     <string name="notif_bg_sync_waiting">カメラ接続を待機中…</string>
     <string name="ptpip_please_enable_wifi">Wi-Fiをオンにしてください</string>

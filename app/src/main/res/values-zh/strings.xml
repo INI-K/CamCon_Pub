@@ -372,6 +372,11 @@
     <string name="notif_bg_sync_title">CamCon 后台同步</string>
     <string name="notif_bg_sync_active">事件监听器已启用 - 熄屏也可接收照片</string>
     <string name="notif_bg_sync_listener_active">事件监听器已启用 - 等待接收照片</string>
+    <string name="notif_bg_session_reconnecting">连接已断开 - 正在重新连接</string>
+    <string name="notif_bg_session_recovering">正在恢复会话</string>
+    <string name="notif_bg_session_ended_reconnect_failed">重新连接失败，已停止接收</string>
+    <string name="notif_bg_session_ended_link_lost">相机连接断开，已停止接收</string>
+    <string name="notif_bg_session_ended_restart_unrecovered">应用已重启，无法继续接收</string>
     <string name="notif_bg_sync_checking">正在确认相机连接…</string>
     <string name="notif_bg_sync_waiting">等待相机连接…</string>
     <string name="ptpip_please_enable_wifi">请开启 Wi-Fi</string>
