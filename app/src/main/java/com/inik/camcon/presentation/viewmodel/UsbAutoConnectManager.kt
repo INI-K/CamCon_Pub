@@ -58,10 +58,6 @@ class UsbAutoConnectManager @Inject constructor(
     companion object {
         private const val TAG = "카메라연결매니저"
 
-        // 매니페스트 USB_DEVICE_ATTACHED('이 USB 기기에 기본으로 사용' 1회 체크)가 재연결 시 권한을
-        // 자동 부여하기를 기다리는 유예시간. 이 안에 권한이 들어오면 프로그램적 권한요청을 생략한다.
-        private const val PERMISSION_GRACE_MS = 2000L
-
         /**
          * 케이블을 **방금 꽂은** 상황에서 시스템 앱 선택지("한 번만 / 항상")에 사람이 응답할
          * 시간을 주는 유예시간.
@@ -176,16 +172,36 @@ class UsbAutoConnectManager @Inject constructor(
      *
      * 기다리는 동안 [PERMISSION_POLL_INTERVAL_MS] 마다 권한 도착을 확인해, 부여되는 즉시
      * 폴백 없이 빠져나온다 — 유예를 늘려도 연결이 늦어지지 않는 이유다.
+     *
+     * 반대로 그 문맥이 아니면(설정 화면의 수동 재시도, 앱 재기동 등) **기다리지 않는다.**
+     * 시스템 선택지가 뜨지 않았으니 자동 부여도 올 수 없어서, 유예는 사용자가 누른 버튼이
+     * 아무 반응 없어 보이는 시간일 뿐이다.
      */
     private suspend fun awaitSystemGrantThenFallback(uiStateManager: CameraUiStateManager) {
         val justAttached =
             usbDeviceRepository.msSinceCameraAttached() <= ATTACH_CONTEXT_WINDOW_MS
-        val graceMs = if (justAttached) ATTACH_PERMISSION_GRACE_MS else PERMISSION_GRACE_MS
 
-        if (justAttached) {
-            Log.d(TAG, "케이블 부착 직후 - 시스템 앱 선택지 응답을 ${graceMs}ms 까지 기다린다")
-            maybeShowFirstConnectionHint(uiStateManager)
+        if (!justAttached) {
+            // 케이블을 꽂은 순간이 아니면 시스템 앱 선택지가 뜨지 않았고, 따라서 자동 부여가
+            // 올 데도 없다. 기다려 봐야 아무 일도 일어나지 않으므로 곧바로 요청한다.
+            //
+            // 판정은 **시스템에 직접 물어서** 한다. 상태 흐름의 캐시는 브로드캐스트로만
+            // 갱신되어 낡아 있을 수 있다(실기 로그: "권한=false" 바로 뒤에 "이미 권한이
+            // 있습니다"). 캐시를 믿으면 권한이 있는데도 대화상자를 띄우게 된다.
+            if (usbDeviceRepository.hasPermissionForAttachedCamera()) {
+                // 권한은 이미 있고 캐시만 낡았다. 아래 호출은 대화상자를 띄우지 않고
+                // 권한 상태를 실제 값으로 맞춰 주기만 한다(그래야 자동 연결이 이어진다).
+                Log.d(TAG, "부착 문맥 아님 - 실검사 결과 권한 보유(캐시가 낡음), 상태만 맞춘다")
+            } else {
+                Log.d(TAG, "부착 문맥 아님 + 권한 없음 확정 - 유예 없이 즉시 권한 요청")
+            }
+            requestUsbPermission()
+            return
         }
+
+        val graceMs = ATTACH_PERMISSION_GRACE_MS
+        Log.d(TAG, "케이블 부착 직후 - 시스템 앱 선택지 응답을 ${graceMs}ms 까지 기다린다")
+        maybeShowFirstConnectionHint(uiStateManager)
 
         var waitedMs = 0L
         while (waitedMs < graceMs) {

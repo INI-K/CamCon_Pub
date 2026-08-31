@@ -89,6 +89,8 @@ class UsbAutoConnectManagerTest {
         // 기본값은 "부착 문맥 아님" — 케이블을 방금 꽂은 상황을 검증하는 테스트만 이 값을 바꾼다.
         // relaxed mock 의 기본 0L 은 "방금 부착"으로 읽혀 다른 테스트의 대기 시간을 바꿔 놓는다.
         every { usbDeviceRepository.msSinceCameraAttached() } returns Long.MAX_VALUE
+        // 권한 실검사 기본값은 "없음" — 캐시가 아니라 이 값이 판정 근거다.
+        every { usbDeviceRepository.hasPermissionForAttachedCamera() } returns false
         // 안내는 이미 본 것이 기본 — 안내 자체를 검증하는 테스트만 false 로 바꾼다.
         every { appSettingsRepository.hasSeenUsbPermissionHint } returns flowOf(true)
     }
@@ -343,16 +345,34 @@ class UsbAutoConnectManagerTest {
     }
 
     @Test
-    fun `부착 문맥이 아니면 종전대로 2초 뒤에 앱 다이얼로그를 띄운다`() = runTest {
-        // 설정 화면의 수동 재시도·콜드 스타트에서 이미 꽂혀 있던 장치. 시스템 선택지가 뜨지
-        // 않는 경로라 기다릴 이유가 없다(기다리면 버튼이 먹통으로 보인다).
+    fun `부착 문맥이 아니고 권한도 없으면 유예 없이 즉시 권한을 요청한다`() = runTest {
+        // 설정 화면의 수동 재시도·앱 재기동처럼 시스템 선택지가 뜨지 않는 경로다. 자동 부여가
+        // 올 데가 없으므로 기다리는 시간은 버튼이 먹통으로 보이는 시간일 뿐이다.
         every { usbDeviceRepository.msSinceCameraAttached() } returns 60_000L
+        every { usbDeviceRepository.hasPermissionForAttachedCamera() } returns false
         val (_, scope) = startObservingWithoutPermission(CameraUiStateManager())
 
-        advanceTimeBy(2_500)
-        advanceUntilIdle()
+        // 시간을 전혀 진행시키지 않는다 — 한 틱 안에 요청이 나가야 한다.
+        runCurrent()
 
         verify(exactly = 1) { requestUsbPermissionUseCase(any()) }
+
+        scope.cancel()
+    }
+
+    @Test
+    fun `권한 판정은 캐시가 아니라 시스템 실검사로 한다`() = runTest {
+        // 실기 로그에서 상태 흐름 캐시가 stale false 였던 사례가 있다("권한=false" 직후
+        // "이미 권한이 있습니다"). 캐시를 믿으면 권한이 있는데도 대화상자를 띄우게 된다.
+        every { usbDeviceRepository.msSinceCameraAttached() } returns 60_000L
+        permissionFlow.value = false                                   // 캐시는 없다고 말한다
+        every { usbDeviceRepository.hasPermissionForAttachedCamera() } returns true  // 실제로는 있다
+        val (_, scope) = startObservingWithoutPermission(CameraUiStateManager())
+
+        runCurrent()
+
+        // 실검사를 반드시 거쳐야 한다. 이 호출이 없으면 캐시만 보고 판단한 것이다.
+        verify(atLeast = 1) { usbDeviceRepository.hasPermissionForAttachedCamera() }
 
         scope.cancel()
     }
