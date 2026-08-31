@@ -107,7 +107,8 @@ class PhotoPreviewViewModel @Inject constructor(
     private val errorHandlingManager: ErrorHandlingManager,
     private val resumeNativeOperationsUseCase: ResumeNativeOperationsUseCase,
     private val deleteCameraFileUseCase: DeleteCameraFileUseCase,
-    private val nikonApplicationModeManager: NikonApplicationModeManager
+    private val nikonApplicationModeManager: NikonApplicationModeManager,
+    private val ptpipEventKeepAlive: com.inik.camcon.data.datasource.nativesource.PtpipEventKeepAlive
 ) : ViewModel() {
 
     companion object {
@@ -852,6 +853,10 @@ class PhotoPreviewViewModel @Inject constructor(
                 cameraRepository.setPhotoPreviewMode(true)
                 cameraRepository.stopCameraEventListener()
                 Log.d(TAG, "✓ 카드 탐색 진입 — 이벤트 폴 중단")
+                // 폴을 멈추면 PTP/IP 이벤트 소켓을 읽는 주체가 사라진다. 카메라가 보낸
+                // Ping 이 쌓인 채 남으면 카메라가 연결을 끊으므로(libgphoto2 패치 0048),
+                // 낮은 빈도로 소켓만 비우는 경로를 켠다. 소니 PTP/IP 세션에서만 돈다.
+                ptpipEventKeepAlive.start(_uiState.value.isPtpipConnected)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -876,6 +881,9 @@ class PhotoPreviewViewModel @Inject constructor(
 
         // 탭을 떠나면 진행 중인 썸네일 순차 로딩을 즉시 중단(카메라 큐 점유 해제).
         photoImageManager.cancelThumbnailLoading()
+
+        // 이벤트 폴이 곧 재개되므로 소켓 드레인은 더 필요 없다.
+        ptpipEventKeepAlive.stop()
 
         // 카드 보기(소니 콘텐츠 전송 모드)를 켠 채 탭을 떠나면 카메라가 그 모드에 갇혀 촬영과
         // 라이브뷰가 계속 막힌다. 이탈은 카메라 왕복이 필요한데 아래 viewModelScope 는 탭 전환
@@ -1005,6 +1013,8 @@ class PhotoPreviewViewModel @Inject constructor(
                 Log.e(TAG, "PhotoPreview 정리 중 예외 발생", e)
             }
         }
+
+        ptpipEventKeepAlive.stop()
 
         // 매니저들 정리.
         // [PhotoListManager.cleanup] 은 카드 보기가 켜져 있으면 이탈 명령을 앱 scope 로 걸어

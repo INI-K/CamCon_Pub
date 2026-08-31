@@ -127,7 +127,8 @@ class PhotoPreviewViewModelThumbnailNoticeTest {
         errorHandlingManager = errorHandlingManager,
         resumeNativeOperationsUseCase = resumeNativeOperationsUseCase,
         deleteCameraFileUseCase = deleteCameraFileUseCase,
-        nikonApplicationModeManager = mockk(relaxed = true)
+        nikonApplicationModeManager = mockk(relaxed = true),
+        ptpipEventKeepAlive = mockk(relaxed = true)
     )
 
     @Test
