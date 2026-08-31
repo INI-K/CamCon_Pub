@@ -73,7 +73,14 @@ class GalleryDownloadStore @Inject constructor(
                 val saved = photoLibraryLocation.saveToAppPrivate(
                     sourceFile = temp,
                     displayName = baseName,
-                    folderName = saveFolderName
+                    folderName = saveFolderName,
+                    // 원본 폴더는 카메라 경로에만 있는 원값이다. 폴더가 만들어질 때 적어 둬야
+                    // 나중에 합성 폴더명을 되짚는 모호한 해석을 하지 않는다.
+                    meta = photoLibraryLocation.folderMetaFor(
+                        captureMillis = captureMillis,
+                        cameraPath = cameraPath,
+                        cameraModel = com.inik.camcon.data.util.ExifCameraModel.parse(imageData)
+                    )
                 )
                 if (saved == null) {
                     Log.e(TAG, "앱 전용 저장 실패: $baseName")

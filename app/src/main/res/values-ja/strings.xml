@@ -214,6 +214,7 @@
     <string name="cd_export_to_gallery">ギャラリーに書き出す</string>
     <string name="gallery_group_device_storage">端末のストレージ</string>
     <string name="gallery_group_photo_count">写真 %1$d 枚</string>
+    <string name="gallery_folder_other">その他</string>
     <string name="gallery_export_action">書き出し</string>
     <string name="gallery_export_progress">書き出し中 %1$d/%2$d</string>
     <string name="gallery_export_result_exported">%1$d 枚をギャラリーに書き出しました</string>

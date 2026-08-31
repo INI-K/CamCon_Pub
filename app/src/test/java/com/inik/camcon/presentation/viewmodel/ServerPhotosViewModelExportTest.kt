@@ -75,6 +75,11 @@ class ServerPhotosViewModelExportTest {
             every { listDateFolders() } returns listOf(
                 PhotoLibraryLocation.DateFolderSummary(date, listOf(dayFolder), 3)
             )
+            // 원본 폴더가 하나뿐인 날짜라 2단(폴더 목록)을 건너뛰고 사진 화면으로 들어간다.
+            every { listCameraFolders(date) } returns listOf(
+                PhotoLibraryLocation.CameraFolderSummary("100NCZ_8", 3)
+            )
+            every { folderLabelOf(any()) } returns "100NCZ_8"
             // C.JPG 만 기기 저장소에 있는 사진으로 취급한다 — 내보낼 것이 없어 건너뛰어야 한다.
             every { isInAppPrivateStorage(any()) } answers {
                 !firstArg<String>().endsWith("C.JPG")

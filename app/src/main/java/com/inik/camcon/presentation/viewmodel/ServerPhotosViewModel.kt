@@ -46,6 +46,19 @@ data class GalleryGroup(
     val photoCount: Int
 )
 
+/**
+ * 2단(원본 폴더 목록)의 항목. [folder] 가 null 이면 원본 폴더 조각이 없는 "기타" 묶음이다.
+ *
+ * 카메라가 일정 장수마다 폴더를 넘기므로(`100NCZ_8` → `101NCZ_8`) 하루가 여러 폴더로 갈린다.
+ */
+data class CameraFolderGroup(
+    val folder: String?,
+    val photoCount: Int
+)
+
+/** 3단에서 열린 원본 폴더. [name] 이 null 이면 "기타" 묶음이다(열림/닫힘과 구분하려고 감쌌다). */
+data class CameraFolderSelection(val name: String?)
+
 /** 일괄 내보내기 진행 상황. 수십 장이면 수 초 걸리므로 장수를 화면에 보여 준다. */
 data class GalleryExportProgress(
     val done: Int,
@@ -93,8 +106,19 @@ data class ServerPhotosUiState(
     val photos: List<CapturedPhoto> = emptyList(),
     /** 루트 화면의 항목들. 앱 내부 날짜들 + 맨 뒤에 기기 저장소 하나. */
     val groups: List<GalleryGroup> = emptyList(),
-    /** null 이면 루트(날짜 목록), 아니면 2단(사진 그리드). */
+    /** null 이면 1단(날짜 목록). 값이 있으면 2단이나 3단이다. */
     val openedGroup: GalleryGroupKey? = null,
+    /** 2단 화면의 항목들(그 날짜의 원본 폴더). 3단으로 바로 들어간 경우에도 유지한다. */
+    val folders: List<CameraFolderGroup> = emptyList(),
+    /** null 이면 2단(폴더 목록), 값이 있으면 3단(사진 그리드). */
+    val openedFolder: CameraFolderSelection? = null,
+    /**
+     * 폴더가 하나뿐이라 2단을 건너뛰고 3단으로 바로 들어왔는가.
+     *
+     * 뒤로가기가 **들어온 경로 그대로** 나가야 하므로 기억한다 — 건너뛴 경우 3단에서 뒤로 가면
+     * 폴더 목록이 아니라 날짜 목록이다.
+     */
+    val skippedFolderLevel: Boolean = false,
     val isLoading: Boolean = false,
     val error: String? = null,
     val selectedPhotos: Set<String> = emptySet(), // 선택된 사진들의 ID 집합
@@ -246,14 +270,23 @@ class ServerPhotosViewModel @Inject constructor(
      * 절대 나오지 않으므로 파일시스템을 직접 훑는다. 폴더가 없으면(설정을 계속 켜 두었다면)
      * 빈 목록이고, 그건 오류가 아니다.
      */
-    private fun loadAppPrivatePhotos(date: String?): List<CapturedPhoto> {
+    private fun loadAppPrivatePhotos(
+        date: String?,
+        cameraFolder: CameraFolderSelection? = null
+    ): List<CapturedPhoto> {
         val root = photoLibraryLocation.appPrivateRoot()
         if (!root.exists() || !root.isDirectory) return emptyList()
 
-        // date 가 주어지면 그 날짜 폴더만 훑는다 — 2단 화면은 한 날짜만 필요하다.
+        // date 가 주어지면 그 날짜 폴더만 훑는다 — 3단 화면은 한 날짜만 필요하다.
         // null 이면 전체(중복 접기 기준을 만들 때 쓴다).
+        // cameraFolder 까지 주어지면 그 원본 폴더 조각을 가진 저장 폴더로 한 번 더 좁힌다.
         val dirs = root.listFiles()
             ?.filter { it.isDirectory && (date == null || it.name.startsWith("${date}_") || it.name == date) }
+            // 폴더 판정은 저장 시점에 기록한 메타가 정본이다(없으면 레거시 폴백).
+            // 2단 목록과 **같은 함수**를 써야 항목의 장수와 실제로 열리는 장수가 어긋나지 않는다.
+            ?.filter {
+                cameraFolder == null || photoLibraryLocation.folderLabelOf(it) == cameraFolder.name
+            }
             .orEmpty()
 
         return dirs.asSequence()
@@ -432,8 +465,15 @@ class ServerPhotosViewModel @Inject constructor(
     fun refreshPhotos() {
         Log.d("ServerPhotosViewModel", "갤러리 새로고침")
         loadGroups()
-        // 2단 화면을 열어 둔 채 돌아온 경우(뷰어에서 복귀 등)에는 그 그룹도 다시 읽는다.
-        _uiState.value.openedGroup?.let { loadPhotosForGroup(it) }
+        // 아래 단을 열어 둔 채 돌아온 경우(뷰어에서 복귀 등)에는 그 단도 다시 읽는다.
+        // 3단이면 사진을, 2단이면 폴더 목록을 다시 읽는다 — 지금 보고 있는 화면만 갱신한다.
+        val state = _uiState.value
+        val key = state.openedGroup ?: return
+        if (state.openedFolder != null) {
+            loadPhotosForGroup(key, state.openedFolder)
+        } else if (key is GalleryGroupKey.Date) {
+            loadFoldersForDate(key.date)
+        }
     }
 
     /**
@@ -472,27 +512,112 @@ class ServerPhotosViewModel @Inject constructor(
 
     /** 그룹을 열어 2단(사진 그리드)으로 들어간다. */
     fun openGroup(key: GalleryGroupKey) {
-        _uiState.value = _uiState.value.copy(openedGroup = key, photos = emptyList())
-        loadPhotosForGroup(key)
+        _uiState.value = _uiState.value.copy(
+            openedGroup = key,
+            photos = emptyList(),
+            folders = emptyList(),
+            openedFolder = null,
+            skippedFolderLevel = false
+        )
+
+        when (key) {
+            // 기기 저장소는 폴더 단이 없다(아래 [loadFoldersForDate] 주석 참조) — 곧장 사진으로.
+            GalleryGroupKey.DeviceStorage -> {
+                _uiState.value = _uiState.value.copy(
+                    openedFolder = CameraFolderSelection(null),
+                    skippedFolderLevel = true
+                )
+                loadPhotosForGroup(key)
+            }
+
+            is GalleryGroupKey.Date -> loadFoldersForDate(key.date)
+        }
     }
 
-    /** 2단에서 루트(날짜 목록)로 돌아간다. 뒤로가기 버튼과 시스템 백이 같이 부른다. */
-    fun closeGroup() {
+    /**
+     * 2단(원본 폴더 목록)을 채운다. **폴더가 하나뿐이면 2단을 건너뛰고 3단으로 바로 들어간다.**
+     *
+     * 대부분의 날짜는 폴더가 하나다(카메라가 폴더를 넘길 만큼 찍은 날만 여럿이다). 그런 날까지
+     * "폴더 하나짜리 목록"을 거치게 하면 탭이 한 번 늘 뿐이다. 건너뛴 사실은
+     * [ServerPhotosUiState.skippedFolderLevel] 에 남겨 뒤로가기가 들어온 경로 그대로 나가게 한다.
+     */
+    private fun loadFoldersForDate(date: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val folders = withContext(ioDispatcher) {
+                    photoLibraryLocation.listCameraFolders(date)
+                        .map { CameraFolderGroup(it.folder, it.photoCount) }
+                }
+                _uiState.value = _uiState.value.copy(folders = folders, isLoading = false)
+                Log.d("ServerPhotosViewModel", "$date 원본 폴더 ${folders.size}개: " +
+                        folders.joinToString(", ") { "${it.folder ?: "기타"}(${it.photoCount})" })
+
+                if (folders.size <= 1) {
+                    val only = folders.firstOrNull()?.folder
+                    openFolder(CameraFolderSelection(only), skipped = true)
+                }
+            } catch (e: Exception) {
+                Log.e("ServerPhotosViewModel", "원본 폴더 목록 로드 실패: $date", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "사진을 불러오는 중 오류가 발생했습니다: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /** 2단에서 원본 폴더를 열어 3단(사진 그리드)으로 들어간다. */
+    fun openFolder(folder: CameraFolderSelection, skipped: Boolean = false) {
+        val key = _uiState.value.openedGroup ?: return
         _uiState.value = _uiState.value.copy(
-            openedGroup = null,
+            openedFolder = folder,
+            skippedFolderLevel = skipped,
+            photos = emptyList()
+        )
+        loadPhotosForGroup(key, folder)
+    }
+
+    /**
+     * 3단에서 한 단계 뒤로. **들어온 경로 그대로 나간다** — 폴더 단을 건너뛰고 들어왔으면
+     * 폴더 목록이 아니라 날짜 목록으로 나간다(없는 화면을 만들어 보여주지 않는다).
+     */
+    fun closeFolder() {
+        if (_uiState.value.skippedFolderLevel) {
+            closeGroup()
+            return
+        }
+        _uiState.value = _uiState.value.copy(
+            openedFolder = null,
             photos = emptyList(),
             selectedPhotos = emptySet(),
             isMultiSelectMode = false
         )
     }
 
-    private fun loadPhotosForGroup(key: GalleryGroupKey) {
+    /** 2단(또는 건너뛴 3단)에서 루트(날짜 목록)로 돌아간다. 뒤로가기 버튼과 시스템 백이 같이 부른다. */
+    fun closeGroup() {
+        _uiState.value = _uiState.value.copy(
+            openedGroup = null,
+            folders = emptyList(),
+            openedFolder = null,
+            skippedFolderLevel = false,
+            photos = emptyList(),
+            selectedPhotos = emptySet(),
+            isMultiSelectMode = false
+        )
+    }
+
+    private fun loadPhotosForGroup(
+        key: GalleryGroupKey,
+        folder: CameraFolderSelection? = _uiState.value.openedFolder
+    ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
                 val photos = withContext(ioDispatcher) {
                     when (key) {
-                        is GalleryGroupKey.Date -> loadAppPrivatePhotos(key.date)
+                        is GalleryGroupKey.Date -> loadAppPrivatePhotos(key.date, folder)
                         GalleryGroupKey.DeviceStorage -> {
                             // 내보내기로 양쪽에 있는 파일은 앱 내부 쪽에만 보이게 접는다.
                             val appPrivate = loadAppPrivatePhotos(date = null)

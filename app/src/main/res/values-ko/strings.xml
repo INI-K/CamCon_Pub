@@ -214,6 +214,7 @@
     <string name="cd_export_to_gallery">갤러리로 내보내기</string>
     <string name="gallery_group_device_storage">기기 저장소</string>
     <string name="gallery_group_photo_count">사진 %1$d장</string>
+    <string name="gallery_folder_other">기타</string>
     <string name="gallery_export_action">내보내기</string>
     <string name="gallery_export_progress">내보내는 중 %1$d/%2$d</string>
     <string name="gallery_export_result_exported">%1$d장을 갤러리로 내보냈습니다</string>

@@ -116,7 +116,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PhoneAndroid
+import com.inik.camcon.presentation.viewmodel.CameraFolderGroup
+import com.inik.camcon.presentation.viewmodel.CameraFolderSelection
 import com.inik.camcon.presentation.viewmodel.GalleryExportProgress
 import com.inik.camcon.presentation.viewmodel.GalleryExportTargets
 import com.inik.camcon.presentation.viewmodel.GalleryGroup
@@ -183,19 +186,32 @@ fun MyPhotosScreen(
         selectedPhoto = null
     }
 
-    // 뒤로가기 3단계 — 뷰어 → 2단 사진 그리드 → 1단 날짜 목록. 한 번에 한 단계씩만 내려간다.
-    // 세 핸들러의 enabled 조건은 서로 배타적이라 어느 것이 먼저 소비할지 순서에 의존하지 않는다.
+    // 뒤로가기 사슬 — 뷰어 → 3단 사진 그리드 → 2단 폴더 목록 → 1단 날짜 목록.
+    // 한 번에 한 단계씩만 내려간다. 네 핸들러의 enabled 조건은 **서로 배타적**이라 어느 것이
+    // 먼저 소비할지 선언 순서에 의존하지 않는다(직전 배치에서 확립한 규칙).
 
     // 멀티 선택 모드에서 뒤로가기 처리
     BackHandler(enabled = uiState.isMultiSelectMode && selectedPhoto == null) {
         viewModel.exitMultiSelectMode()
     }
 
-    // 2단(사진 그리드)에서 시스템 백은 날짜 목록으로 돌아간다. 탭을 떠나지 않는다.
+    // 3단(사진 그리드) → 폴더 목록. 폴더 단을 건너뛰고 들어왔으면 날짜 목록으로 나간다
+    // (그 판정은 ViewModel 의 closeFolder 가 한다 — 화면은 경로를 기억하지 않는다).
     BackHandler(
         enabled = selectedPhoto == null &&
                 !uiState.isMultiSelectMode &&
-                uiState.openedGroup != null
+                uiState.openedGroup != null &&
+                uiState.openedFolder != null
+    ) {
+        viewModel.closeFolder()
+    }
+
+    // 2단(폴더 목록) → 날짜 목록. 탭을 떠나지 않는다.
+    BackHandler(
+        enabled = selectedPhoto == null &&
+                !uiState.isMultiSelectMode &&
+                uiState.openedGroup != null &&
+                uiState.openedFolder == null
     ) {
         viewModel.closeGroup()
     }
@@ -218,10 +234,21 @@ fun MyPhotosScreen(
         // 상단 헤더 - 멀티 선택 모드에 따라 다르게 표시
         val opened = uiState.openedGroup
         if (opened != null && !uiState.isMultiSelectMode) {
+            val openedFolder = uiState.openedFolder
             GalleryGroupHeader(
                 group = opened,
-                photoCount = uiState.photos.size,
-                onBack = { viewModel.closeGroup() },
+                // 3단은 그 폴더의 사진 수, 2단은 폴더들의 합.
+                photoCount = if (openedFolder != null) {
+                    uiState.photos.size
+                } else {
+                    uiState.folders.sumOf { it.photoCount }
+                },
+                // 3단이면 어느 원본 폴더를 보고 있는지 제목 옆에 밝힌다. 폴더 단을 건너뛴
+                // 날짜에서도 폴더명이 보여야 "어디를 보고 있는지"가 사라지지 않는다.
+                folderLabel = openedFolder?.name,
+                onBack = {
+                    if (openedFolder != null) viewModel.closeFolder() else viewModel.closeGroup()
+                },
                 onRefresh = { viewModel.refreshPhotos() }
             )
         } else if (uiState.isMultiSelectMode) {
@@ -264,6 +291,19 @@ fun MyPhotosScreen(
                     GalleryGroupList(
                         groups = uiState.groups,
                         onGroupClick = { viewModel.openGroup(it) }
+                    )
+                }
+            }
+
+            // 2단 — 그 날짜의 원본 폴더 목록. 여기도 파일을 읽지 않고 폴더 이름과 개수만 그린다.
+            // (폴더가 하나뿐인 날짜는 ViewModel 이 3단으로 건너뛰므로 이 화면에 오지 않는다.)
+            uiState.openedFolder == null -> {
+                if (uiState.folders.isEmpty()) {
+                    EmptyMyPhotosState()
+                } else {
+                    CameraFolderList(
+                        folders = uiState.folders,
+                        onFolderClick = { viewModel.openFolder(CameraFolderSelection(it.folder)) }
                     )
                 }
             }
@@ -1290,8 +1330,79 @@ private fun GalleryGroupRow(
 }
 
 /**
- * 갤러리 탭 2단 헤더 — 뒤로가기 + 그룹 이름 + 장수.
+ * 갤러리 탭 2단(원본 폴더 목록).
  *
+ * 1단과 같은 문법으로 그린다 — 이름 + 장수 + 진입 화살표. 항목 수가 적어 파일을 읽지 않는다.
+ */
+@Composable
+private fun CameraFolderList(
+    folders: List<CameraFolderGroup>,
+    onFolderClick: (CameraFolderGroup) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(Spacing.base),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+    ) {
+        items(
+            count = folders.size,
+            key = { index -> folders[index].folder ?: "__other__" }
+        ) { index ->
+            val folder = folders[index]
+            CameraFolderRow(folder = folder, onClick = { onFolderClick(folder) })
+        }
+    }
+}
+
+/** 폴더 목록의 항목 하나. 원본 폴더 조각이 없는 묶음은 "기타"로 그린다. */
+@Composable
+private fun CameraFolderRow(
+    folder: CameraFolderGroup,
+    onClick: () -> Unit
+) {
+    SurfaceV2(
+        tier = 1,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Spacing.base),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Folder,
+                contentDescription = null,
+                tint = Accent
+            )
+            Spacer(modifier = Modifier.width(Spacing.base))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = folder.folder ?: stringResource(R.string.gallery_folder_other),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimaryV2
+                )
+                Text(
+                    text = stringResource(R.string.gallery_group_photo_count, folder.photoCount),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondaryV2
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = TextSecondaryV2
+            )
+        }
+    }
+}
+
+/**
+ * 갤러리 탭 2·3단 헤더 — 뒤로가기 + 그룹 이름 + 장수.
+ *
+ * [folderLabel] 이 있으면 3단(그 원본 폴더의 사진)이라는 뜻이라 이름 옆에 함께 적는다.
  * 시스템 백은 화면 상단의 [BackHandler] 가 같은 동작을 한다.
  */
 @Composable
@@ -1299,7 +1410,8 @@ private fun GalleryGroupHeader(
     group: GalleryGroupKey,
     photoCount: Int,
     onBack: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    folderLabel: String? = null
 ) {
     Row(
         modifier = Modifier
@@ -1315,12 +1427,13 @@ private fun GalleryGroupHeader(
             )
         }
         Column(modifier = Modifier.weight(1f)) {
+            val title = when (group) {
+                is GalleryGroupKey.Date -> group.date
+                GalleryGroupKey.DeviceStorage ->
+                    stringResource(R.string.gallery_group_device_storage)
+            }
             Text(
-                text = when (group) {
-                    is GalleryGroupKey.Date -> group.date
-                    GalleryGroupKey.DeviceStorage ->
-                        stringResource(R.string.gallery_group_device_storage)
-                },
+                text = if (folderLabel != null) "$title · $folderLabel" else title,
                 style = MaterialTheme.typography.titleMedium,
                 color = TextPrimaryV2
             )

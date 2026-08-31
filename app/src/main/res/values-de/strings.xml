@@ -214,6 +214,7 @@
     <string name="cd_export_to_gallery">In Galerie exportieren</string>
     <string name="gallery_group_device_storage">Gerätespeicher</string>
     <string name="gallery_group_photo_count">%1$d Fotos</string>
+    <string name="gallery_folder_other">Sonstige</string>
     <string name="gallery_export_action">Exportieren</string>
     <string name="gallery_export_progress">Export %1$d/%2$d</string>
     <string name="gallery_export_result_exported">%1$d Fotos in die Galerie exportiert</string>
