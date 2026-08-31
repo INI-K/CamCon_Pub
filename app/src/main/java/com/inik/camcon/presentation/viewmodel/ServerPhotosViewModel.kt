@@ -14,6 +14,7 @@ import com.inik.camcon.utils.LogMask
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,6 +46,48 @@ data class GalleryGroup(
     val photoCount: Int
 )
 
+/** 일괄 내보내기 진행 상황. 수십 장이면 수 초 걸리므로 장수를 화면에 보여 준다. */
+data class GalleryExportProgress(
+    val done: Int,
+    val total: Int
+)
+
+/**
+ * 일괄 내보내기 결과 집계. 문구는 화면이 만든다 — ViewModel 이 로케일 문자열을 들고 있지 않도록.
+ *
+ * @param alreadyInDeviceStorage 이미 기기 저장소에 있어 내보낼 것이 없던 사진 수.
+ */
+data class GalleryExportSummary(
+    val exported: Int,
+    val alreadyInDeviceStorage: Int,
+    val failed: Int
+)
+
+/** [selectGalleryExportTargets] 의 결과. */
+data class GalleryExportTargets(
+    val targets: List<CapturedPhoto>,
+    val alreadyInDeviceStorage: Int
+)
+
+/**
+ * 선택된 사진 중 **실제로 내보낼 것**만 고르고, 건너뛴 수를 함께 돌려준다.
+ *
+ * 기기 저장소(MediaStore) 사진은 이미 폰 갤러리에 있으므로 내보낼 것이 없다. 뷰어의 단건
+ * 내보내기 버튼이 앱 내부 사진에만 뜨는 것과 같은 원칙이고, 일괄에서는 버튼을 감추는 대신
+ * 건너뛴 수를 결과 안내에 정직하게 싣는다.
+ *
+ * 파일시스템을 직접 보지 않는 순수 함수다 — 판정은 [isAppPrivate] 에 위임한다.
+ */
+fun selectGalleryExportTargets(
+    photos: List<CapturedPhoto>,
+    selectedIds: Set<String>,
+    isAppPrivate: (String) -> Boolean
+): GalleryExportTargets {
+    val selected = photos.filter { it.id in selectedIds }
+    val (targets, skipped) = selected.partition { isAppPrivate(it.filePath) }
+    return GalleryExportTargets(targets = targets, alreadyInDeviceStorage = skipped.size)
+}
+
 data class ServerPhotosUiState(
     /** 지금 열린 그룹의 사진들. 루트(날짜 목록)에서는 비어 있다. */
     val photos: List<CapturedPhoto> = emptyList(),
@@ -56,6 +99,10 @@ data class ServerPhotosUiState(
     val error: String? = null,
     val selectedPhotos: Set<String> = emptySet(), // 선택된 사진들의 ID 집합
     val isMultiSelectMode: Boolean = false, // 멀티 선택 모드 여부
+    /** 일괄 내보내기가 도는 동안에만 non-null. */
+    val exportProgress: GalleryExportProgress? = null,
+    /** 일괄 내보내기가 끝난 직후의 집계. 안내를 닫으면 null 로 돌아간다. */
+    val exportSummary: GalleryExportSummary? = null,
     val pendingDeleteRequest: android.app.RecoverableSecurityException? = null, // 권한 요청이 필요한 삭제 작업
     val pendingDeletePhotoIds: List<String> = emptyList() // 삭제 대기 중인 사진 ID들
 )
@@ -71,6 +118,9 @@ class ServerPhotosViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(ServerPhotosUiState())
     val uiState: StateFlow<ServerPhotosUiState> = _uiState.asStateFlow()
+
+    /** 진행 중인 일괄 내보내기. 취소와 중복 실행 차단에만 쓴다. */
+    private var exportJob: Job? = null
 
     /**
      * 파일 경로가 RAW 인지 판정한다. RAW 판정은 [ValidateImageFormatUseCase] 단일 지점에 위임(CLAUDE.md §2).
@@ -483,7 +533,12 @@ class ServerPhotosViewModel @Inject constructor(
      * 그때는 조용한 빈 화면 대신 로그를 남기고, 읽히는 것만 보여준다(권한 요청은 범위 밖).
      */
     private suspend fun countDeviceStoragePhotos(): Int {
-        val count = runCatching { loadPhotosFromDCIM().size }.getOrElse { e ->
+        val count = runCatching {
+            // 목록과 **같은 접기 규칙**을 쓴다. 내보내기로 양쪽에 있게 된 사진을 개수에서만 세면,
+            // "기기 저장소 12장"을 열었을 때 3장만 나오는 어긋남이 생긴다.
+            val appPrivate = loadAppPrivatePhotos(date = null).mapTo(HashSet()) { fingerprint(it) }
+            loadPhotosFromDCIM().count { fingerprint(it) !in appPrivate }
+        }.getOrElse { e ->
             Log.w("ServerPhotosViewModel", "기기 저장소 조회 실패 — 읽히는 것만 표시한다", e)
             0
         }
@@ -562,6 +617,91 @@ class ServerPhotosViewModel @Inject constructor(
     fun deselectAllPhotos() {
         _uiState.value = _uiState.value.copy(selectedPhotos = emptySet())
         Log.d("ServerPhotosViewModel", "모든 사진 선택 해제")
+    }
+
+    /**
+     * 선택된 사진들을 기기 갤러리(MediaStore)로 내보낸다. 원본은 그대로 둔다.
+     *
+     * 규칙은 뷰어의 단건 내보내기와 같다 — 같은 폴더 체계로 복사하고, 설정 토글과 무관하게
+     * 동작한다(사용자가 명시적으로 고른 행동이므로).
+     *
+     * 개별 실패는 건너뛰고 집계에만 싣는다. 한 장이 실패했다고 나머지를 멈추면 사용자가
+     * 어디까지 됐는지 알 수 없다.
+     */
+    fun exportSelectedPhotos() {
+        if (exportJob?.isActive == true) {
+            Log.d("ServerPhotosViewModel", "내보내기가 이미 진행 중이라 무시")
+            return
+        }
+
+        val state = _uiState.value
+        val plan = selectGalleryExportTargets(
+            photos = state.photos,
+            selectedIds = state.selectedPhotos,
+            isAppPrivate = photoLibraryLocation::isInAppPrivateStorage
+        )
+
+        if (plan.targets.isEmpty()) {
+            // 전부 기기 저장소 사진이면 할 일이 없다. 조용히 끝내지 않고 이유를 알린다.
+            _uiState.value = state.copy(
+                exportSummary = GalleryExportSummary(
+                    exported = 0,
+                    alreadyInDeviceStorage = plan.alreadyInDeviceStorage,
+                    failed = 0
+                ),
+                isMultiSelectMode = false,
+                selectedPhotos = emptySet()
+            )
+            return
+        }
+
+        exportJob = viewModelScope.launch {
+            var exported = 0
+            var failed = 0
+            _uiState.value = _uiState.value.copy(
+                exportProgress = GalleryExportProgress(0, plan.targets.size),
+                exportSummary = null
+            )
+            Log.d("ServerPhotosViewModel", "일괄 내보내기 시작: ${plan.targets.size}장")
+
+            try {
+                plan.targets.forEachIndexed { index, photo ->
+                    val ok = photoLibraryLocation.exportToDeviceGallery(File(photo.filePath))
+                    if (ok) exported++ else failed++
+                    _uiState.value = _uiState.value.copy(
+                        exportProgress = GalleryExportProgress(index + 1, plan.targets.size)
+                    )
+                }
+            } finally {
+                // 취소로 들어와도 여기까지 내보낸 만큼은 정직하게 집계한다(상태 갱신은 중단되지 않는다).
+                _uiState.value = _uiState.value.copy(
+                    exportProgress = null,
+                    exportSummary = GalleryExportSummary(
+                        exported = exported,
+                        alreadyInDeviceStorage = plan.alreadyInDeviceStorage,
+                        failed = failed
+                    ),
+                    isMultiSelectMode = false,
+                    selectedPhotos = emptySet()
+                )
+                Log.i(
+                    "ServerPhotosViewModel",
+                    "일괄 내보내기 종료: 성공 $exported, 실패 $failed, 건너뜀 ${plan.alreadyInDeviceStorage}"
+                )
+                // 목록을 다시 읽는다. viewModelScope 의 별도 자식이라 취소된 뒤에도 돈다.
+                refreshPhotos()
+            }
+        }
+    }
+
+    /** 진행 중인 일괄 내보내기를 멈춘다. 이미 내보낸 사진은 되돌리지 않는다. */
+    fun cancelExport() {
+        exportJob?.cancel()
+    }
+
+    /** 내보내기 결과 안내를 닫는다. */
+    fun clearExportSummary() {
+        _uiState.value = _uiState.value.copy(exportSummary = null)
     }
 
     /**

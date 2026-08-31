@@ -214,6 +214,11 @@
     <string name="cd_export_to_gallery">In Galerie exportieren</string>
     <string name="gallery_group_device_storage">Gerätespeicher</string>
     <string name="gallery_group_photo_count">%1$d Fotos</string>
+    <string name="gallery_export_action">Exportieren</string>
+    <string name="gallery_export_progress">Export %1$d/%2$d</string>
+    <string name="gallery_export_result_exported">%1$d Fotos in die Galerie exportiert</string>
+    <string name="gallery_export_result_skipped">%1$d bereits im Gerätespeicher</string>
+    <string name="gallery_export_result_failed">%1$d konnten nicht exportiert werden</string>
     <string name="settings_save_to_device_gallery_title">In Gerätegalerie speichern</string>
     <string name="settings_save_to_device_gallery_desc">Wenn deaktiviert, bleiben Fotos nur in CamCon sichtbar und werden beim Deinstallieren der App mit gelöscht. Aktivieren Sie die Option, um sie auch in der Galerie Ihres Telefons zu speichern.</string>
     <string name="export_to_gallery_success">In Galerie exportiert</string>

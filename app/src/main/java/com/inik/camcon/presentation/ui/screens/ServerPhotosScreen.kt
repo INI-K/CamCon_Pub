@@ -117,6 +117,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.PhoneAndroid
+import com.inik.camcon.presentation.viewmodel.GalleryExportProgress
 import com.inik.camcon.presentation.viewmodel.GalleryGroup
 import com.inik.camcon.presentation.viewmodel.GalleryGroupKey
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
@@ -224,8 +225,11 @@ fun MyPhotosScreen(
                 selectedCount = uiState.selectedPhotos.size,
                 onSelectAll = { viewModel.selectAllPhotos() },
                 onDeselectAll = { viewModel.deselectAllPhotos() },
+                onExport = { viewModel.exportSelectedPhotos() },
                 onDelete = { showDeleteConfirmDialog = true },
-                onCancel = { viewModel.exitMultiSelectMode() }
+                onCancel = { viewModel.exitMultiSelectMode() },
+                exportProgress = uiState.exportProgress,
+                onCancelExport = { viewModel.cancelExport() }
             )
         } else {
             ModernMyPhotosHeader(
@@ -382,6 +386,69 @@ fun MyPhotosScreen(
                 Text(
                     text = error,
                     color = MaterialTheme.colorScheme.onError
+                )
+            }
+        }
+    }
+
+    // 일괄 내보내기 결과 안내. 성공·건너뜀·실패를 한 줄에 정직하게 싣는다.
+    uiState.exportSummary?.let { summary ->
+        // 한 장도 못 내보냈고 실패만 있으면 오류로 알린다(그 외에는 정보 안내).
+        val isFailure = summary.exported == 0 && summary.failed > 0
+        val message = buildList {
+            if (summary.exported > 0) {
+                add(stringResource(R.string.gallery_export_result_exported, summary.exported))
+            }
+            if (summary.alreadyInDeviceStorage > 0) {
+                add(
+                    stringResource(
+                        R.string.gallery_export_result_skipped,
+                        summary.alreadyInDeviceStorage
+                    )
+                )
+            }
+            if (summary.failed > 0) {
+                add(stringResource(R.string.gallery_export_result_failed, summary.failed))
+            }
+        }.joinToString(", ")
+
+        LaunchedEffect(summary) {
+            kotlinx.coroutines.delay(4000)
+            viewModel.clearExportSummary()
+        }
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Snackbar(
+                modifier = Modifier.padding(Spacing.base),
+                containerColor = if (isFailure) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                dismissAction = {
+                    IconButton(onClick = { viewModel.clearExportSummary() }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.close),
+                            tint = if (isFailure) {
+                                MaterialTheme.colorScheme.onError
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
+                }
+            ) {
+                Text(
+                    text = message,
+                    color = if (isFailure) {
+                        MaterialTheme.colorScheme.onError
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
         }
@@ -904,8 +971,12 @@ fun MyPhotosMultiSelectActionBar(
     selectedCount: Int,
     onSelectAll: () -> Unit,
     onDeselectAll: () -> Unit,
+    onExport: () -> Unit,
     onDelete: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    /** null 이 아니면 일괄 내보내기가 도는 중이다. */
+    exportProgress: GalleryExportProgress? = null,
+    onCancelExport: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -929,8 +1000,38 @@ fun MyPhotosMultiSelectActionBar(
             color = Accent        // 선택 = 활성 상태 → 앰버
         )
 
-        // 액션 4종은 개수 옆에 두면 독일어처럼 라벨이 긴 로케일에서 잘리므로 별도 행으로 내리고,
+        if (exportProgress != null) {
+            // 내보내는 동안에는 액션을 감추고 진행 상황과 취소만 남긴다 — 도는 중에 삭제나
+            // 선택 변경이 끼어들면 집계가 무엇을 센 것인지 알 수 없게 된다.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(
+                        R.string.gallery_export_progress,
+                        exportProgress.done,
+                        exportProgress.total
+                    ),
+                    style = ButtonText,
+                    color = TextSecondaryV2,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                ActionBarTextButton(
+                    text = stringResource(R.string.cancel),
+                    color = TextSecondaryV2,
+                    onClick = onCancelExport,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+            }
+            return@Column
+        }
+
+        // 액션은 개수 옆에 두면 독일어처럼 라벨이 긴 로케일에서 잘리므로 별도 행으로 내리고,
         // weight(fill = false)로 폭이 모자랄 때만 균등 분배되게 해 어떤 로케일에서도 버튼이 사라지지 않게 한다.
+        // 다섯 개를 한 줄에 세우면 그 로케일에서 라벨이 다시 잘리므로 선택 도우미와 실제 동작을
+        // 두 줄로 가른다.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -946,6 +1047,18 @@ fun MyPhotosMultiSelectActionBar(
                 text = stringResource(R.string.server_photos_deselect_all),
                 color = TextSecondaryV2,
                 onClick = onDeselectAll,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ActionBarTextButton(
+                text = stringResource(R.string.gallery_export_action),
+                color = TextSecondaryV2,
+                onClick = onExport,
                 modifier = Modifier.weight(1f, fill = false)
             )
             ActionBarTextButton(
@@ -1014,6 +1127,7 @@ private fun MyPhotosMultiSelectActionBarPreview() {
             selectedCount = 37,
             onSelectAll = {},
             onDeselectAll = {},
+            onExport = {},
             onDelete = {},
             onCancel = {}
         )
