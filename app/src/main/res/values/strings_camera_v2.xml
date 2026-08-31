@@ -6,4 +6,5 @@
     <string name="unsupported_shooting_mode_message">This camera does not support %s shooting mode</string>
     <string name="liveview_frame_stalled">Live view stalled</string>
     <string name="autofocus_completed">Focus locked</string>
+    <string name="usb_permission_always_hint">Choosing “Always” lets CamCon connect automatically next time</string>
 </resources>

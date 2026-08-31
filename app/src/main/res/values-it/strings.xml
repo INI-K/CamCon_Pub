@@ -214,6 +214,11 @@
     <string name="cd_export_to_gallery">Esporta nella galleria</string>
     <string name="gallery_group_device_storage">Memoria del dispositivo</string>
     <string name="gallery_group_photo_count">%1$d foto</string>
+    <string name="gallery_folder_other">Altri</string>
+    <string name="cd_favorite_add">Aggiungi ai preferiti</string>
+    <string name="cd_favorite_remove">Rimuovi dai preferiti</string>
+    <string name="gallery_favorites_only">Preferiti</string>
+    <string name="gallery_favorites_empty">Tocca il cuore di una foto per aggiungerla qui</string>
     <string name="gallery_export_action">Esporta</string>
     <string name="gallery_export_progress">Esportazione %1$d/%2$d</string>
     <string name="gallery_export_result_exported">%1$d foto esportate nella galleria</string>
@@ -222,6 +227,10 @@
     <string name="gallery_export_confirm_title">Esporta nella galleria</string>
     <string name="gallery_export_confirm_message">%1$d foto verranno esportate nella galleria del dispositivo.</string>
     <string name="gallery_export_confirm_skipped">%1$d sono già nella memoria del dispositivo e verranno saltate.</string>
+    <string name="gallery_export_photos_title">Esporta le foto selezionate</string>
+    <string name="gallery_export_select_info_title">Esporta dati di selezione</string>
+    <string name="gallery_export_select_info_subtitle">Condividi un file JSON per la selezione su desktop</string>
+    <string name="gallery_export_select_info_done">Dati di selezione di %1$d foto pronti</string>
     <string name="settings_save_to_device_gallery_title">Salva nella galleria del dispositivo</string>
     <string name="settings_save_to_device_gallery_desc">Se disattivato, le foto restano visibili solo in CamCon e vengono eliminate se disinstalli l\'app. Attivalo per salvarle anche nella galleria del telefono.</string>
     <string name="export_to_gallery_success">Esportato nella galleria</string>
@@ -365,6 +374,11 @@
     <string name="notif_bg_sync_title">Sincronizzazione in background di CamCon</string>
     <string name="notif_bg_sync_active">Listener di eventi attivo: le foto possono essere ricevute a schermo spento</string>
     <string name="notif_bg_sync_listener_active">Listener di eventi attivo: in attesa di foto</string>
+    <string name="notif_bg_session_reconnecting">Connessione persa - riconnessione in corso</string>
+    <string name="notif_bg_session_recovering">Ripristino della sessione</string>
+    <string name="notif_bg_session_ended_reconnect_failed">Riconnessione non riuscita - ricezione interrotta</string>
+    <string name="notif_bg_session_ended_link_lost">Fotocamera disconnessa - ricezione interrotta</string>
+    <string name="notif_bg_session_ended_restart_unrecovered">L\'app è stata riavviata e non ha potuto riprendere la ricezione</string>
     <string name="notif_bg_sync_checking">Verifica della connessione della fotocamera…</string>
     <string name="notif_bg_sync_waiting">In attesa della connessione della fotocamera…</string>
     <string name="ptpip_please_enable_wifi">Attiva il Wi-Fi</string>
@@ -403,6 +417,10 @@
     <string name="photo_delete_camera_failed">Impossibile eliminare la foto dalla fotocamera</string>
     <string name="notif_channel_status_name">Stato della fotocamera</string>
     <string name="notif_channel_status_desc">Mostra lo stato di connessione e ricezione file della fotocamera</string>
+    <string name="notif_channel_session_ended_name">Ricezione non presidiata terminata</string>
+    <string name="notif_channel_session_ended_desc">Ti avvisa quando la ricezione delle foto in background si interrompe</string>
+    <string name="notif_session_ended_title">Ricezione interrotta</string>
+    <string name="notif_session_ended_action_reconnect">Riconnetti</string>
     <string name="connection_status_usb_connected">Fotocamera USB connessa</string>
     <string name="connection_status_ap_connected">Modalità AP connessa (%1$s)</string>
     <string name="connection_status_sta_connected">Modalità STA connessa (%1$s)</string>

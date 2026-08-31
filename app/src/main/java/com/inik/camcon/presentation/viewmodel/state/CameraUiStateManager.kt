@@ -432,6 +432,13 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
                     isPtpTimeout = false,
                     isUsbDisconnected = false
                 ),
+                // 연결에 성공했으면 "앱을 재시작하라"는 안내는 더 이상 사실이 아니다.
+                //
+                // 이 초기화가 없어서 좀비 다이얼로그가 남았다. 앞선 시도가 타임아웃으로
+                // 다이얼로그를 띄운 뒤 네이티브가 리셋으로 복구해 연결에 성공해도,
+                // isPtpTimeout 만 내려가고 이 플래그는 그대로라 화면에는 계속 떠 있었다
+                // (실기 2026-08-31: 다이얼로그 표시 5초 뒤 초기화 성공, 다이얼로그 잔존).
+                dialog = it.dialog.copy(showRestartDialog = false),
                 error = null
             )
         }
@@ -718,4 +725,10 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
 sealed interface InfoMessage {
     /** 자동초점 성공 */
     data object AutoFocusCompleted : InfoMessage
+
+    /**
+     * 첫 USB 연결 시 1회 안내 — 시스템 선택지에서 "항상"을 고르면 다음부터 자동 연결된다.
+     * 시스템 선택지의 문구는 앱이 바꿀 수 없으므로 앱 안에서 덧붙이는 안내다.
+     */
+    data object UsbPermissionAlwaysHint : InfoMessage
 }

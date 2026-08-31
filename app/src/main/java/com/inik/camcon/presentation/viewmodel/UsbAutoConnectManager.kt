@@ -12,6 +12,7 @@ import com.inik.camcon.domain.usecase.camera.DisconnectCameraUseCase
 import com.inik.camcon.domain.usecase.usb.RefreshUsbDevicesUseCase
 import com.inik.camcon.domain.usecase.usb.RequestUsbPermissionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+import com.inik.camcon.presentation.viewmodel.state.InfoMessage
 import com.inik.camcon.utils.Constants
 import com.inik.camcon.utils.LogMask
 import com.inik.camcon.di.ApplicationScope
@@ -57,9 +58,29 @@ class UsbAutoConnectManager @Inject constructor(
     companion object {
         private const val TAG = "카메라연결매니저"
 
-        // 매니페스트 USB_DEVICE_ATTACHED('이 USB 기기에 기본으로 사용' 1회 체크)가 재연결 시 권한을
-        // 자동 부여하기를 기다리는 유예시간. 이 안에 권한이 들어오면 프로그램적 권한요청을 생략한다.
-        private const val PERMISSION_GRACE_MS = 2000L
+        /**
+         * 케이블을 **방금 꽂은** 상황에서 시스템 앱 선택지("한 번만 / 항상")에 사람이 응답할
+         * 시간을 주는 유예시간.
+         *
+         * 종전 2초는 기계가 자동 부여를 배달하는 시간만 본 값이라, 사람이 선택지를 읽고 "항상"을
+         * 고르는 몇 초를 못 기다렸다. 그래서 첫 연결에서 시스템 선택지와 앱 자체 권한 다이얼로그
+         * **두 개가 겹쳐 떴다**(실기 로그: ATTACHED 2초 뒤 "권한 자동부여 미도착, 프로그램적 권한
+         * 요청(폴백)"). 이 값은 사용자가 선택지를 무시했을 때 폴백까지 걸리는 시간이기도 하므로
+         * 무한정 늘리지 않는다.
+         */
+        private const val ATTACH_PERMISSION_GRACE_MS = 12000L
+
+        /** 유예 중 권한 도착을 확인하는 주기. 도착 즉시 진행해 체감 지연을 만들지 않는다. */
+        private const val PERMISSION_POLL_INTERVAL_MS = 1000L
+
+        /**
+         * 이 시간 안에 부착 브로드캐스트를 봤으면 "방금 꽂은 문맥"으로 본다.
+         *
+         * 설정 화면의 수동 재시도나 콜드 스타트에서 이미 꽂혀 있던 장치는 이 문맥이 아니다 —
+         * 그 경로에는 시스템 선택지가 애초에 뜨지 않으므로 기다릴 이유가 없고, 기다리면 사용자가
+         * 누른 버튼이 12초 동안 아무 반응 없어 보인다.
+         */
+        private const val ATTACH_CONTEXT_WINDOW_MS = 5000L
     }
 
     // 앱 scope의 자식 scope — cancelChildren해도 앱 scope에 영향 없음
@@ -103,16 +124,7 @@ class UsbAutoConnectManager @Inject constructor(
                     // 프로그램적 권한 다이얼로그가 충돌해 거부→앱 재시작으로 이어지는 churn을 막는다.
                     pendingPermissionJob?.cancel()
                     pendingPermissionJob = scope.launch {
-                        delay(PERMISSION_GRACE_MS)
-                        if (usbDeviceRepository.connectedDeviceCount.value > 0 &&
-                            !usbDeviceRepository.hasUsbPermission.value &&
-                            !_isAutoConnecting.value
-                        ) {
-                            Log.d(TAG, "USB 디바이스 감지됨 - 권한 자동부여 미도착, 프로그램적 권한 요청(폴백)")
-                            requestUsbPermission()
-                        } else {
-                            Log.d(TAG, "USB 권한이 attach-intent로 자동 부여됨 - 프로그램적 요청 생략(churn 방지)")
-                        }
+                        awaitSystemGrantThenFallback(uiStateManager)
                     }
                 }
             }
@@ -148,6 +160,95 @@ class UsbAutoConnectManager @Inject constructor(
                 autoConnectCamera(uiStateManager)
             }
         }.launchIn(scope)
+    }
+
+    /**
+     * 시스템이 권한을 자동 부여하기를 기다렸다가, 유예가 끝나도록 오지 않으면 그때서야
+     * 앱 자체 권한 다이얼로그를 띄운다.
+     *
+     * 케이블을 방금 꽂은 문맥에서는 [ATTACH_PERMISSION_GRACE_MS] 만큼 넉넉히 기다린다. 그
+     * 순간 화면에는 시스템 앱 선택지가 떠 있고, 사용자가 "항상"을 고르면 권한이 함께 부여되기
+     * 때문이다. 짧게 끊으면 사용자가 선택지를 읽는 동안 앱 다이얼로그가 그 위에 겹쳐 뜬다.
+     *
+     * 기다리는 동안 [PERMISSION_POLL_INTERVAL_MS] 마다 권한 도착을 확인해, 부여되는 즉시
+     * 폴백 없이 빠져나온다 — 유예를 늘려도 연결이 늦어지지 않는 이유다.
+     *
+     * 반대로 그 문맥이 아니면(설정 화면의 수동 재시도, 앱 재기동 등) **기다리지 않는다.**
+     * 시스템 선택지가 뜨지 않았으니 자동 부여도 올 수 없어서, 유예는 사용자가 누른 버튼이
+     * 아무 반응 없어 보이는 시간일 뿐이다.
+     */
+    private suspend fun awaitSystemGrantThenFallback(uiStateManager: CameraUiStateManager) {
+        val justAttached =
+            usbDeviceRepository.msSinceCameraAttached() <= ATTACH_CONTEXT_WINDOW_MS
+
+        if (!justAttached) {
+            // 케이블을 꽂은 순간이 아니면 시스템 앱 선택지가 뜨지 않았고, 따라서 자동 부여가
+            // 올 데도 없다. 기다려 봐야 아무 일도 일어나지 않으므로 곧바로 요청한다.
+            //
+            // 판정은 **시스템에 직접 물어서** 한다. 상태 흐름의 캐시는 브로드캐스트로만
+            // 갱신되어 낡아 있을 수 있다(실기 로그: "권한=false" 바로 뒤에 "이미 권한이
+            // 있습니다"). 캐시를 믿으면 권한이 있는데도 대화상자를 띄우게 된다.
+            if (usbDeviceRepository.hasPermissionForAttachedCamera()) {
+                // 권한은 이미 있고 캐시만 낡았다. 아래 호출은 대화상자를 띄우지 않고
+                // 권한 상태를 실제 값으로 맞춰 주기만 한다(그래야 자동 연결이 이어진다).
+                Log.d(TAG, "부착 문맥 아님 - 실검사 결과 권한 보유(캐시가 낡음), 상태만 맞춘다")
+            } else {
+                Log.d(TAG, "부착 문맥 아님 + 권한 없음 확정 - 유예 없이 즉시 권한 요청")
+            }
+            requestUsbPermission()
+            return
+        }
+
+        val graceMs = ATTACH_PERMISSION_GRACE_MS
+        Log.d(TAG, "케이블 부착 직후 - 시스템 앱 선택지 응답을 ${graceMs}ms 까지 기다린다")
+        maybeShowFirstConnectionHint(uiStateManager)
+
+        var waitedMs = 0L
+        while (waitedMs < graceMs) {
+            val slice = minOf(PERMISSION_POLL_INTERVAL_MS, graceMs - waitedMs)
+            delay(slice)
+            waitedMs += slice
+
+            if (usbDeviceRepository.hasUsbPermission.value) {
+                Log.d(TAG, "USB 권한이 시스템 경로로 부여됨(${waitedMs}ms) - 프로그램적 요청 생략(churn 방지)")
+                return
+            }
+            if (usbDeviceRepository.connectedDeviceCount.value == 0 || _isAutoConnecting.value) {
+                Log.d(TAG, "대기 중 상태 변화(장치 분리 또는 연결 진행) - 권한 요청 폴백 취소")
+                return
+            }
+        }
+
+        if (usbDeviceRepository.connectedDeviceCount.value > 0 &&
+            !usbDeviceRepository.hasUsbPermission.value &&
+            !_isAutoConnecting.value
+        ) {
+            // 사용자가 시스템 선택지에서 "한 번만"을 골랐거나 그냥 지나친 경우다. 이 폴백이
+            // 없으면 연결할 길이 사라진다.
+            Log.d(TAG, "USB 디바이스 감지됨 - 권한 자동부여 미도착, 프로그램적 권한 요청(폴백)")
+            requestUsbPermission()
+        } else {
+            Log.d(TAG, "USB 권한이 attach-intent로 자동 부여됨 - 프로그램적 요청 생략(churn 방지)")
+        }
+    }
+
+    /**
+     * 앱을 쓰면서 처음 USB 카메라를 꽂은 순간, "항상"을 고르면 다음부터 자동으로 연결된다는
+     * 사실을 1회만 알린다. 시스템 선택지의 문구는 우리가 바꿀 수 없으므로 앱 안에서 덧붙이는
+     * 안내다.
+     *
+     * 표시 완료 플래그는 스낵바가 실제로 화면에 뜬 뒤 UI 레이어가 저장한다 — 여기서 저장하면
+     * 화면이 없어 아무도 못 본 안내가 "본 것"으로 기록된다.
+     */
+    private suspend fun maybeShowFirstConnectionHint(uiStateManager: CameraUiStateManager) {
+        try {
+            if (appSettingsRepository.hasSeenUsbPermissionHint.first()) return
+            uiStateManager.emitInfoMessage(InfoMessage.UsbPermissionAlwaysHint)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "첫 USB 연결 안내 표시 실패(연결에는 영향 없음)", e)
+        }
     }
 
     /**

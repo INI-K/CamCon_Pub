@@ -6,4 +6,5 @@
     <string name="unsupported_shooting_mode_message">Cet appareil ne prend pas en charge le mode de prise de vue %s</string>
     <string name="liveview_frame_stalled">Visée en direct figée</string>
     <string name="autofocus_completed">Mise au point verrouillée</string>
+    <string name="usb_permission_always_hint">Choisissez « Toujours » pour vous connecter automatiquement la prochaine fois</string>
 </resources>

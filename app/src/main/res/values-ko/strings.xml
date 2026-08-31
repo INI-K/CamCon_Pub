@@ -214,6 +214,11 @@
     <string name="cd_export_to_gallery">갤러리로 내보내기</string>
     <string name="gallery_group_device_storage">기기 저장소</string>
     <string name="gallery_group_photo_count">사진 %1$d장</string>
+    <string name="gallery_folder_other">기타</string>
+    <string name="cd_favorite_add">좋아요 추가</string>
+    <string name="cd_favorite_remove">좋아요 해제</string>
+    <string name="gallery_favorites_only">좋아요만</string>
+    <string name="gallery_favorites_empty">사진의 하트를 눌러 좋아요를 표시해 보세요</string>
     <string name="gallery_export_action">내보내기</string>
     <string name="gallery_export_progress">내보내는 중 %1$d/%2$d</string>
     <string name="gallery_export_result_exported">%1$d장을 갤러리로 내보냈습니다</string>
@@ -222,6 +227,10 @@
     <string name="gallery_export_confirm_title">갤러리로 내보내기</string>
     <string name="gallery_export_confirm_message">%1$d장을 기기 갤러리로 내보냅니다.</string>
     <string name="gallery_export_confirm_skipped">%1$d장은 이미 기기 저장소에 있어 건너뜁니다.</string>
+    <string name="gallery_export_photos_title">선택사진 내보내기</string>
+    <string name="gallery_export_select_info_title">셀렉정보 내보내기</string>
+    <string name="gallery_export_select_info_subtitle">데스크톱 컬링용 JSON 파일로 공유합니다</string>
+    <string name="gallery_export_select_info_done">%1$d장의 셀렉정보를 만들었습니다</string>
     <string name="settings_save_to_device_gallery_title">기기 갤러리에 저장</string>
     <string name="settings_save_to_device_gallery_desc">끄면 사진이 앱 안에서만 보이며, 앱을 삭제하면 사진도 함께 삭제됩니다. 켜면 폰 갤러리에도 저장됩니다.</string>
     <string name="export_to_gallery_success">갤러리로 내보냈습니다</string>
@@ -391,6 +400,11 @@
     <string name="notif_bg_sync_title">CamCon 백그라운드 동기화</string>
     <string name="notif_bg_sync_active">카메라 이벤트 리스너 활성 상태 - 화면이 꺼져도 사진 수신 가능</string>
     <string name="notif_bg_sync_listener_active">카메라 이벤트 리스너 활성 - 사진 수신 대기 중</string>
+    <string name="notif_bg_session_reconnecting">연결이 끊겼습니다 - 다시 연결하는 중</string>
+    <string name="notif_bg_session_recovering">세션을 복구하는 중</string>
+    <string name="notif_bg_session_ended_reconnect_failed">다시 연결하지 못해 수신을 중단했습니다</string>
+    <string name="notif_bg_session_ended_link_lost">카메라 연결이 끊겨 수신을 중단했습니다</string>
+    <string name="notif_bg_session_ended_restart_unrecovered">앱이 다시 시작돼 수신을 이어가지 못했습니다</string>
     <string name="notif_bg_sync_checking">카메라 연결 확인 중…</string>
     <string name="notif_bg_sync_waiting">카메라 연결 대기 중…</string>
     <string name="ptpip_please_enable_wifi">Wi-Fi를 켜주세요</string>
@@ -407,6 +421,10 @@
     <string name="photo_delete_camera_failed">카메라에서 사진을 삭제하지 못했습니다</string>
     <string name="notif_channel_status_name">카메라 상태</string>
     <string name="notif_channel_status_desc">카메라 연결·파일 수신 상태 표시</string>
+    <string name="notif_channel_session_ended_name">무인 수신 종료</string>
+    <string name="notif_channel_session_ended_desc">백그라운드 사진 수신이 멈추면 알립니다</string>
+    <string name="notif_session_ended_title">수신이 중단되었습니다</string>
+    <string name="notif_session_ended_action_reconnect">재연결</string>
     <string name="connection_status_usb_connected">USB 카메라 연결됨</string>
     <string name="connection_status_ap_connected">AP 모드 연결됨 (%1$s)</string>
     <string name="connection_status_sta_connected">STA 모드 연결됨 (%1$s)</string>

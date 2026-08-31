@@ -20,6 +20,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import com.inik.camcon.presentation.theme.Accent
+import com.inik.camcon.presentation.theme.Spacing
+import com.inik.camcon.presentation.theme.TextPrimaryV2
 import androidx.core.content.FileProvider
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.CameraPhoto
@@ -177,6 +190,9 @@ private fun shareCurrentPhoto(
 /**
  * 전체화면 사진 뷰어 — HorizontalPager 기반 스와이프 네비게이션
  */
+/** 하단 썸네일 스트립(80dp 항목 + 상하 패딩)을 피해 플로팅 버튼을 띄우는 높이. */
+private val ThumbnailStripClearance = 132.dp
+
 @Composable
 fun FullScreenPhotoViewer(
     photo: CameraPhoto,
@@ -191,7 +207,10 @@ fun FullScreenPhotoViewer(
     localPhotos: List<CameraPhoto>? = null,
     onDeleteRequest: ((CameraPhoto) -> Unit)? = null,
     onFilmEdit: ((CameraPhoto) -> Unit)? = null,
-    isRawFile: (String) -> Boolean = { false }
+    isRawFile: (String) -> Boolean = { false },
+    /** 좋아요 상태 조회. null 을 돌려주면 하트를 감춘다(카메라 미리보기 탭). */
+    isFavorite: ((CameraPhoto) -> Boolean)? = null,
+    onToggleFavorite: ((CameraPhoto) -> Unit)? = null
 ) {
     val context = LocalContext.current
 
@@ -399,6 +418,47 @@ fun FullScreenPhotoViewer(
             },
             modifier = Modifier.align(Alignment.TopStart)
         )
+
+        // 좋아요(♥) 플로팅 토글 — 사진 뷰 **우하단**.
+        //
+        // 상단 액션 줄이 아니라 떠 있는 원형 버튼이다. 컬링은 사진을 보면서 반복해서 누르는
+        // 동작이라, 엄지가 닿는 자리에 큰 표적이 있어야 한다.
+        //
+        // 겹침 처리: 아래 썸네일 스트립이 있으면 그 위로 올린다(가리지 않는다). 인셋은
+        // navigationBarsPadding 으로 잡아 제스처 내비게이션 기기에서 시스템 바와 겹치지 않는다.
+        // HorizontalPager 위에 얹힌 자식이라 이 버튼 영역의 탭만 가져가고, 스와이프·줌 제스처는
+        // 아래 페이저가 그대로 받는다.
+        if (isFavorite != null && onToggleFavorite != null) {
+            val currentPhoto = photos.getOrNull(pagerState.currentPage) ?: photo
+            val liked = isFavorite(currentPhoto)
+            val hasThumbnailStrip = (viewModel != null && photos.size > 1) ||
+                    (localPhotos != null && localPhotos.size > 1)
+            val favoriteLabel = stringResource(
+                if (liked) R.string.cd_favorite_remove else R.string.cd_favorite_add
+            )
+
+            FloatingActionButton(
+                onClick = { onToggleFavorite(currentPhoto) },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(
+                        end = Spacing.base,
+                        // 썸네일 스트립(80dp 항목 + 패딩) 위로 띄운다.
+                        bottom = if (hasThumbnailStrip) ThumbnailStripClearance else Spacing.lg
+                    )
+                    .semantics { contentDescription = favoriteLabel },
+                containerColor = Surface0.copy(alpha = 0.8f),
+                // 채움은 앱 액센트(앰버). 빨강을 새로 들이지 않는다 — 이 앱에서 앰버가 이미
+                // "활성/선택"을 뜻하고, 팔레트에 없는 색을 늘리지 않는다.
+                contentColor = if (liked) Accent else TextPrimaryV2
+            ) {
+                Icon(
+                    imageVector = if (liked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = null
+                )
+            }
+        }
 
         if ((viewModel != null && photos.size > 1) ||
             (localPhotos != null && localPhotos.size > 1)

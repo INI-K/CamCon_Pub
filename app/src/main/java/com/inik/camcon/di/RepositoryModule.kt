@@ -33,6 +33,8 @@ import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.data.datasource.local.AppPreferencesDataSource
 import com.inik.camcon.domain.manager.CameraStateObserver
 import com.inik.camcon.domain.manager.ErrorNotifier
+import com.inik.camcon.data.manager.UnattendedSessionManagerImpl
+import com.inik.camcon.domain.manager.UnattendedSessionManager
 import com.inik.camcon.domain.manager.NativeErrorCallbackRegistrar
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import com.inik.camcon.domain.repository.AppSettingsRepository
@@ -55,6 +57,7 @@ import com.inik.camcon.domain.repository.CameraStreamingRepository
 import com.inik.camcon.domain.repository.ColorTransferRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.repository.SubscriptionRepository
+import com.inik.camcon.domain.repository.UnattendedSessionRepository
 import com.inik.camcon.domain.repository.UsbDeviceRepository
 import com.inik.camcon.domain.util.Logger
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
@@ -229,6 +232,27 @@ abstract class RepositoryModule {
     abstract fun bindErrorNotifier(
         impl: ErrorHandlingManager
     ): ErrorNotifier
+
+    /**
+     * 무인 수신 세션 매니저. 서비스(FGS·WakeLock)의 수명이 이 상태를 따른다.
+     *
+     * 도메인 포트에 바인딩해 서비스·UseCase 가 구현체를 모르게 한다(C1 규약).
+     */
+    @Binds
+    @Singleton
+    abstract fun bindUnattendedSessionManager(
+        impl: UnattendedSessionManagerImpl
+    ): UnattendedSessionManager
+
+    /**
+     * 무인 수신 세션 영속 플래그. 평문 DataStore 를 이미 소유한 [AppPreferencesDataSource] 가
+     * 그대로 구현한다 — 같은 저장소를 두 클래스가 나눠 갖게 하면 키 관리 지점이 둘로 갈린다.
+     */
+    @Binds
+    @Singleton
+    abstract fun bindUnattendedSessionRepository(
+        impl: AppPreferencesDataSource
+    ): UnattendedSessionRepository
 
     @Binds
     @Singleton

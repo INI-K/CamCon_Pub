@@ -6,4 +6,5 @@
     <string name="unsupported_shooting_mode_message">이 카메라는 %s 촬영 모드를 지원하지 않습니다</string>
     <string name="liveview_frame_stalled">라이브뷰 정지됨</string>
     <string name="autofocus_completed">초점 맞춤 완료</string>
+    <string name="usb_permission_always_hint">“항상”을 선택하면 다음부터 자동으로 연결됩니다</string>
 </resources>

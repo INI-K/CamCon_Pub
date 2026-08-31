@@ -6,4 +6,5 @@
     <string name="unsupported_shooting_mode_message">Questa fotocamera non supporta la modalità di scatto %s</string>
     <string name="liveview_frame_stalled">Live view bloccata</string>
     <string name="autofocus_completed">Messa a fuoco completata</string>
+    <string name="usb_permission_always_hint">Scegli «Sempre» per connetterti automaticamente la prossima volta</string>
 </resources>

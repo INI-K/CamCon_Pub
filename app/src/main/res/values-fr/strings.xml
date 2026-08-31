@@ -214,6 +214,11 @@
     <string name="cd_export_to_gallery">Exporter vers la galerie</string>
     <string name="gallery_group_device_storage">Stockage de l\'appareil</string>
     <string name="gallery_group_photo_count">%1$d photos</string>
+    <string name="gallery_folder_other">Autres</string>
+    <string name="cd_favorite_add">Ajouter aux favoris</string>
+    <string name="cd_favorite_remove">Retirer des favoris</string>
+    <string name="gallery_favorites_only">Favoris</string>
+    <string name="gallery_favorites_empty">Touchez le cœur d\'une photo pour l\'ajouter ici</string>
     <string name="gallery_export_action">Exporter</string>
     <string name="gallery_export_progress">Exportation %1$d/%2$d</string>
     <string name="gallery_export_result_exported">%1$d photos exportées vers la galerie</string>
@@ -222,6 +227,10 @@
     <string name="gallery_export_confirm_title">Exporter vers la galerie</string>
     <string name="gallery_export_confirm_message">%1$d photos seront exportées vers la galerie de l\'appareil.</string>
     <string name="gallery_export_confirm_skipped">%1$d sont déjà dans le stockage de l\'appareil et seront ignorées.</string>
+    <string name="gallery_export_photos_title">Exporter les photos sélectionnées</string>
+    <string name="gallery_export_select_info_title">Exporter les données de sélection</string>
+    <string name="gallery_export_select_info_subtitle">Partagez un fichier JSON pour le tri sur ordinateur</string>
+    <string name="gallery_export_select_info_done">Données de sélection de %1$d photos prêtes</string>
     <string name="settings_save_to_device_gallery_title">Enregistrer dans la galerie de l\'appareil</string>
     <string name="settings_save_to_device_gallery_desc">Lorsque l\'option est désactivée, les photos restent visibles uniquement dans CamCon et sont supprimées si vous désinstallez l\'application. Activez-la pour les enregistrer aussi dans la galerie du téléphone.</string>
     <string name="export_to_gallery_success">Exporté vers la galerie</string>
@@ -367,6 +376,11 @@
     <string name="notif_bg_sync_title">Synchronisation en arrière-plan de CamCon</string>
     <string name="notif_bg_sync_active">Écouteur d\'événements actif - les photos peuvent être reçues écran éteint</string>
     <string name="notif_bg_sync_listener_active">Écouteur d\'événements actif - en attente de photos</string>
+    <string name="notif_bg_session_reconnecting">Connexion perdue - reconnexion en cours</string>
+    <string name="notif_bg_session_recovering">Restauration de la session</string>
+    <string name="notif_bg_session_ended_reconnect_failed">Échec de la reconnexion - réception arrêtée</string>
+    <string name="notif_bg_session_ended_link_lost">Appareil photo déconnecté - réception arrêtée</string>
+    <string name="notif_bg_session_ended_restart_unrecovered">L\'application a redémarré et n\'a pas pu reprendre la réception</string>
     <string name="notif_bg_sync_checking">Vérification de la connexion de l\'appareil photo…</string>
     <string name="notif_bg_sync_waiting">En attente de la connexion de l\'appareil photo…</string>
     <string name="ptpip_please_enable_wifi">Veuillez activer le Wi-Fi</string>
@@ -404,6 +418,10 @@
     <string name="photo_delete_camera_failed">Impossible de supprimer la photo de l\'appareil</string>
     <string name="notif_channel_status_name">État de l\'appareil</string>
     <string name="notif_channel_status_desc">Affiche l\'état de connexion et de réception de fichiers de l\'appareil</string>
+    <string name="notif_channel_session_ended_name">Réception autonome terminée</string>
+    <string name="notif_channel_session_ended_desc">Vous avertit lorsque la réception de photos en arrière-plan s\'arrête</string>
+    <string name="notif_session_ended_title">Réception arrêtée</string>
+    <string name="notif_session_ended_action_reconnect">Reconnecter</string>
     <string name="connection_status_usb_connected">Appareil USB connecté</string>
     <string name="connection_status_ap_connected">Mode AP connecté (%1$s)</string>
     <string name="connection_status_sta_connected">Mode STA connecté (%1$s)</string>

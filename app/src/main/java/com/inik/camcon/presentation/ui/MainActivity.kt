@@ -107,7 +107,9 @@ import androidx.navigation.compose.rememberNavController
 import com.inik.camcon.R
 import com.inik.camcon.utils.resolve
 import com.inik.camcon.data.service.BackgroundSyncService
+import com.inik.camcon.data.service.SessionEndedNotification
 import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
+import com.inik.camcon.domain.manager.UnattendedSessionManager
 import com.inik.camcon.domain.model.CameraConnectionType
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
@@ -903,6 +905,9 @@ class MainActivity : ComponentActivity() {
     lateinit var getSubscriptionUseCase: GetSubscriptionUseCase
 
     @Inject
+    lateinit var unattendedSessionManager: UnattendedSessionManager
+
+    @Inject
     @IoDispatcher
     lateinit var ioDispatcher: CoroutineDispatcher
 
@@ -1098,6 +1103,9 @@ class MainActivity : ComponentActivity() {
         // USB 디바이스 연결 Intent 처리 + 기존 연결 디바이스 검색을 ViewModel에 위임
         viewModel.initializeUsbState(intent)
 
+        // 무인 수신 종료 알림의 "재연결"을 눌러 들어온 경우 세션을 되살린다.
+        handleResumeUnattendedIntent(intent)
+
         setContent {
             val appSettingsViewModel: AppSettingsViewModel = hiltViewModel()
             val themeMode by appSettingsViewModel.themeMode.collectAsStateWithLifecycle()
@@ -1183,6 +1191,35 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         // USB Intent 처리를 ViewModel에 위임
         viewModel.handleUsbIntent(intent)
+        handleResumeUnattendedIntent(intent)
+    }
+
+    /**
+     * 무인 수신 종료 알림의 "재연결" 액션으로 들어온 인텐트를 처리한다.
+     *
+     * 알림 탭은 사용자 상호작용이라 이 시점에는 연결·서비스 기동이 모두 허용된다. 복구에
+     * 성공하면 활성 연결을 관찰하는 [observeConnectionForBackgroundService] 가 수신 서비스를
+     * 다시 띄우므로, 여기서는 연결을 되살리는 것까지만 한다.
+     */
+    private fun handleResumeUnattendedIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(
+                SessionEndedNotification.EXTRA_RESUME_UNATTENDED,
+                false
+            ) != true
+        ) {
+            return
+        }
+        // 같은 인텐트가 재진입할 때 복구를 두 번 돌리지 않도록 신호를 즉시 소비한다.
+        intent.removeExtra(SessionEndedNotification.EXTRA_RESUME_UNATTENDED)
+
+        LogcatManager.i(TAG, "종료 알림의 재연결 요청 - 무인 수신 세션 복구 시도")
+        lifecycleScope.launch {
+            try {
+                unattendedSessionManager.recoverAfterProcessRestart()
+            } catch (e: Exception) {
+                LogcatManager.w(TAG, "무인 수신 세션 복구 실패", e)
+            }
+        }
     }
 
     override fun onResume() {
@@ -1204,7 +1241,7 @@ class MainActivity : ComponentActivity() {
                 if (!isServiceRunning) {
                     LogcatManager.d(TAG, " 포그라운드 진입 - 백그라운드 서비스 재시작")
                     withContext(Dispatchers.Main) {
-                        BackgroundSyncService.startService(this@MainActivity)
+                        BackgroundSyncService.tryStartService(this@MainActivity)
                     }
                 }
             } catch (e: Exception) {
@@ -1230,25 +1267,10 @@ class MainActivity : ComponentActivity() {
                 if (!isServiceRunning) {
                     LogcatManager.d(TAG, " 백그라운드 서비스 재시작 필요")
                     withContext(Dispatchers.Main) {
-                        try {
-                            BackgroundSyncService.startService(this@MainActivity)
-                        } catch (e: Exception) {
-                            // Android 12+에서 앱이 완전히 백그라운드 상태이면
-                            // startForegroundService가 ForegroundServiceStartNotAllowedException을
-                            // 던진다. onPause 시점에 FGS 재시작은 OS 정책상 보장되지 않으므로
-                            // 실패를 명시적으로 기록하고 다음 포그라운드 진입(onResume) 시 재시도에 맡긴다.
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                                e is android.app.ForegroundServiceStartNotAllowedException
-                            ) {
-                                LogcatManager.w(
-                                    TAG,
-                                    "백그라운드 상태에서 포그라운드 서비스 시작 불가 - 다음 포그라운드 진입 시 재시도",
-                                    e
-                                )
-                            } else {
-                                throw e
-                            }
-                        }
+                        // onPause 시점의 FGS 재시작은 OS 정책상 보장되지 않는다. 거부는
+                        // tryStartService 가 false 로 돌려주며, 다음 포그라운드 진입(onResume)
+                        // 시 재시도에 맡긴다.
+                        BackgroundSyncService.tryStartService(this@MainActivity)
                     }
                 } else {
                     LogcatManager.d(TAG, " 백그라운드 서비스 이미 실행 중")
@@ -1275,13 +1297,11 @@ class MainActivity : ComponentActivity() {
                     .distinctUntilChanged()
                     .collect { isConnected ->
                         if (!isConnected) return@collect
-                        try {
-                            if (!BackgroundSyncService.isRunning) {
-                                BackgroundSyncService.startService(this@MainActivity)
+                        if (!BackgroundSyncService.isRunning) {
+                            val started = BackgroundSyncService.tryStartService(this@MainActivity)
+                            if (started) {
                                 LogcatManager.d(TAG, "카메라 연결 감지 - BackgroundSyncService 시작 요청됨")
                             }
-                        } catch (e: Exception) {
-                            LogcatManager.w(TAG, "BackgroundSyncService 시작 실패", e)
                         }
                     }
             }

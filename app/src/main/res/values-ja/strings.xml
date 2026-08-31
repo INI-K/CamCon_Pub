@@ -214,6 +214,11 @@
     <string name="cd_export_to_gallery">ギャラリーに書き出す</string>
     <string name="gallery_group_device_storage">端末のストレージ</string>
     <string name="gallery_group_photo_count">写真 %1$d 枚</string>
+    <string name="gallery_folder_other">その他</string>
+    <string name="cd_favorite_add">お気に入りに追加</string>
+    <string name="cd_favorite_remove">お気に入りを解除</string>
+    <string name="gallery_favorites_only">お気に入りのみ</string>
+    <string name="gallery_favorites_empty">写真のハートをタップしてお気に入りに追加できます</string>
     <string name="gallery_export_action">書き出し</string>
     <string name="gallery_export_progress">書き出し中 %1$d/%2$d</string>
     <string name="gallery_export_result_exported">%1$d 枚をギャラリーに書き出しました</string>
@@ -222,6 +227,10 @@
     <string name="gallery_export_confirm_title">ギャラリーに書き出し</string>
     <string name="gallery_export_confirm_message">%1$d 枚を端末のギャラリーに書き出します。</string>
     <string name="gallery_export_confirm_skipped">%1$d 枚はすでに端末のストレージにあるためスキップします。</string>
+    <string name="gallery_export_photos_title">選択した写真を書き出し</string>
+    <string name="gallery_export_select_info_title">セレクト情報を書き出し</string>
+    <string name="gallery_export_select_info_subtitle">デスクトップ選別用の JSON ファイルとして共有します</string>
+    <string name="gallery_export_select_info_done">%1$d 枚のセレクト情報を作成しました</string>
     <string name="settings_save_to_device_gallery_title">端末のギャラリーに保存</string>
     <string name="settings_save_to_device_gallery_desc">オフにすると写真はアプリ内にのみ表示され、アプリを削除すると写真も削除されます。オンにすると端末のギャラリーにも保存されます。</string>
     <string name="export_to_gallery_success">ギャラリーに書き出しました</string>
@@ -367,6 +376,11 @@
     <string name="notif_bg_sync_title">CamCon バックグラウンド同期</string>
     <string name="notif_bg_sync_active">イベントリスナー稼働中 - 画面がオフでも写真を受信できます</string>
     <string name="notif_bg_sync_listener_active">イベントリスナー稼働中 - 写真の受信を待機中</string>
+    <string name="notif_bg_session_reconnecting">接続が切れました - 再接続中</string>
+    <string name="notif_bg_session_recovering">セッションを復旧中</string>
+    <string name="notif_bg_session_ended_reconnect_failed">再接続できず受信を停止しました</string>
+    <string name="notif_bg_session_ended_link_lost">カメラとの接続が切れ受信を停止しました</string>
+    <string name="notif_bg_session_ended_restart_unrecovered">アプリが再起動し受信を再開できませんでした</string>
     <string name="notif_bg_sync_checking">カメラ接続を確認中…</string>
     <string name="notif_bg_sync_waiting">カメラ接続を待機中…</string>
     <string name="ptpip_please_enable_wifi">Wi-Fiをオンにしてください</string>
@@ -405,6 +419,10 @@
     <string name="photo_delete_camera_failed">カメラから写真を削除できませんでした</string>
     <string name="notif_channel_status_name">カメラの状態</string>
     <string name="notif_channel_status_desc">カメラの接続とファイル受信の状態を表示します</string>
+    <string name="notif_channel_session_ended_name">無人受信の終了</string>
+    <string name="notif_channel_session_ended_desc">バックグラウンドの写真受信が停止したときに通知します</string>
+    <string name="notif_session_ended_title">受信を停止しました</string>
+    <string name="notif_session_ended_action_reconnect">再接続</string>
     <string name="connection_status_usb_connected">USBカメラ接続済み</string>
     <string name="connection_status_ap_connected">APモード接続済み (%1$s)</string>
     <string name="connection_status_sta_connected">STAモード接続済み (%1$s)</string>

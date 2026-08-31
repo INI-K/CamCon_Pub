@@ -532,6 +532,11 @@
     <string name="cd_export_to_gallery">Export to gallery</string>
     <string name="gallery_group_device_storage">Device storage</string>
     <string name="gallery_group_photo_count">%1$d photos</string>
+    <string name="gallery_folder_other">Other</string>
+    <string name="cd_favorite_add">Add to favorites</string>
+    <string name="cd_favorite_remove">Remove from favorites</string>
+    <string name="gallery_favorites_only">Favorites</string>
+    <string name="gallery_favorites_empty">Tap the heart on a photo to add it here</string>
     <string name="gallery_export_action">Export</string>
     <string name="gallery_export_progress">Exporting %1$d/%2$d</string>
     <string name="gallery_export_result_exported">Exported %1$d photos to the gallery</string>
@@ -540,6 +545,10 @@
     <string name="gallery_export_confirm_title">Export to gallery</string>
     <string name="gallery_export_confirm_message">%1$d photos will be exported to the device gallery.</string>
     <string name="gallery_export_confirm_skipped">%1$d already in device storage and will be skipped.</string>
+    <string name="gallery_export_photos_title">Export selected photos</string>
+    <string name="gallery_export_select_info_title">Export selection data</string>
+    <string name="gallery_export_select_info_subtitle">Share a JSON file for desktop culling</string>
+    <string name="gallery_export_select_info_done">Selection data for %1$d photos is ready</string>
     <string name="settings_save_to_device_gallery_title">Save to device gallery</string>
     <string name="settings_save_to_device_gallery_desc">When off, photos stay inside CamCon only. They will be deleted if you uninstall the app. Turn on to also save them to your phone gallery.</string>
     <string name="export_to_gallery_success">Exported to gallery</string>
@@ -636,10 +645,19 @@
     <string name="notif_bg_sync_title">CamCon background sync</string>
     <string name="notif_bg_sync_active">Event listener active - photos can be received with the screen off</string>
     <string name="notif_bg_sync_listener_active">Event listener active - waiting for photos</string>
+    <string name="notif_bg_session_reconnecting">Disconnected - reconnecting</string>
+    <string name="notif_bg_session_recovering">Restoring the session</string>
+    <string name="notif_bg_session_ended_reconnect_failed">Reconnection failed - receiving stopped</string>
+    <string name="notif_bg_session_ended_link_lost">Camera disconnected - receiving stopped</string>
+    <string name="notif_bg_session_ended_restart_unrecovered">The app restarted and could not resume receiving</string>
     <string name="notif_bg_sync_checking">Checking camera connection…</string>
     <string name="notif_bg_sync_waiting">Waiting for camera connection…</string>
     <string name="notif_channel_status_name">Camera status</string>
     <string name="notif_channel_status_desc">Shows camera connection and file-receiving status</string>
+    <string name="notif_channel_session_ended_name">Unattended receiving ended</string>
+    <string name="notif_channel_session_ended_desc">Notifies you when background photo receiving stops</string>
+    <string name="notif_session_ended_title">Receiving stopped</string>
+    <string name="notif_session_ended_action_reconnect">Reconnect</string>
 
     <!-- 연결 상태 메시지 (CameraConnectionGlobalManager → UiText, presentation 해석) -->
     <string name="connection_status_usb_connected">USB camera connected</string>
