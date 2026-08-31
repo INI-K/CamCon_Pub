@@ -46,6 +46,12 @@ interface AppSettingsRepository {
     val isLiveViewGridEnabled: Flow<Boolean>
     val liveViewQuality: Flow<LiveViewQuality>
     val hasSeenCaptureCoachmark: Flow<Boolean>
+
+    /**
+     * 첫 USB 연결 안내("항상"을 고르면 다음부터 자동 연결)를 이미 보여 줬는가.
+     * 안내는 앱 생애 전체에서 1회만 뜬다.
+     */
+    val hasSeenUsbPermissionHint: Flow<Boolean>
     val lastTimelapseInterval: Flow<Int>
     val lastTimelapseCount: Flow<Int>
 
@@ -81,6 +87,9 @@ interface AppSettingsRepository {
     suspend fun setLiveViewGridEnabled(enabled: Boolean)
     suspend fun setLiveViewQuality(quality: LiveViewQuality)
     suspend fun setHasSeenCaptureCoachmark(seen: Boolean)
+
+    /** 첫 USB 연결 안내를 실제로 화면에 띄운 뒤 저장한다. */
+    suspend fun setHasSeenUsbPermissionHint(seen: Boolean)
     suspend fun setLastTimelapseInterval(seconds: Int)
     suspend fun setLastTimelapseCount(count: Int)
     suspend fun setHistogramEnabled(enabled: Boolean)

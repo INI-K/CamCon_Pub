@@ -678,12 +678,21 @@ fun CameraControlScreen(
 
     // AF 성공 등 1-shot 정보 메시지를 Snackbar로 표시 (에러 채널과 분리)
     val autoFocusCompletedMsg = stringResource(R.string.autofocus_completed)
+    val usbPermissionAlwaysHintMsg = stringResource(R.string.usb_permission_always_hint)
     LaunchedEffect(viewModel, lifecycleOwner) {
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.infoMessage.collect { info ->
                 val message = when (info) {
                     com.inik.camcon.presentation.viewmodel.state.InfoMessage.AutoFocusCompleted ->
                         autoFocusCompletedMsg
+
+                    com.inik.camcon.presentation.viewmodel.state.InfoMessage.UsbPermissionAlwaysHint ->
+                        usbPermissionAlwaysHintMsg
+                }
+                // 표시 완료 플래그는 스낵바가 실제로 화면에 뜬 뒤에 저장한다. 방출 시점에
+                // 저장하면 화면이 없어 아무도 못 본 안내가 "본 것"으로 남아 영영 사라진다.
+                if (info == com.inik.camcon.presentation.viewmodel.state.InfoMessage.UsbPermissionAlwaysHint) {
+                    appSettingsViewModel.setHasSeenUsbPermissionHint(true)
                 }
                 snackbarHostState.showSnackbar(message)
             }

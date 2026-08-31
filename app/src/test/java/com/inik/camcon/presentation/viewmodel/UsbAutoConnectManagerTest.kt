@@ -14,6 +14,7 @@ import com.inik.camcon.domain.usecase.camera.DisconnectCameraUseCase
 import com.inik.camcon.domain.usecase.usb.RefreshUsbDevicesUseCase
 import com.inik.camcon.domain.usecase.usb.RequestUsbPermissionUseCase
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
+import com.inik.camcon.presentation.viewmodel.state.InfoMessage
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -26,9 +27,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -80,6 +85,12 @@ class UsbAutoConnectManagerTest {
         coEvery { usbDeviceRepository.checkPowerStateAndTest() } returns Unit
         // 자동 시작 비활성 → tryAutoStartEventListener 가 조기 리턴(성공 경로가 이벤트 리스너까지 가지 않도록).
         every { appSettingsRepository.isAutoStartEventListenerEnabled } returns flowOf(false)
+
+        // 기본값은 "부착 문맥 아님" — 케이블을 방금 꽂은 상황을 검증하는 테스트만 이 값을 바꾼다.
+        // relaxed mock 의 기본 0L 은 "방금 부착"으로 읽혀 다른 테스트의 대기 시간을 바꿔 놓는다.
+        every { usbDeviceRepository.msSinceCameraAttached() } returns Long.MAX_VALUE
+        // 안내는 이미 본 것이 기본 — 안내 자체를 검증하는 테스트만 false 로 바꾼다.
+        every { appSettingsRepository.hasSeenUsbPermissionHint } returns flowOf(true)
     }
 
     @After
@@ -255,6 +266,159 @@ class UsbAutoConnectManagerTest {
         assertFalse(manager.isAutoConnecting.value)
 
         appScope.cancel()
+    }
+
+    // ── 권한 유예 (첫 연결 이중 프롬프트 방지) ──
+    //
+    // 케이블을 꽂으면 시스템이 앱 선택지("한 번만 / 항상")를 띄운다. 사람이 거기에 응답하는 데
+    // 몇 초가 걸리는데, 예전에는 2초만 기다리고 앱 자체 권한 다이얼로그를 그 위에 겹쳐 띄웠다.
+    // 첫 연결에서 프롬프트가 두 개 뜨던 원인이다.
+
+    /** 관찰을 시작하고 "장치는 있는데 권한은 아직 없는" 상태로 만든다. */
+    private fun TestScope.startObservingWithoutPermission(
+        ui: CameraUiStateManager
+    ): Pair<UsbAutoConnectManager, CoroutineScope> {
+        every { refreshUsbDevicesUseCase() } returns listOf(sampleDevice())
+        coEvery { connectCameraUseCase("auto") } returns Result.success(true)
+
+        val scope = CoroutineScope(StandardTestDispatcher(testScheduler))
+        val manager = UsbAutoConnectManager(
+            context = context,
+            cameraRepository = cameraRepository,
+            connectCameraUseCase = connectCameraUseCase,
+            disconnectCameraUseCase = disconnectCameraUseCase,
+            refreshUsbDevicesUseCase = refreshUsbDevicesUseCase,
+            requestUsbPermissionUseCase = requestUsbPermissionUseCase,
+            usbDeviceRepository = usbDeviceRepository,
+            appSettingsRepository = appSettingsRepository,
+            appScope = scope
+        )
+        manager.observeUsbDevices(scope, ui)
+        deviceCountFlow.value = 1
+        return manager to scope
+    }
+
+    @Test
+    fun `케이블 부착 직후에는 2초가 지나도 앱 권한 다이얼로그를 띄우지 않는다`() = runTest {
+        every { usbDeviceRepository.msSinceCameraAttached() } returns 0L
+        val (_, scope) = startObservingWithoutPermission(CameraUiStateManager())
+
+        advanceTimeBy(3_000)
+        runCurrent()
+
+        // 이 시점에 앱 다이얼로그가 뜨면 시스템 선택지와 겹친다(수정 전 동작).
+        verify(exactly = 0) { requestUsbPermissionUseCase(any()) }
+
+        scope.cancel()
+    }
+
+    @Test
+    fun `부착 직후 시스템이 권한을 늦게 부여하면 앱 다이얼로그 없이 진행한다`() = runTest {
+        every { usbDeviceRepository.msSinceCameraAttached() } returns 0L
+        val (_, scope) = startObservingWithoutPermission(CameraUiStateManager())
+
+        // 사용자가 시스템 선택지에서 "항상"을 고르는 데 걸린 시간.
+        advanceTimeBy(5_000)
+        runCurrent()
+        permissionFlow.value = true
+        advanceUntilIdle()
+
+        verify(exactly = 0) { requestUsbPermissionUseCase(any()) }
+
+        scope.cancel()
+    }
+
+    @Test
+    fun `부착 직후에도 끝내 권한이 안 오면 유예 상한에서 앱 다이얼로그로 폴백한다`() = runTest {
+        every { usbDeviceRepository.msSinceCameraAttached() } returns 0L
+        val (_, scope) = startObservingWithoutPermission(CameraUiStateManager())
+
+        // 사용자가 "한 번만"을 골랐거나 선택지를 그냥 지나친 경우 — 폴백이 없으면 연결할 길이 없다.
+        advanceTimeBy(13_000)
+        advanceUntilIdle()
+
+        verify(exactly = 1) { requestUsbPermissionUseCase(any()) }
+
+        scope.cancel()
+    }
+
+    @Test
+    fun `부착 문맥이 아니면 종전대로 2초 뒤에 앱 다이얼로그를 띄운다`() = runTest {
+        // 설정 화면의 수동 재시도·콜드 스타트에서 이미 꽂혀 있던 장치. 시스템 선택지가 뜨지
+        // 않는 경로라 기다릴 이유가 없다(기다리면 버튼이 먹통으로 보인다).
+        every { usbDeviceRepository.msSinceCameraAttached() } returns 60_000L
+        val (_, scope) = startObservingWithoutPermission(CameraUiStateManager())
+
+        advanceTimeBy(2_500)
+        advanceUntilIdle()
+
+        verify(exactly = 1) { requestUsbPermissionUseCase(any()) }
+
+        scope.cancel()
+    }
+
+    // ── 첫 USB 연결 1회 안내 ──
+
+    @Test
+    fun `첫 USB 연결이면 항상 선택 안내를 1회 방출한다`() = runTest {
+        every { usbDeviceRepository.msSinceCameraAttached() } returns 0L
+        every { appSettingsRepository.hasSeenUsbPermissionHint } returns flowOf(false)
+
+        val ui = CameraUiStateManager()
+        val received = mutableListOf<InfoMessage>()
+        val collector = launch { ui.infoMessage.toList(received) }
+        runCurrent()
+
+        val (_, scope) = startObservingWithoutPermission(ui)
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        assertEquals(listOf(InfoMessage.UsbPermissionAlwaysHint), received)
+
+        collector.cancel()
+        scope.cancel()
+    }
+
+    @Test
+    fun `이미 안내를 본 사용자에게는 다시 알리지 않는다`() = runTest {
+        every { usbDeviceRepository.msSinceCameraAttached() } returns 0L
+        every { appSettingsRepository.hasSeenUsbPermissionHint } returns flowOf(true)
+
+        val ui = CameraUiStateManager()
+        val received = mutableListOf<InfoMessage>()
+        val collector = launch { ui.infoMessage.toList(received) }
+        runCurrent()
+
+        val (_, scope) = startObservingWithoutPermission(ui)
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        assertTrue("안내는 앱 생애 전체에서 1회뿐이다", received.isEmpty())
+
+        collector.cancel()
+        scope.cancel()
+    }
+
+    @Test
+    fun `부착 문맥이 아니면 안내를 띄우지 않는다`() = runTest {
+        // 안내는 시스템 선택지가 떠 있을 때만 뜻이 있다. 선택지가 없는 경로에서 띄우면
+        // 사용자가 화면에서 찾을 수 없는 것을 고르라는 말이 된다.
+        every { usbDeviceRepository.msSinceCameraAttached() } returns 60_000L
+        every { appSettingsRepository.hasSeenUsbPermissionHint } returns flowOf(false)
+
+        val ui = CameraUiStateManager()
+        val received = mutableListOf<InfoMessage>()
+        val collector = launch { ui.infoMessage.toList(received) }
+        runCurrent()
+
+        val (_, scope) = startObservingWithoutPermission(ui)
+        advanceTimeBy(1_000)
+        runCurrent()
+
+        assertTrue(received.isEmpty())
+
+        collector.cancel()
+        scope.cancel()
     }
 
     // ── 헬퍼 ──

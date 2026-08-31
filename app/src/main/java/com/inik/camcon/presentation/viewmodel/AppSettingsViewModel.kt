@@ -778,6 +778,15 @@ class AppSettingsViewModel @Inject constructor(
     }
 
     /**
+     * 첫 USB 연결 안내 표시 완료 플래그 저장
+     */
+    fun setHasSeenUsbPermissionHint(seen: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setHasSeenUsbPermissionHint(seen)
+        }
+    }
+
+    /**
      * 마지막 타임랩스 설정 prefill 저장
      */
     fun setLastTimelapseSettings(intervalSeconds: Int, totalCount: Int) {

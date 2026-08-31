@@ -1,6 +1,9 @@
 package com.inik.camcon.presentation.ui
 
 import android.content.Intent
+import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.ReportDrawnWhen
@@ -43,8 +46,10 @@ import com.google.firebase.auth.FirebaseAuth
 import com.inik.camcon.BuildConfig
 import com.inik.camcon.R
 import com.inik.camcon.domain.model.SubscriptionTier
+import com.inik.camcon.domain.manager.CameraConnectionGlobalManager
 import com.inik.camcon.domain.model.UiText
 import com.inik.camcon.domain.repository.AppSettingsRepository
+import com.inik.camcon.domain.repository.UsbDeviceRepository
 import com.inik.camcon.domain.usecase.GetSubscriptionUseCase
 import com.inik.camcon.domain.usecase.camera.GetLibGphoto2VersionUseCase
 import com.inik.camcon.domain.usecase.camera.IsNativeLibrariesLoadedUseCase
@@ -69,6 +74,7 @@ import com.inik.camcon.presentation.ui.components.v2.SecondaryButton
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.viewmodel.AppVersionUiState
 import com.inik.camcon.presentation.viewmodel.AppVersionViewModel
+import com.inik.camcon.presentation.viewmodel.UsbAutoConnectManager
 import com.inik.camcon.utils.LogMask
 import com.inik.camcon.utils.LogcatManager
 import com.inik.camcon.di.IoDispatcher
@@ -111,6 +117,15 @@ class SplashActivity : ComponentActivity() {
     @Inject
     lateinit var appSettingsRepository: AppSettingsRepository
 
+    @Inject
+    lateinit var globalManager: CameraConnectionGlobalManager
+
+    @Inject
+    lateinit var usbAutoConnectManager: UsbAutoConnectManager
+
+    @Inject
+    lateinit var usbDeviceRepository: UsbDeviceRepository
+
     private var libraryLoadingStatus by mutableStateOf<UiText>(
         UiText.Resource(R.string.splash_initializing)
     )
@@ -123,6 +138,15 @@ class SplashActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 부착 문맥은 가장 먼저 기록한다. 케이블로 앱이 기동될 때는 USB 브로드캐스트 리시버가
+        // 등록되기 전에 시스템 브로드캐스트가 지나가므로 이 인텐트가 유일한 증거이고, 장치
+        // 관찰자가 이 사실을 보기 전에 기록돼 있어야 권한 유예가 짧게 적용되지 않는다.
+        if (intent?.action == UsbManager.ACTION_USB_DEVICE_ATTACHED) {
+            usbDeviceRepository.noteCameraAttached()
+        }
+
+        if (consumeLateAttachIntent()) return
 
         LogcatManager.i("SplashActivity", "스플래시 화면 시작")
 
@@ -278,6 +302,39 @@ class SplashActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * 이미 카메라를 쓰고 있는 중에 시스템이 케이블 부착으로 스플래시를 또 띄운 경우, 화면을
+     * 그리지 않고 조용히 사라진다.
+     *
+     * 매니페스트의 USB_DEVICE_ATTACHED 필터 때문에 케이블이 꽂힐 때마다 시스템이 이 액티비티를
+     * 새로 띄운다. 앱을 이미 쓰고 있고 카메라도 붙어 있는 상태에서는 그 진입이 아무 일도 하지
+     * 않으면서 스플래시만 한 번 번쩍이게 만든다(실기 로그의 SplashActivity 재기동).
+     *
+     * [isTaskRoot] 가 거짓이라는 것은 이 태스크 아래에 이미 다른 화면이 깔려 있다는 뜻이다.
+     * 그때만 물러난다 — 앱이 꺼진 상태에서 케이블로 기동된 경우에는 아래에 아무것도 없으므로
+     * 정상적으로 스플래시를 띄워야 한다.
+     *
+     * @return 소비하고 물러났으면 true. 호출부는 그대로 onCreate 를 끝내야 한다.
+     */
+    private fun consumeLateAttachIntent(): Boolean {
+        if (intent?.action != UsbManager.ACTION_USB_DEVICE_ATTACHED) return false
+        if (isTaskRoot) return false
+
+        val connectionBusy = try {
+            globalManager.isAnyCameraConnected() || usbAutoConnectManager.isAutoConnecting.value
+        } catch (e: Exception) {
+            LogcatManager.w("SplashActivity", "연결 상태 확인 실패 - 정상 경로로 진행", e)
+            false
+        }
+        if (!connectionBusy) return false
+
+        LogcatManager.d("SplashActivity", "연결 중/연결됨 상태의 케이블 부착 진입 - 화면 전환 없이 소비")
+        finish()
+        // 이미 떠 있는 화면이 그대로 보이도록 전환 애니메이션을 없앤다(깜빡임 제거).
+        overridePendingTransition(0, 0)
+        return true
+    }
+
     private fun navigateToNextScreen() {
         // 버전 체크 완료 이펙트 재발화 + 다이얼로그 dismiss 직접 호출이 겹치면
         // LoginActivity(standard launchMode)가 2개 쌓이므로 1회만 실행
@@ -285,7 +342,7 @@ class SplashActivity : ComponentActivity() {
         hasNavigated = true
 
         if (firebaseAuth.currentUser != null) {
-            startActivity(Intent(this, MainActivity::class.java))
+            startActivity(forwardAttachIntentTo(Intent(this, MainActivity::class.java)))
         } else {
             // USB 연결로 새 Splash가 기존 LoginActivity 위에 뜬 경우 기존 인스턴스 재사용
             startActivity(
@@ -295,6 +352,31 @@ class SplashActivity : ComponentActivity() {
             )
         }
         finish()
+    }
+
+    /**
+     * 케이블로 앱이 기동된 경우, 부착 인텐트를 다음 화면으로 넘겨 준다.
+     *
+     * 시스템은 부착 인텐트를 스플래시에만 배달하는데 여기서 버려지면 MainActivity 의 USB 진입
+     * 경로가 한 번도 불리지 않는다(적대 검수 M2). 그 결과 정식 경로 대신 장치 목록 폴링 같은
+     * 우회로에만 기대게 되어, 어떤 장치가 꽂혀서 앱이 떴는지조차 알 수 없었다.
+     */
+    private fun forwardAttachIntentTo(target: Intent): Intent {
+        val source = intent ?: return target
+        if (source.action != UsbManager.ACTION_USB_DEVICE_ATTACHED) return target
+
+        target.action = UsbManager.ACTION_USB_DEVICE_ATTACHED
+        val device: UsbDevice? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            source.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            source.getParcelableExtra(UsbManager.EXTRA_DEVICE)
+        }
+        if (device != null) {
+            target.putExtra(UsbManager.EXTRA_DEVICE, device)
+        }
+        LogcatManager.d("SplashActivity", "케이블 기동 - 부착 인텐트를 다음 화면으로 전달")
+        return target
     }
 }
 

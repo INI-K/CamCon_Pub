@@ -718,4 +718,10 @@ class CameraUiStateManager @Inject constructor() : CameraStateObserver {
 sealed interface InfoMessage {
     /** 자동초점 성공 */
     data object AutoFocusCompleted : InfoMessage
+
+    /**
+     * 첫 USB 연결 시 1회 안내 — 시스템 선택지에서 "항상"을 고르면 다음부터 자동 연결된다.
+     * 시스템 선택지의 문구는 앱이 바꿀 수 없으므로 앱 안에서 덧붙이는 안내다.
+     */
+    data object UsbPermissionAlwaysHint : InfoMessage
 }

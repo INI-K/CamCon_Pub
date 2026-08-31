@@ -92,8 +92,18 @@ class MainActivityViewModel @Inject constructor(
                     return
                 }
 
-                LogcatManager.d(TAG, "카메라 디바이스 확인됨, 권한 요청")
-                usbDeviceRepository.requestPermission(device.deviceId.toString())
+                // 여기서 권한을 바로 요청하지 않는다. 케이블을 막 꽂은 순간에는 시스템 앱
+                // 선택지("한 번만 / 항상")가 화면에 떠 있어서, 그 위에 앱 다이얼로그를 겹쳐
+                // 띄우면 사용자는 첫 연결에서 프롬프트를 두 개 받는다.
+                //
+                // 권한 프롬프트의 주인은 UsbAutoConnectManager 한 곳이다. 그쪽이 시스템 부여를
+                // 충분히 기다린 뒤, 끝내 오지 않을 때만 앱 다이얼로그를 띄운다. 이미 권한이
+                // 있는 경우의 상태 반영은 UsbDeviceDetector 의 부착 브로드캐스트가 처리한다.
+                // 케이블로 앱이 처음 기동된 경우에는 USB 브로드캐스트 리시버가 등록되기 전에
+                // 시스템 브로드캐스트가 지나가 버린다. 이 인텐트가 "방금 꽂혔다"는 유일한
+                // 증거이므로 여기서 부착 문맥을 기록해 준다.
+                usbDeviceRepository.noteCameraAttached()
+                LogcatManager.d(TAG, "카메라 디바이스 확인됨 - 권한 판단은 자동 연결 매니저에 위임")
             }
 
             UsbManager.ACTION_USB_DEVICE_DETACHED -> {
