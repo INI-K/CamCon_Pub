@@ -135,6 +135,15 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * 셀렉정보(JSON) 내보내기 노출 스위치.
+ *
+ * 데스크톱 컬링용 수신처(서버·데스크톱 앱)가 아직 없어 사용자에게는 숨긴다(2026-08-31 결정).
+ * false 면 내보내기 버튼이 선택 다이얼로그 없이 곧장 사진 내보내기를 실행한다.
+ * 생성·공유 코드는 그대로 두었으므로 수신처가 준비되면 이 값만 되돌리면 된다.
+ */
+private const val SHOW_SELECT_INFO_EXPORT = false
+
 @Composable
 fun MyPhotosScreen(
     viewModel: ServerPhotosViewModel = hiltViewModel()
@@ -270,7 +279,7 @@ fun MyPhotosScreen(
                     // 대상이 0장(전부 기기 저장소)이면 고를 것이 없다 — 그대로 실행해
                     // "이미 기기 저장소" 안내만 띄운다(기존 동작 유지).
                     val plan = viewModel.previewExportTargets()
-                    if (plan.targets.isEmpty()) {
+                    if (plan.targets.isEmpty() || !SHOW_SELECT_INFO_EXPORT) {
                         viewModel.exportSelectedPhotos()
                     } else {
                         exportChoiceTargets = plan
