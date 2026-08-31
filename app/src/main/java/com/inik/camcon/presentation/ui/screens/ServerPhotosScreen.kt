@@ -118,6 +118,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.PhoneAndroid
 import com.inik.camcon.presentation.viewmodel.GalleryExportProgress
+import com.inik.camcon.presentation.viewmodel.GalleryExportTargets
 import com.inik.camcon.presentation.viewmodel.GalleryGroup
 import com.inik.camcon.presentation.viewmodel.GalleryGroupKey
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
@@ -135,6 +136,9 @@ fun MyPhotosScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    // null 이 아니면 내보내기 확인 다이얼로그가 떠 있다. 미리 계산한 대상 집계를 함께 들고 있어
+    // 다이얼로그 본문이 다시 계산하지 않는다.
+    var exportConfirmTargets by remember { mutableStateOf<GalleryExportTargets?>(null) }
 
     // 화면에 진입할 때마다 새로고침 - 탭 전환 시 확실히 실행됨
     DisposableEffect(Unit) {
@@ -225,7 +229,16 @@ fun MyPhotosScreen(
                 selectedCount = uiState.selectedPhotos.size,
                 onSelectAll = { viewModel.selectAllPhotos() },
                 onDeselectAll = { viewModel.deselectAllPhotos() },
-                onExport = { viewModel.exportSelectedPhotos() },
+                onExport = {
+                    // 대상이 0장(전부 기기 저장소)이면 확인을 물을 것이 없다 —
+                    // 그대로 실행해 "이미 기기 저장소" 안내만 띄운다.
+                    val plan = viewModel.previewExportTargets()
+                    if (plan.targets.isEmpty()) {
+                        viewModel.exportSelectedPhotos()
+                    } else {
+                        exportConfirmTargets = plan
+                    }
+                },
                 onDelete = { showDeleteConfirmDialog = true },
                 onCancel = { viewModel.exitMultiSelectMode() },
                 exportProgress = uiState.exportProgress,
@@ -348,6 +361,48 @@ fun MyPhotosScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    // 내보내기 확인 다이얼로그. 대상이 0장이면 열지 않는다(위 onExport 에서 걸러진다).
+    exportConfirmTargets?.let { plan ->
+        AppDialog(
+            onDismissRequest = { exportConfirmTargets = null },
+            title = { Text(stringResource(R.string.gallery_export_confirm_title)) },
+            text = {
+                Column {
+                    Text(
+                        stringResource(
+                            R.string.gallery_export_confirm_message,
+                            plan.targets.size
+                        )
+                    )
+                    if (plan.alreadyInDeviceStorage > 0) {
+                        Text(
+                            text = stringResource(
+                                R.string.gallery_export_confirm_skipped,
+                                plan.alreadyInDeviceStorage
+                            ),
+                            style = BodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                PrimaryButton(
+                    text = stringResource(R.string.gallery_export_action),
+                    onClick = {
+                        viewModel.exportSelectedPhotos()
+                        exportConfirmTargets = null
+                    }
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = { exportConfirmTargets = null }) {
                     Text(stringResource(R.string.cancel))
                 }
             }

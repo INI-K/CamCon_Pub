@@ -537,6 +537,9 @@
     <string name="gallery_export_result_exported">Exported %1$d photos to the gallery</string>
     <string name="gallery_export_result_skipped">%1$d already in device storage</string>
     <string name="gallery_export_result_failed">%1$d could not be exported</string>
+    <string name="gallery_export_confirm_title">Export to gallery</string>
+    <string name="gallery_export_confirm_message">%1$d photos will be exported to the device gallery.</string>
+    <string name="gallery_export_confirm_skipped">%1$d already in device storage and will be skipped.</string>
     <string name="settings_save_to_device_gallery_title">Save to device gallery</string>
     <string name="settings_save_to_device_gallery_desc">When off, photos stay inside CamCon only. They will be deleted if you uninstall the app. Turn on to also save them to your phone gallery.</string>
     <string name="export_to_gallery_success">Exported to gallery</string>

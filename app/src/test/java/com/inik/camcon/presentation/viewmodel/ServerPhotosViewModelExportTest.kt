@@ -155,6 +155,44 @@ class ServerPhotosViewModelExportTest {
     }
 
     @Test
+    fun `확인 다이얼로그용 미리보기가 실제 내보낼 장수와 같다`() = runTest {
+        coEvery { photoLibraryLocation.exportToDeviceGallery(any()) } returns true
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+        openAndSelectAll(viewModel)
+
+        // 다이얼로그가 보여줄 숫자.
+        val preview = viewModel.previewExportTargets()
+        assertEquals(2, preview.targets.size)
+        assertEquals(1, preview.alreadyInDeviceStorage)
+
+        // 실제 실행 결과가 그 숫자와 어긋나면 사용자에게 거짓을 보여준 것이다.
+        viewModel.exportSelectedPhotos()
+        advanceUntilIdle()
+
+        val summary = viewModel.uiState.value.exportSummary
+        assertEquals(preview.targets.size, summary?.exported)
+        assertEquals(preview.alreadyInDeviceStorage, summary?.alreadyInDeviceStorage)
+    }
+
+    @Test
+    fun `대상이 없으면 미리보기가 비어 화면이 다이얼로그를 열지 않는다`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.openGroup(GalleryGroupKey.Date(date))
+        advanceUntilIdle()
+        val deviceStoragePhoto =
+            viewModel.uiState.value.photos.first { it.filePath.endsWith("C.JPG") }
+        viewModel.startMultiSelectMode(deviceStoragePhoto.id)
+
+        val preview = viewModel.previewExportTargets()
+        assertEquals(emptyList<Any>(), preview.targets)
+        assertEquals(1, preview.alreadyInDeviceStorage)
+    }
+
+    @Test
     fun `안내를 닫으면 집계가 사라진다`() = runTest {
         coEvery { photoLibraryLocation.exportToDeviceGallery(any()) } returns true
 

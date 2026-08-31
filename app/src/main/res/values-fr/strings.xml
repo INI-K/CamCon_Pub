@@ -219,6 +219,9 @@
     <string name="gallery_export_result_exported">%1$d photos exportées vers la galerie</string>
     <string name="gallery_export_result_skipped">%1$d déjà dans le stockage de l\'appareil</string>
     <string name="gallery_export_result_failed">%1$d n\'ont pas pu être exportées</string>
+    <string name="gallery_export_confirm_title">Exporter vers la galerie</string>
+    <string name="gallery_export_confirm_message">%1$d photos seront exportées vers la galerie de l\'appareil.</string>
+    <string name="gallery_export_confirm_skipped">%1$d sont déjà dans le stockage de l\'appareil et seront ignorées.</string>
     <string name="settings_save_to_device_gallery_title">Enregistrer dans la galerie de l\'appareil</string>
     <string name="settings_save_to_device_gallery_desc">Lorsque l\'option est désactivée, les photos restent visibles uniquement dans CamCon et sont supprimées si vous désinstallez l\'application. Activez-la pour les enregistrer aussi dans la galerie du téléphone.</string>
     <string name="export_to_gallery_success">Exporté vers la galerie</string>

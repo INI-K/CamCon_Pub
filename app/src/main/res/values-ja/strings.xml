@@ -219,6 +219,9 @@
     <string name="gallery_export_result_exported">%1$d 枚をギャラリーに書き出しました</string>
     <string name="gallery_export_result_skipped">%1$d 枚はすでに端末のストレージにあります</string>
     <string name="gallery_export_result_failed">%1$d 枚は書き出せませんでした</string>
+    <string name="gallery_export_confirm_title">ギャラリーに書き出し</string>
+    <string name="gallery_export_confirm_message">%1$d 枚を端末のギャラリーに書き出します。</string>
+    <string name="gallery_export_confirm_skipped">%1$d 枚はすでに端末のストレージにあるためスキップします。</string>
     <string name="settings_save_to_device_gallery_title">端末のギャラリーに保存</string>
     <string name="settings_save_to_device_gallery_desc">オフにすると写真はアプリ内にのみ表示され、アプリを削除すると写真も削除されます。オンにすると端末のギャラリーにも保存されます。</string>
     <string name="export_to_gallery_success">ギャラリーに書き出しました</string>

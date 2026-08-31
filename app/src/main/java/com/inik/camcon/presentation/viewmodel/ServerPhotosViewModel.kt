@@ -620,6 +620,21 @@ class ServerPhotosViewModel @Inject constructor(
     }
 
     /**
+     * 확인 다이얼로그에 보여줄 대상 집계. 내보내기를 실행하지는 않는다.
+     *
+     * [exportSelectedPhotos] 와 **같은 순수 함수**로 계산하므로 미리 보여준 숫자와 실제로
+     * 내보내는 장수가 어긋나지 않는다. 파일시스템 왕복도 없다(경로 문자열 판정뿐).
+     */
+    fun previewExportTargets(): GalleryExportTargets {
+        val state = _uiState.value
+        return selectGalleryExportTargets(
+            photos = state.photos,
+            selectedIds = state.selectedPhotos,
+            isAppPrivate = photoLibraryLocation::isInAppPrivateStorage
+        )
+    }
+
+    /**
      * 선택된 사진들을 기기 갤러리(MediaStore)로 내보낸다. 원본은 그대로 둔다.
      *
      * 규칙은 뷰어의 단건 내보내기와 같다 — 같은 폴더 체계로 복사하고, 설정 토글과 무관하게

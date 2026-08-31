@@ -243,15 +243,7 @@ private fun PhotoInfoFileRow(
                 // 용량과 해상도를 한 문자열로 붙이면 사진을 넘길 때마다 두 수치의 x 위치가 흔들린다.
                 // 각각 독립 모노(tnum) 슬롯으로 분리해 자릿수가 바뀌어도 자리가 고정되게 한다.
                 val dimensions = if (!isLoading && !exifInfo.isNullOrEmpty() && exifInfo != "{}") {
-                    try {
-                        val exifEntries = parseExifInfo(exifInfo)
-                        val width = exifEntries["width"]
-                        val height = exifEntries["height"]
-                        if (width != null && height != null) "$width × $height" else null
-                    } catch (e: Exception) {
-                        Log.d("PhotoInfoFileRow", "Failed to parse EXIF dimensions", e)
-                        null
-                    }
+                    remember(exifInfo) { formatPixelSize(exifInfo) }
                 } else {
                     null
                 }
@@ -490,11 +482,118 @@ private fun readExifFromFile(
             androidx.exifinterface.media.ExifInterface.TAG_DATETIME_ORIGINAL
         ) ?: exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_DATETIME) ?: ""
 
+        // 표시용 픽셀 크기. EXIF 를 우선하고, 없으면 헤더만 읽어 채운다.
+        readPixelSize(context, exif, filePath, uri)?.let { (width, height) ->
+            exifMap["pixel_width"] = width.toString()
+            exifMap["pixel_height"] = height.toString()
+        }
+
         com.google.gson.Gson().toJson(exifMap)
     } catch (e: Exception) {
         Log.e("readExifFromFile", "Failed to read EXIF from file: ${LogMask.path(filePath)}", e)
         null
     }
+}
+
+/**
+ * 사진의 **표시 방향 기준** 픽셀 크기를 구한다.
+ *
+ * 1순위는 EXIF `ImageWidth`/`ImageLength` 다. 값이 없는 파일(재인코딩된 JPEG 등)에서는
+ * [android.graphics.BitmapFactory.Options.inJustDecodeBounds] 로 **헤더만** 읽는다. 픽셀을
+ * 실제로 디코딩하지 않으므로 수동 디코딩 금지 규약(18da262)에 걸리지 않는다.
+ *
+ * EXIF orientation 이 90·270(전치 포함)이면 가로세로를 바꿔서 돌려준다. 그렇게 해야 화면에
+ * 서 있는 세로 사진이 "8256 × 5504"로 누워 보이지 않는다(C7 전례와 같은 축 교환).
+ *
+ * @return 표시 기준 (가로, 세로). 어느 경로로도 못 구하면 null — 호출자가 그 줄을 생략한다.
+ */
+private fun readPixelSize(
+    context: android.content.Context,
+    exif: androidx.exifinterface.media.ExifInterface,
+    filePath: String,
+    uri: String?
+): Pair<Int, Int>? {
+    var width = exif.getAttributeInt(
+        androidx.exifinterface.media.ExifInterface.TAG_IMAGE_WIDTH, 0
+    )
+    var height = exif.getAttributeInt(
+        androidx.exifinterface.media.ExifInterface.TAG_IMAGE_LENGTH, 0
+    )
+
+    if (width <= 0 || height <= 0) {
+        val bounds = decodeBoundsOnly(context, filePath, uri) ?: return null
+        width = bounds.first
+        height = bounds.second
+    }
+    if (width <= 0 || height <= 0) return null
+
+    val rotated = when (
+        exif.getAttributeInt(
+            androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+            androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL
+        )
+    ) {
+        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90,
+        androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270,
+        androidx.exifinterface.media.ExifInterface.ORIENTATION_TRANSPOSE,
+        androidx.exifinterface.media.ExifInterface.ORIENTATION_TRANSVERSE -> true
+
+        else -> false
+    }
+
+    return if (rotated) height to width else width to height
+}
+
+/** 헤더만 읽어 원본 픽셀 크기를 구한다. 디코딩된 비트맵은 만들지 않는다. */
+private fun decodeBoundsOnly(
+    context: android.content.Context,
+    filePath: String,
+    uri: String?
+): Pair<Int, Int>? {
+    val options = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    return try {
+        if (uri != null) {
+            context.contentResolver.openInputStream(android.net.Uri.parse(uri))?.use {
+                android.graphics.BitmapFactory.decodeStream(it, null, options)
+            }
+        } else {
+            android.graphics.BitmapFactory.decodeFile(filePath, options)
+        }
+        // RAW 처럼 BitmapFactory 가 못 읽는 포맷은 -1 이 남는다.
+        if (options.outWidth > 0 && options.outHeight > 0) {
+            options.outWidth to options.outHeight
+        } else {
+            null
+        }
+    } catch (e: Exception) {
+        Log.d("readPixelSize", "헤더 크기 조회 실패: ${LogMask.path(filePath)}", e)
+        null
+    }
+}
+
+/**
+ * 상세정보에 넣을 픽셀 크기 문구를 만든다. 예: `8256 × 5504 · 45.4MP`.
+ *
+ * ⚠️ Gson 은 숫자 값을 `Double` 로 되돌리는데 [parseExifInfo] 의 반환 타입은 `Map<String, String>`
+ * 이라, 카메라 경로가 넣은 숫자 항목에 문자열 연산을 하면 ClassCastException 이 난다. 그래서
+ * 여기서는 값을 [Any] 로 받아 [toString] 을 거쳐 다룬다.
+ */
+private fun formatPixelSize(exifJson: String): String? {
+    val entries = runCatching {
+        @Suppress("UNCHECKED_CAST")
+        com.google.gson.Gson().fromJson(exifJson, Map::class.java) as? Map<String, Any?>
+    }.getOrNull() ?: return null
+
+    fun dimension(vararg keys: String): Int? = keys.asSequence()
+        .mapNotNull { entries[it]?.toString()?.toDoubleOrNull()?.toInt() }
+        .firstOrNull { it > 0 }
+
+    // pixel_* 는 이 파일이 방향까지 반영해 넣은 값이고, width/height 는 카메라 경로가 넣는 원본 값이다.
+    val width = dimension("pixel_width", "width") ?: return null
+    val height = dimension("pixel_height", "height") ?: return null
+
+    val megaPixels = width.toLong() * height.toLong() / 1_000_000.0
+    return String.format(Locale.getDefault(), "%d × %d · %.1fMP", width, height, megaPixels)
 }
 
 private fun formatPhotoDate(
