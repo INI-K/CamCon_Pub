@@ -111,6 +111,11 @@ class ServerPhotosViewModelOwnMediaTest {
             io.mockk.mockk(relaxed = true) {
                 io.mockk.every { appPrivateRoot() } returns java.io.File("/tmp/camcon_no_such_dir")
             },
+            // 좋아요는 이 테스트의 관심 밖 — 빈 집합만 흘려보낸다.
+            io.mockk.mockk(relaxed = true) {
+                io.mockk.every { favorites } returns
+                    kotlinx.coroutines.flow.MutableStateFlow(emptySet())
+            },
             testDispatcher
         )
 

@@ -215,6 +215,10 @@
     <string name="gallery_group_device_storage">기기 저장소</string>
     <string name="gallery_group_photo_count">사진 %1$d장</string>
     <string name="gallery_folder_other">기타</string>
+    <string name="cd_favorite_add">좋아요 추가</string>
+    <string name="cd_favorite_remove">좋아요 해제</string>
+    <string name="gallery_favorites_only">좋아요만</string>
+    <string name="gallery_favorites_empty">사진의 하트를 눌러 좋아요를 표시해 보세요</string>
     <string name="gallery_export_action">내보내기</string>
     <string name="gallery_export_progress">내보내는 중 %1$d/%2$d</string>
     <string name="gallery_export_result_exported">%1$d장을 갤러리로 내보냈습니다</string>
@@ -223,6 +227,10 @@
     <string name="gallery_export_confirm_title">갤러리로 내보내기</string>
     <string name="gallery_export_confirm_message">%1$d장을 기기 갤러리로 내보냅니다.</string>
     <string name="gallery_export_confirm_skipped">%1$d장은 이미 기기 저장소에 있어 건너뜁니다.</string>
+    <string name="gallery_export_photos_title">선택사진 내보내기</string>
+    <string name="gallery_export_select_info_title">셀렉정보 내보내기</string>
+    <string name="gallery_export_select_info_subtitle">데스크톱 컬링용 JSON 파일로 공유합니다</string>
+    <string name="gallery_export_select_info_done">%1$d장의 셀렉정보를 만들었습니다</string>
     <string name="settings_save_to_device_gallery_title">기기 갤러리에 저장</string>
     <string name="settings_save_to_device_gallery_desc">끄면 사진이 앱 안에서만 보이며, 앱을 삭제하면 사진도 함께 삭제됩니다. 켜면 폰 갤러리에도 저장됩니다.</string>
     <string name="export_to_gallery_success">갤러리로 내보냈습니다</string>

@@ -16,4 +16,8 @@
     <external-path
         name="external_storage"
         path="." />
+    <!-- 앱 전용 외부 저장소(셀렉정보 JSON 공유용) -->
+    <external-files-path
+        name="external_files"
+        path="." />
 </paths>

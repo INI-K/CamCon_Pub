@@ -186,6 +186,7 @@ class CameraViewModel @Inject constructor(
         loadLiveViewQualityAtStartup()
         observeRawDownloadSetting()
         observeLiveViewQuality()
+        observeCameraControlsSetting()
     }
 
     /**
@@ -302,6 +303,37 @@ class CameraViewModel @Inject constructor(
                 } catch (e: Exception) {
                     Log.e(TAG, "RAW 파일 설정 업데이트 중 예외 발생", e)
                 }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    /**
+     * 카메라 컨트롤 표시 설정 관찰 — **끄면 라이브뷰도 멈춘다.**
+     *
+     * 두 토글의 AND 는 화면에 그릴지의 조건일 뿐이라(`CameraControlScreen` 의 "라이브뷰 UI 표시
+     * 조건" 로그), 컨트롤 표시를 꺼도 네이티브 펌프는 계속 돌았다. 사용자에게는 보이지 않는데
+     * 프레임 수신·디코딩·배터리·Wi-Fi 대역폭을 계속 먹는 상태다. 보이지 않는 스트리밍은 없어야 한다.
+     *
+     * 라이브뷰 토글도 함께 끈다. 다시 켤 때 **자동 재시작하지 않는다** — 사용자가 토글을 직접
+     * 누르는 편이 명시적이고, 화면을 켜자마자 몰래 스트리밍이 다시 시작되는 놀라움이 없다.
+     *
+     * - distinctUntilChanged + drop(1): 앱 시작 시 DataStore 초기 emit 으로 라이브뷰를 죽이지 않는다
+     *   (observeLiveViewQuality 와 같은 근거).
+     */
+    private fun observeCameraControlsSetting() {
+        appSettingsRepository.isCameraControlsEnabled
+            .distinctUntilChanged()
+            .drop(1)
+            .onEach { enabled ->
+                if (enabled) return@onEach
+                // 판정은 펌프의 실제 활성 플래그로 한다(observeLiveViewQuality 와 같은 출처).
+                // uiState 는 표시용이라 전이 중 잠깐 어긋날 수 있다.
+                if (!operationsManager.isLiveViewActive()) return@onEach
+
+                Log.i(TAG, "🛑 카메라 컨트롤 표시 꺼짐 — 숨은 채 도는 라이브뷰를 정지한다")
+                stopLiveView()
+                runCatching { appSettingsRepository.setLiveViewEnabled(false) }
+                    .onFailure { Log.w(TAG, "라이브뷰 토글 동기화 실패", it) }
             }
             .launchIn(viewModelScope)
     }

@@ -215,6 +215,10 @@
     <string name="gallery_group_device_storage">设备存储</string>
     <string name="gallery_group_photo_count">%1$d 张照片</string>
     <string name="gallery_folder_other">其他</string>
+    <string name="cd_favorite_add">添加到收藏</string>
+    <string name="cd_favorite_remove">取消收藏</string>
+    <string name="gallery_favorites_only">仅收藏</string>
+    <string name="gallery_favorites_empty">点按照片上的爱心即可加入收藏</string>
     <string name="gallery_export_action">导出</string>
     <string name="gallery_export_progress">正在导出 %1$d/%2$d</string>
     <string name="gallery_export_result_exported">已将 %1$d 张照片导出到相册</string>
@@ -223,6 +227,10 @@
     <string name="gallery_export_confirm_title">导出到相册</string>
     <string name="gallery_export_confirm_message">将把 %1$d 张照片导出到设备相册。</string>
     <string name="gallery_export_confirm_skipped">%1$d 张已在设备存储中，将跳过。</string>
+    <string name="gallery_export_photos_title">导出所选照片</string>
+    <string name="gallery_export_select_info_title">导出精选信息</string>
+    <string name="gallery_export_select_info_subtitle">以 JSON 文件分享，供桌面端筛选使用</string>
+    <string name="gallery_export_select_info_done">已生成 %1$d 张照片的精选信息</string>
     <string name="settings_save_to_device_gallery_title">保存到设备相册</string>
     <string name="settings_save_to_device_gallery_desc">关闭时照片仅在应用内可见，卸载应用后照片也会被删除。开启后会同时保存到手机相册。</string>
     <string name="export_to_gallery_success">已导出到相册</string>

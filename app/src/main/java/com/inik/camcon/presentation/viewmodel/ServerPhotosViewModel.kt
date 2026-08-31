@@ -7,7 +7,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.CapturedPhoto
+import com.inik.camcon.data.datasource.local.PhotoFavoritesDataSource
 import com.inik.camcon.data.repository.managers.PhotoLibraryLocation
+import com.inik.camcon.data.util.ExifCameraModel
+import com.inik.camcon.data.util.ExifCaptureTime
+import com.inik.camcon.data.util.SelectInfoJson
+import com.inik.camcon.data.util.SelectInfoPhoto
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.utils.LogMask
@@ -21,6 +26,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 
@@ -76,6 +84,26 @@ data class GalleryExportSummary(
     val failed: Int
 )
 
+/**
+ * 화면에 실제로 그릴 사진들. "좋아요만 보기"가 켜져 있으면 좋아요한 것만 남는다.
+ *
+ * **다중 선택·전체 선택·일괄 내보내기가 모두 이 목록을 기준으로 돈다.** 필터를 켠 채 전체
+ * 선택을 눌렀는데 화면 밖의 사진까지 잡히면 필터가 무의미해지고, 사용자가 고르지 않은 사진이
+ * 갤러리로 나간다 — 컬링 흐름에서 가장 위험한 어긋남이라 순수 함수로 떼어 테스트한다.
+ */
+fun visibleGalleryPhotos(
+    photos: List<CapturedPhoto>,
+    favorites: Set<String>,
+    showFavoritesOnly: Boolean
+): List<CapturedPhoto> =
+    if (showFavoritesOnly) photos.filter { it.filePath in favorites } else photos
+
+/** 만들어진 셀렉정보 파일과 담긴 장수. 화면이 공유 시트를 띄우는 데 쓴다. */
+data class SelectInfoShare(
+    val file: File,
+    val photoCount: Int
+)
+
 /** [selectGalleryExportTargets] 의 결과. */
 data class GalleryExportTargets(
     val targets: List<CapturedPhoto>,
@@ -123,10 +151,16 @@ data class ServerPhotosUiState(
     val error: String? = null,
     val selectedPhotos: Set<String> = emptySet(), // 선택된 사진들의 ID 집합
     val isMultiSelectMode: Boolean = false, // 멀티 선택 모드 여부
+    /** 좋아요한 사진 경로들. 컬링 작업대의 상태다. */
+    val favorites: Set<String> = emptySet(),
+    /** "좋아요만 보기" 필터. 3단에서만 의미가 있다. */
+    val showFavoritesOnly: Boolean = false,
     /** 일괄 내보내기가 도는 동안에만 non-null. */
     val exportProgress: GalleryExportProgress? = null,
     /** 일괄 내보내기가 끝난 직후의 집계. 안내를 닫으면 null 로 돌아간다. */
     val exportSummary: GalleryExportSummary? = null,
+    /** 셀렉정보 파일이 만들어지면 채워진다. 화면이 공유 시트를 띄운 뒤 비운다. */
+    val selectInfoShare: SelectInfoShare? = null,
     val pendingDeleteRequest: android.app.RecoverableSecurityException? = null, // 권한 요청이 필요한 삭제 작업
     val pendingDeletePhotoIds: List<String> = emptyList() // 삭제 대기 중인 사진 ID들
 )
@@ -137,6 +171,7 @@ class ServerPhotosViewModel @Inject constructor(
     private val cameraRepository: CameraRepository,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
     private val photoLibraryLocation: com.inik.camcon.data.repository.managers.PhotoLibraryLocation,
+    private val photoFavorites: PhotoFavoritesDataSource,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
@@ -154,6 +189,46 @@ class ServerPhotosViewModel @Inject constructor(
 
     init {
         loadLocalPhotos()
+        observeFavorites()
+    }
+
+    /** 좋아요 집합을 화면 상태에 잇는다. 저장소가 정본이라 토글 결과도 이 경로로 돌아온다. */
+    private fun observeFavorites() {
+        viewModelScope.launch {
+            photoFavorites.favorites.collect { paths ->
+                _uiState.value = _uiState.value.copy(favorites = paths)
+            }
+        }
+    }
+
+    /** 사진 한 장의 좋아요를 뒤집는다. 뷰어와 그리드 타일이 같이 부른다. */
+    fun toggleFavorite(photoPath: String) {
+        viewModelScope.launch {
+            val liked = photoFavorites.toggle(photoPath)
+            Log.d("ServerPhotosViewModel", "좋아요 ${if (liked) "추가" else "해제"}: ${LogMask.path(photoPath)}")
+        }
+    }
+
+    /**
+     * "좋아요만 보기"를 켜고 끈다.
+     *
+     * 목록을 다시 읽지 않는다 — 이미 읽어 둔 사진에서 파생만 한다. 필터를 끌 때 다중 선택은
+     * 풀어 준다: 필터 안에서 고른 선택이 필터 밖 목록으로 그대로 넘어가면, 사용자가 보지 않은
+     * 상태에서 "몇 장 선택됨"이 남아 일괄 동작의 대상이 흐려진다.
+     */
+    fun toggleFavoritesFilter() {
+        val next = !_uiState.value.showFavoritesOnly
+        _uiState.value = _uiState.value.copy(
+            showFavoritesOnly = next,
+            selectedPhotos = emptySet(),
+            isMultiSelectMode = false
+        )
+        Log.d("ServerPhotosViewModel", "좋아요 필터 ${if (next) "켬" else "끔"}")
+    }
+
+    /** 화면에 실제로 보이는 사진들(필터 반영). 선택·내보내기의 기준 목록이다. */
+    private fun visiblePhotos(): List<CapturedPhoto> = _uiState.value.let { state ->
+        visibleGalleryPhotos(state.photos, state.favorites, state.showFavoritesOnly)
     }
 
     /**
@@ -379,6 +454,8 @@ class ServerPhotosViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(
                             photos = _uiState.value.photos.filter { it.id != photoId }
                         )
+                        // 사라진 사진의 좋아요는 그 자리에서 지운다(스윕이 아니라 삭제 시점 정리).
+                        photoFavorites.remove(listOf(photo.filePath))
                         Log.d("ServerPhotosViewModel", "사진 파일 삭제 완료: ${LogMask.path(photo.filePath)}")
                     } else {
                         throw Exception("MediaStore를 통한 파일 삭제 실패: ${photo.filePath}")
@@ -731,7 +808,9 @@ class ServerPhotosViewModel @Inject constructor(
      * 모든 사진 선택
      */
     fun selectAllPhotos() {
-        val allPhotoIds = _uiState.value.photos.map { it.id }.toSet()
+        // ⚠️ 화면에 **보이는** 사진만 잡는다. 필터가 켜져 있는데 전체 목록을 잡으면 사용자가
+        // 고르지 않은 사진까지 내보내기·삭제 대상이 된다(컬링 흐름의 핵심 계약).
+        val allPhotoIds = visiblePhotos().map { it.id }.toSet()
         _uiState.value = _uiState.value.copy(selectedPhotos = allPhotoIds)
         Log.d("ServerPhotosViewModel", "모든 사진 선택: ${allPhotoIds.size}개")
     }
@@ -832,6 +911,68 @@ class ServerPhotosViewModel @Inject constructor(
                 refreshPhotos()
             }
         }
+    }
+
+    /**
+     * 선택한 사진들의 **셀렉정보**(컬링 결과)를 JSON 파일로 만들고 공유 시트를 띄운다.
+     *
+     * 사진 자체가 아니라 "무엇을 골랐는가"를 데스크톱으로 넘기는 갈래다. 서버 연동은 없다 —
+     * 파일을 만들고 사용자가 고른 앱(드라이브·메일 등)으로 건네는 데서 멈춘다.
+     *
+     * 사진 파일을 다시 읽는 곳은 EXIF 두 값(촬영 시각·기종)뿐이라 헤더만 훑는다.
+     */
+    fun exportSelectInfo() {
+        val state = _uiState.value
+        val selected = state.photos.filter { it.id in state.selectedPhotos }
+        if (selected.isEmpty()) return
+
+        viewModelScope.launch {
+            try {
+                val share = withContext(ioDispatcher) {
+                    val rows = selected.map { photo ->
+                        val file = File(photo.filePath)
+                        SelectInfoPhoto(
+                            fileName = file.name,
+                            // 원본 폴더는 저장 시점에 적어 둔 메타가 정본이다(없으면 폴백 라벨).
+                            srcFolder = file.parentFile?.let { photoLibraryLocation.folderLabelOf(it) },
+                            // EXIF 가 없으면 null 그대로 둔다 — 수신 시각으로 채우지 않는다.
+                            capturedAtMillis = ExifCaptureTime.parseMillis(file),
+                            favorite = photo.filePath in state.favorites,
+                            cameraModel = ExifCameraModel.parse(file)
+                        )
+                    }
+
+                    val json = SelectInfoJson.build(rows, System.currentTimeMillis())
+                    val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US)
+                        .format(Date(System.currentTimeMillis()))
+                    val dir = File(context.getExternalFilesDir(null), "select-info")
+                        .apply { mkdirs() }
+                    val target = File(dir, "camcon-select_$stamp.json")
+                    target.writeText(json)
+                    SelectInfoShare(target, rows.size)
+                }
+
+                Log.i(
+                    "ServerPhotosViewModel",
+                    "셀렉정보 파일 생성: ${share.photoCount}장 → ${LogMask.path(share.file.absolutePath)}"
+                )
+                _uiState.value = _uiState.value.copy(
+                    selectInfoShare = share,
+                    isMultiSelectMode = false,
+                    selectedPhotos = emptySet()
+                )
+            } catch (e: Exception) {
+                Log.e("ServerPhotosViewModel", "셀렉정보 만들기 실패", e)
+                _uiState.value = _uiState.value.copy(
+                    error = "셀렉정보를 만들지 못했습니다: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /** 공유 시트를 띄운 뒤 호출한다. 같은 파일로 시트가 두 번 뜨지 않게 한다. */
+    fun clearSelectInfoShare() {
+        _uiState.value = _uiState.value.copy(selectInfoShare = null)
     }
 
     /** 진행 중인 일괄 내보내기를 멈춘다. 이미 내보낸 사진은 되돌리지 않는다. */
@@ -1018,9 +1159,14 @@ class ServerPhotosViewModel @Inject constructor(
 
         // 삭제된 사진들만 UI에서 제거
         if (deletedIds.isNotEmpty()) {
+            val deletedPaths = _uiState.value.photos
+                .filter { deletedIds.contains(it.id) }
+                .map { it.filePath }
             _uiState.value = _uiState.value.copy(
                 photos = _uiState.value.photos.filter { !deletedIds.contains(it.id) }
             )
+            // 사라진 사진의 좋아요도 함께 지운다(경로 목록은 지우기 전에 뽑아 둔다).
+            photoFavorites.remove(deletedPaths)
         }
 
         // 멀티 선택 모드 종료

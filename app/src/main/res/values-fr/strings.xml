@@ -215,6 +215,10 @@
     <string name="gallery_group_device_storage">Stockage de l\'appareil</string>
     <string name="gallery_group_photo_count">%1$d photos</string>
     <string name="gallery_folder_other">Autres</string>
+    <string name="cd_favorite_add">Ajouter aux favoris</string>
+    <string name="cd_favorite_remove">Retirer des favoris</string>
+    <string name="gallery_favorites_only">Favoris</string>
+    <string name="gallery_favorites_empty">Touchez le cœur d\'une photo pour l\'ajouter ici</string>
     <string name="gallery_export_action">Exporter</string>
     <string name="gallery_export_progress">Exportation %1$d/%2$d</string>
     <string name="gallery_export_result_exported">%1$d photos exportées vers la galerie</string>
@@ -223,6 +227,10 @@
     <string name="gallery_export_confirm_title">Exporter vers la galerie</string>
     <string name="gallery_export_confirm_message">%1$d photos seront exportées vers la galerie de l\'appareil.</string>
     <string name="gallery_export_confirm_skipped">%1$d sont déjà dans le stockage de l\'appareil et seront ignorées.</string>
+    <string name="gallery_export_photos_title">Exporter les photos sélectionnées</string>
+    <string name="gallery_export_select_info_title">Exporter les données de sélection</string>
+    <string name="gallery_export_select_info_subtitle">Partagez un fichier JSON pour le tri sur ordinateur</string>
+    <string name="gallery_export_select_info_done">Données de sélection de %1$d photos prêtes</string>
     <string name="settings_save_to_device_gallery_title">Enregistrer dans la galerie de l\'appareil</string>
     <string name="settings_save_to_device_gallery_desc">Lorsque l\'option est désactivée, les photos restent visibles uniquement dans CamCon et sont supprimées si vous désinstallez l\'application. Activez-la pour les enregistrer aussi dans la galerie du téléphone.</string>
     <string name="export_to_gallery_success">Exporté vers la galerie</string>

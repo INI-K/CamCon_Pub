@@ -215,6 +215,10 @@
     <string name="gallery_group_device_storage">Memoria del dispositivo</string>
     <string name="gallery_group_photo_count">%1$d foto</string>
     <string name="gallery_folder_other">Altri</string>
+    <string name="cd_favorite_add">Aggiungi ai preferiti</string>
+    <string name="cd_favorite_remove">Rimuovi dai preferiti</string>
+    <string name="gallery_favorites_only">Preferiti</string>
+    <string name="gallery_favorites_empty">Tocca il cuore di una foto per aggiungerla qui</string>
     <string name="gallery_export_action">Esporta</string>
     <string name="gallery_export_progress">Esportazione %1$d/%2$d</string>
     <string name="gallery_export_result_exported">%1$d foto esportate nella galleria</string>
@@ -223,6 +227,10 @@
     <string name="gallery_export_confirm_title">Esporta nella galleria</string>
     <string name="gallery_export_confirm_message">%1$d foto verranno esportate nella galleria del dispositivo.</string>
     <string name="gallery_export_confirm_skipped">%1$d sono già nella memoria del dispositivo e verranno saltate.</string>
+    <string name="gallery_export_photos_title">Esporta le foto selezionate</string>
+    <string name="gallery_export_select_info_title">Esporta dati di selezione</string>
+    <string name="gallery_export_select_info_subtitle">Condividi un file JSON per la selezione su desktop</string>
+    <string name="gallery_export_select_info_done">Dati di selezione di %1$d foto pronti</string>
     <string name="settings_save_to_device_gallery_title">Salva nella galleria del dispositivo</string>
     <string name="settings_save_to_device_gallery_desc">Se disattivato, le foto restano visibili solo in CamCon e vengono eliminate se disinstalli l\'app. Attivalo per salvarle anche nella galleria del telefono.</string>
     <string name="export_to_gallery_success">Esportato nella galleria</string>

@@ -3,6 +3,7 @@ package com.inik.camcon.presentation.viewmodel
 import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.inik.camcon.data.datasource.local.PhotoFavoritesDataSource
 import com.inik.camcon.data.repository.managers.PhotoLibraryLocation
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
@@ -11,6 +12,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -53,6 +55,7 @@ class ServerPhotosViewModelExportTest {
     private lateinit var cameraRepository: CameraRepository
     private lateinit var validateImageFormatUseCase: ValidateImageFormatUseCase
     private lateinit var photoLibraryLocation: PhotoLibraryLocation
+    private lateinit var photoFavorites: PhotoFavoritesDataSource
 
     private val date = "2026-08-31"
     private lateinit var dayFolder: File
@@ -62,6 +65,10 @@ class ServerPhotosViewModelExportTest {
         Dispatchers.setMain(testDispatcher)
         context = ApplicationProvider.getApplicationContext()
         cameraRepository = mockk(relaxed = true)
+        // 좋아요는 이 테스트의 관심 밖이다 — 빈 집합만 흘려보낸다.
+        photoFavorites = mockk(relaxed = true) {
+            every { favorites } returns MutableStateFlow(emptySet())
+        }
         validateImageFormatUseCase = mockk(relaxed = true)
 
         val root = temporaryFolder.newFolder("camcon_app_private")
@@ -97,6 +104,7 @@ class ServerPhotosViewModelExportTest {
         cameraRepository,
         validateImageFormatUseCase,
         photoLibraryLocation,
+        photoFavorites,
         testDispatcher
     )
 

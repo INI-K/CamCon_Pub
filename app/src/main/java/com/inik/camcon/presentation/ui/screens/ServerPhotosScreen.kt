@@ -116,6 +116,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PhoneAndroid
 import com.inik.camcon.presentation.viewmodel.CameraFolderGroup
@@ -125,6 +127,7 @@ import com.inik.camcon.presentation.viewmodel.GalleryExportTargets
 import com.inik.camcon.presentation.viewmodel.GalleryGroup
 import com.inik.camcon.presentation.viewmodel.GalleryGroupKey
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
+import com.inik.camcon.presentation.viewmodel.visibleGalleryPhotos
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.utils.LogMask
 import java.io.File
@@ -139,9 +142,9 @@ fun MyPhotosScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-    // null 이 아니면 내보내기 확인 다이얼로그가 떠 있다. 미리 계산한 대상 집계를 함께 들고 있어
+    // null 이 아니면 내보내기 선택 다이얼로그가 떠 있다. 미리 계산한 대상 집계를 함께 들고 있어
     // 다이얼로그 본문이 다시 계산하지 않는다.
-    var exportConfirmTargets by remember { mutableStateOf<GalleryExportTargets?>(null) }
+    var exportChoiceTargets by remember { mutableStateOf<GalleryExportTargets?>(null) }
 
     // 화면에 진입할 때마다 새로고침 - 탭 전환 시 확실히 실행됨
     DisposableEffect(Unit) {
@@ -233,13 +236,20 @@ fun MyPhotosScreen(
     ) {
         // 상단 헤더 - 멀티 선택 모드에 따라 다르게 표시
         val opened = uiState.openedGroup
+        // 화면에 실제로 그릴 목록. 필터는 파생만 하고 원본 목록을 다시 읽지 않는다.
+        // ViewModel 의 선택·내보내기도 같은 순수 함수를 쓴다(기준이 갈리면 필터가 무의미해진다).
+        val visiblePhotos = visibleGalleryPhotos(
+            photos = uiState.photos,
+            favorites = uiState.favorites,
+            showFavoritesOnly = uiState.showFavoritesOnly
+        )
         if (opened != null && !uiState.isMultiSelectMode) {
             val openedFolder = uiState.openedFolder
             GalleryGroupHeader(
                 group = opened,
                 // 3단은 그 폴더의 사진 수, 2단은 폴더들의 합.
                 photoCount = if (openedFolder != null) {
-                    uiState.photos.size
+                    visiblePhotos.size
                 } else {
                     uiState.folders.sumOf { it.photoCount }
                 },
@@ -257,13 +267,13 @@ fun MyPhotosScreen(
                 onSelectAll = { viewModel.selectAllPhotos() },
                 onDeselectAll = { viewModel.deselectAllPhotos() },
                 onExport = {
-                    // 대상이 0장(전부 기기 저장소)이면 확인을 물을 것이 없다 —
-                    // 그대로 실행해 "이미 기기 저장소" 안내만 띄운다.
+                    // 대상이 0장(전부 기기 저장소)이면 고를 것이 없다 — 그대로 실행해
+                    // "이미 기기 저장소" 안내만 띄운다(기존 동작 유지).
                     val plan = viewModel.previewExportTargets()
                     if (plan.targets.isEmpty()) {
                         viewModel.exportSelectedPhotos()
                     } else {
-                        exportConfirmTargets = plan
+                        exportChoiceTargets = plan
                     }
                 },
                 onDelete = { showDeleteConfirmDialog = true },
@@ -312,16 +322,35 @@ fun MyPhotosScreen(
                 EmptyMyPhotosState()
             }
 
+            // 3단 — 사진 그리드. 컬링 작업대다.
             else -> {
-                FluidPhotoGrid(
-                    photos = uiState.photos, // ViewModel에서 이미 최신순으로 정렬됨
-                    onPhotoClick = { photo -> selectedPhoto = photo },
-                    onDeleteClick = { photo -> viewModel.deletePhoto(photo.id) },
-                    isMultiSelectMode = uiState.isMultiSelectMode,
-                    selectedPhotos = uiState.selectedPhotos,
-                    onPhotoLongClick = { photo -> viewModel.startMultiSelectMode(photo.id) },
-                    onToggleSelection = { photo -> viewModel.togglePhotoSelection(photo.id) }
-                )
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // 다중 선택 중에는 감춘다 — 그때 필터를 바꾸면 선택 대상이 소리 없이 달라진다.
+                    if (!uiState.isMultiSelectMode) {
+                        FavoritesFilterChip(
+                            enabled = uiState.showFavoritesOnly,
+                            favoriteCount = visiblePhotos.size.takeIf { uiState.showFavoritesOnly },
+                            onClick = { viewModel.toggleFavoritesFilter() }
+                        )
+                    }
+
+                    if (visiblePhotos.isEmpty()) {
+                        // 필터를 켰는데 좋아요가 하나도 없는 경우다. 사진이 없는 것과 구분한다.
+                        EmptyFavoritesState()
+                    } else {
+                        FluidPhotoGrid(
+                            photos = visiblePhotos, // ViewModel에서 이미 최신순으로 정렬됨
+                            onPhotoClick = { photo -> selectedPhoto = photo },
+                            onDeleteClick = { photo -> viewModel.deletePhoto(photo.id) },
+                            isMultiSelectMode = uiState.isMultiSelectMode,
+                            selectedPhotos = uiState.selectedPhotos,
+                            favorites = uiState.favorites,
+                            onPhotoLongClick = { photo -> viewModel.startMultiSelectMode(photo.id) },
+                            onToggleSelection = { photo -> viewModel.togglePhotoSelection(photo.id) },
+                            onToggleFavorite = { photo -> viewModel.toggleFavorite(photo.filePath) }
+                        )
+                    }
+                }
             }
         }
     }
@@ -379,7 +408,10 @@ fun MyPhotosScreen(
                         )
                     }
                 },
-                isRawFile = viewModel::isRawFile
+                isRawFile = viewModel::isRawFile,
+                // 뷰어의 하트도 그리드와 같은 저장소를 본다 — 어디서 눌러도 같은 값이다.
+                isFavorite = { target -> uiState.favorites.contains(target.path) },
+                onToggleFavorite = { target -> viewModel.toggleFavorite(target.path) }
             )
         }
     }
@@ -407,46 +439,108 @@ fun MyPhotosScreen(
         )
     }
 
-    // 내보내기 확인 다이얼로그. 대상이 0장이면 열지 않는다(위 onExport 에서 걸러진다).
-    exportConfirmTargets?.let { plan ->
+    // 내보내기 선택 다이얼로그.
+    //
+    // 확인 다이얼로그가 아니라 **갈래를 고르는 자리**다. 항목이 지금은 둘이고(사진 / 셀렉정보),
+    // 첫 항목은 예전 확인 다이얼로그의 예고 기능을 부제로 흡수했다 — 그래서 항목을 누르면
+    // 다시 묻지 않고 곧장 진행한다(다이얼로그를 두 번 겹치지 않는다).
+    exportChoiceTargets?.let { plan ->
         AppDialog(
-            onDismissRequest = { exportConfirmTargets = null },
-            title = { Text(stringResource(R.string.gallery_export_confirm_title)) },
+            onDismissRequest = { exportChoiceTargets = null },
+            title = { Text(stringResource(R.string.gallery_export_action)) },
             text = {
                 Column {
-                    Text(
-                        stringResource(
-                            R.string.gallery_export_confirm_message,
-                            plan.targets.size
-                        )
+                    ExportChoiceRow(
+                        title = stringResource(R.string.gallery_export_photos_title),
+                        subtitle = buildList {
+                            add(
+                                stringResource(
+                                    R.string.gallery_export_confirm_message,
+                                    plan.targets.size
+                                )
+                            )
+                            if (plan.alreadyInDeviceStorage > 0) {
+                                add(
+                                    stringResource(
+                                        R.string.gallery_export_confirm_skipped,
+                                        plan.alreadyInDeviceStorage
+                                    )
+                                )
+                            }
+                        }.joinToString(" "),
+                        onClick = {
+                            viewModel.exportSelectedPhotos()
+                            exportChoiceTargets = null
+                        }
                     )
-                    if (plan.alreadyInDeviceStorage > 0) {
-                        Text(
-                            text = stringResource(
-                                R.string.gallery_export_confirm_skipped,
-                                plan.alreadyInDeviceStorage
-                            ),
-                            style = BodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+
+                    ExportChoiceRow(
+                        title = stringResource(R.string.gallery_export_select_info_title),
+                        subtitle = stringResource(R.string.gallery_export_select_info_subtitle),
+                        onClick = {
+                            viewModel.exportSelectInfo()
+                            exportChoiceTargets = null
+                        }
+                    )
                 }
             },
-            confirmButton = {
-                PrimaryButton(
-                    text = stringResource(R.string.gallery_export_action),
-                    onClick = {
-                        viewModel.exportSelectedPhotos()
-                        exportConfirmTargets = null
-                    }
-                )
-            },
+            confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { exportConfirmTargets = null }) {
+                TextButton(onClick = { exportChoiceTargets = null }) {
                     Text(stringResource(R.string.cancel))
                 }
             }
         )
+    }
+
+    // 셀렉정보 파일이 만들어지면 시스템 공유 시트를 띄운다. 전달 수단(드라이브·메일 등)은
+    // 사용자가 고른다 — 앱은 서버로 올리지 않는다.
+    val shareContext = LocalContext.current
+    var selectInfoDoneCount by remember { mutableStateOf<Int?>(null) }
+    uiState.selectInfoShare?.let { share ->
+        LaunchedEffect(share.file.absolutePath) {
+            try {
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    shareContext,
+                    "${shareContext.packageName}.fileprovider",
+                    share.file
+                )
+                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                    type = "application/json"
+                    putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                shareContext.startActivity(
+                    android.content.Intent.createChooser(
+                        intent,
+                        shareContext.getString(R.string.gallery_export_select_info_title)
+                    )
+                )
+                selectInfoDoneCount = share.photoCount
+            } catch (e: Exception) {
+                Log.e("MyPhotosScreen", "셀렉정보 공유 실패", e)
+            } finally {
+                viewModel.clearSelectInfoShare()
+            }
+        }
+    }
+
+    selectInfoDoneCount?.let { count ->
+        LaunchedEffect(count) {
+            kotlinx.coroutines.delay(4000)
+            selectInfoDoneCount = null
+        }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            Snackbar(
+                modifier = Modifier.padding(Spacing.base),
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Text(
+                    text = stringResource(R.string.gallery_export_select_info_done, count),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 
     // 에러 표시
@@ -609,8 +703,10 @@ private fun FluidPhotoGrid(
     onDeleteClick: (CapturedPhoto) -> Unit,
     isMultiSelectMode: Boolean = false,
     selectedPhotos: Set<String> = emptySet(),
+    favorites: Set<String> = emptySet(),
     onPhotoLongClick: (CapturedPhoto) -> Unit = {},
-    onToggleSelection: (CapturedPhoto) -> Unit = {}
+    onToggleSelection: (CapturedPhoto) -> Unit = {},
+    onToggleFavorite: (CapturedPhoto) -> Unit = {}
 ) {
     // ⚠️ 스태거드 그리드가 아니라 **균일 그리드**다.
     //
@@ -638,7 +734,9 @@ private fun FluidPhotoGrid(
             // 일반 파라미터라 derivedStateOf 가 변화를 감지하지 못하고, remember 키(photo.id)도 안
             // 바뀌어 첫 컴포지션의 Set 을 영원히 캡처한다(전체 선택해도 체크 표시 안 됨, 2026-08-18 실측).
             val isSelected = selectedPhotos.contains(photo.id)
-            
+            // 좋아요도 같은 이유로 파라미터에서 바로 읽는다(위 주석의 derivedStateOf 함정 동일).
+            val isFavorite = favorites.contains(photo.filePath)
+
             FluidPhotoGridItem(
                 photo = photo,
                 onClick = {
@@ -650,8 +748,10 @@ private fun FluidPhotoGrid(
                 },
                 onDelete = { onDeleteClick(photo) },
                 onLongClick = { onPhotoLongClick(photo) },
+                onToggleFavorite = { onToggleFavorite(photo) },
                 isSelected = isSelected,
-                isMultiSelectMode = isMultiSelectMode
+                isMultiSelectMode = isMultiSelectMode,
+                isFavorite = isFavorite
             )
         }
     }
@@ -706,8 +806,10 @@ private fun FluidPhotoGridItem(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onLongClick: () -> Unit,
+    onToggleFavorite: () -> Unit,
     isSelected: Boolean = false,
-    isMultiSelectMode: Boolean = false
+    isMultiSelectMode: Boolean = false,
+    isFavorite: Boolean = false
 ) {
     // 균일 그리드라 타일은 정사각이다. 사진 비율은 Crop 이 맞추고, 원본 비율은 뷰어에서 본다.
     val aspectRatio = 1f
@@ -901,6 +1003,48 @@ private fun FluidPhotoGridItem(
                         )
                     }
                 }
+
+                // 좋아요 배지 — 선택 체크(우상단)와 반대편 구석에 둔다.
+                //
+                // 다중 선택 중에는 감춘다. 그때 타일의 관심사는 "선택했는가" 하나이고, 하트가
+                // 남아 있으면 같은 타일에 탭 대상이 둘이 되어 무엇이 눌릴지 흐려진다.
+                if (!isMultiSelectMode) {
+                    val favoriteLabel = stringResource(
+                        if (isFavorite) R.string.cd_favorite_remove else R.string.cd_favorite_add
+                    )
+                    Box(
+                        modifier = Modifier.matchParentSize(),
+                        contentAlignment = Alignment.BottomEnd
+                    ) {
+                        // 자식 clickable 이 그 영역의 탭을 먼저 가져가므로 타일 본체의
+                        // 탭(뷰어 진입)·길게 누르기(다중 선택)와 겹치지 않는다.
+                        //
+                        // 크기는 32dp 다. 4칸 그리드의 타일이 85dp 안팎이라 44dp(WCAG AAA)를 주면
+                        // 타일의 4분의 1을 하트가 먹어 뷰어를 열려던 탭까지 가져간다. 32dp 는 AA
+                        // 최소(24dp)를 넘기면서 그 오탭을 피하는 자리다. 뷰어에는 큰 토글이 따로 있다.
+                        Box(
+                            modifier = Modifier
+                                .size(IconSize.xl)
+                                .clip(CircleShape)
+                                .clickable(onClick = onToggleFavorite)
+                                .semantics { contentDescription = favoriteLabel },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isFavorite) {
+                                    Icons.Default.Favorite
+                                } else {
+                                    Icons.Default.FavoriteBorder
+                                },
+                                contentDescription = null,
+                                modifier = Modifier.size(IconSize.md),
+                                // 채움은 앱 액센트(앰버)다. 빨강을 새로 들이면 팔레트에 없는 색이
+                                // 하나 늘 뿐이고, 이 앱에서 앰버는 이미 "활성/선택"을 뜻한다.
+                                tint = if (isFavorite) Accent else Color.White.copy(alpha = 0.75f)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -936,6 +1080,105 @@ private fun LoadingIndicator() {
                     .aspectRatio(ratio),
                 shape = RoundedCornerShape(Radius.sm),
                 announceLoading = key == "s0"
+            )
+        }
+    }
+}
+
+/** 내보내기 선택 다이얼로그의 항목 하나. 제목 + 부제(집계·설명)를 한 줄로 누른다. */
+@Composable
+private fun ExportChoiceRow(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Radius.sm))
+            .clickable(onClick = onClick)
+            .padding(vertical = Spacing.sm)
+    ) {
+        Text(text = title, style = MaterialTheme.typography.titleMedium, color = TextPrimaryV2)
+        Text(text = subtitle, style = BodySmall, color = TextSecondaryV2)
+    }
+}
+
+/**
+ * 3단 상단의 "좋아요만 보기" 칩. 컬링 흐름의 시작점이다.
+ *
+ * 켜면 좋아요한 사진만 남고, 그 상태에서 다중 선택 → 전체 선택 → 일괄 내보내기가
+ * "골라낸 것만 갤러리로"가 된다. 전체 선택은 이 필터가 적용된 목록을 기준으로 돈다.
+ */
+@Composable
+private fun FavoritesFilterChip(
+    enabled: Boolean,
+    favoriteCount: Int?,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.base, vertical = Spacing.xs)
+    ) {
+        Row(
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(
+                    if (enabled) Accent.copy(alpha = 0.18f) else Color.Transparent
+                )
+                .border(
+                    StrokeWidth.thin,
+                    if (enabled) Accent else TextSecondaryV2.copy(alpha = 0.5f),
+                    CircleShape
+                )
+                .clickable(onClick = onClick)
+                .defaultMinSize(minHeight = TouchTarget.min)
+                .padding(horizontal = Spacing.md),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs)
+        ) {
+            Icon(
+                imageVector = if (enabled) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                contentDescription = null,
+                modifier = Modifier.size(IconSize.sm),
+                tint = if (enabled) Accent else TextSecondaryV2
+            )
+            Text(
+                text = stringResource(R.string.gallery_favorites_only) +
+                        (favoriteCount?.let { " $it" } ?: ""),
+                style = ButtonText,
+                color = if (enabled) Accent else TextSecondaryV2
+            )
+        }
+    }
+}
+
+/** 필터를 켰는데 좋아요가 하나도 없는 상태. "사진이 없음"과 구분해서 알린다. */
+@Composable
+private fun EmptyFavoritesState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(Spacing.lg)
+                .widthIn(max = EmptyStateMaxWidth),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.FavoriteBorder,
+                contentDescription = null,
+                modifier = Modifier.size(IconSize.xl),
+                tint = TextTertiary
+            )
+            Spacer(modifier = Modifier.height(Spacing.lg))
+            Text(
+                text = stringResource(R.string.gallery_favorites_empty),
+                style = BodySmall,
+                color = TextSecondaryV2,
+                textAlign = TextAlign.Center
             )
         }
     }
