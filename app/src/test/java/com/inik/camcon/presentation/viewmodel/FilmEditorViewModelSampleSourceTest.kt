@@ -106,6 +106,7 @@ class FilmEditorViewModelSampleSourceTest {
             observeEffectiveTierUseCase = observeEffectiveTierUseCase,
             validateFeatureAccessUseCase = validateFeatureAccessUseCase,
             appSettingsRepository = appSettingsRepository,
+            photoLibraryLocation = io.mockk.mockk(relaxed = true),
             context = context,
             ioDispatcher = testDispatcher
         )

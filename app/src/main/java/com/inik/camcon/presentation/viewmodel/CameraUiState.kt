@@ -94,7 +94,12 @@ data class CameraDialogState(
  *
  * liveViewFrame은 초당 수십 회 업데이트되므로 별도 StateFlow로 분리.
  * CameraViewModel.liveViewFrame: StateFlow<LiveViewFrame?> 을 사용한다.
+ *
+ * ⚠️ [@Stable] 이 붙어 있어야 한다. 하위 상태 6종에는 이미 붙어 있지만, 그것들을 담는 이
+ * 최상위 타입이 불안정하면 이 상태를 파라미터로 받는 컴포저블이 값이 같아도 절대 skip 되지
+ * 않는다 — 하위 안정화의 효과가 여기서 전부 막힌다.
  */
+@Stable
 data class CameraUiState(
     val connection: CameraConnectionState = CameraConnectionState(),
     val liveView: CameraLiveViewState = CameraLiveViewState(),

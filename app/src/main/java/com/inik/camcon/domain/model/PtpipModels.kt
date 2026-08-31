@@ -33,10 +33,29 @@ enum class PtpipConnectionPhase {
  * "카메라가 소켓을 즉시 닫아(End of stream/-7) 반복 거부하는 = 사용자가 아직 카메라 본체에서
  * 연결(페어링)을 허용하지 않은" 상태를 뜻한다. 이 경우 재시도는 계속하되, 사용자에게
  * "카메라에서 연결을 허용하세요" 안내를 띄워야 한다(누르면 다음 시도에서 성공).
+ *
+ * `SSH_` 로 시작하는 값들은 [PAIRING_PENDING] 과 성격이 정반대다. 이들은 SSH 터널을 세우는
+ * 도중에 확정된 실패이므로 같은 조건으로 다시 시도해도 결과가 바뀌지 않는다. 자격증명 입력이나
+ * 지문 대조 같은 사용자 조치를 받기 전에는 재시도 폴링을 계속하지 않는다.
  */
 enum class PtpipConnectFailure {
     /** 카메라 본체에서 연결(페어링) 승인 대기 중. 재시도는 유지. */
-    PAIRING_PENDING
+    PAIRING_PENDING,
+
+    /** SSH 사용자명·비밀번호를 아직 저장하지 않았다. 입력 다이얼로그를 띄운다. */
+    SSH_CREDENTIALS_REQUIRED,
+
+    /** 호스트키 지문을 아직 신뢰하지 않았다(TOFU 최초). 지문 대조 다이얼로그를 띄운다. */
+    SSH_HOST_KEY_UNVERIFIED,
+
+    /** 저장된 지문과 다르다. 연결을 중단하고 자동으로 재시도하지 않는다. */
+    SSH_HOST_KEY_MISMATCH,
+
+    /** 자격증명이 거부되었다. 재입력을 유도한다. */
+    SSH_AUTH_FAILED,
+
+    /** 22번 포트 도달에 실패했거나 포워딩을 개설하지 못했다. */
+    SSH_TUNNEL_FAILED
 }
 
 /**
@@ -100,6 +119,53 @@ data class VendorVerdict(
 enum class NikonConnectionProfile { CAMERA_CONTROL, IMAGE_TRANSFER, UNKNOWN }
 
 /**
+ * 연결 전 UPnP 설명 XML(dd.xml → DigitalImagingDesc.xml)로 판정한 접속 게이트.
+ *
+ * ⚠️ [probed]가 false이면 "SSH 불필요"가 아니라 "아직 판정하지 못함"이다.
+ * 이 경우 반드시 기존 무인증 경로로 폴백해야 한다. false를 "불필요"로 읽으면
+ * SSH 전용 카메라가 15740 직결을 반복하며 영영 붙지 않는다.
+ * [VendorConfidence]의 UNKNOWN이 "해당 제조사 아님"이 아닌 것과 같은 원칙이다.
+ *
+ * 분기 판정은 [requiresSshTunnel] 한 곳에서만 한다. 호출부에서 `probed && sshRequired`를
+ * 다시 조합하면 probed를 빠뜨린 분기가 생긴다.
+ */
+data class PtpipAccessGate(
+    val probed: Boolean = false,
+    val sshRequired: Boolean = false,
+    val pairingRequired: Boolean = false,
+    val serverVersion: String? = null,
+    /** dd.xml의 UDN. 자격증명·호스트키의 안정 식별자로 쓴다(IP는 DHCP라 불안정하다). */
+    val udn: String? = null,
+    /**
+     * `X_PTP_MediaServerSupport = Enable`. 카드 조회 전용 모드(콘텐츠 전송 모드)를 지원한다.
+     *
+     * 소니 Compatibility 표 기준으로 카드 사진 조회가 가능한 기종을 연결 전에 가려낸다.
+     */
+    val mediaServerSupported: Boolean = false,
+    /**
+     * `X_PTP_ContentsTransferSupport = Enable`. 촬영과 조회를 함께 하는 모드를 지원한다.
+     *
+     * 이 태그는 2025년 신형(ILCE-7RM6·ILCE-7M5·DSC-RX1RM3)에만 있다. 명세 예시로 실린 ILCE-1 의
+     * 설명 XML 에는 태그 자체가 없다. 따라서 **태그 부재는 false** 이고, 그 구분이 곧 세대 구분이다.
+     *
+     * ⚠️ 이 기종들은 `0x100A GetThumb` 을 **광고하면서도 실제로는 지원하지 않는다**(a7m5 실측
+     * 2026-08-30: 117KB 디코딩 불가 데이터 반환). 그래서 썸네일 제한 안내의 판정 신호로 쓴다.
+     */
+    val contentsTransferSupported: Boolean = false
+) {
+    /**
+     * SSH 터널 경로로 분기해야 하는지 판정한다.
+     *
+     * 판정에 성공했고([probed]) 그 결과가 SSH 필요일 때만 true다.
+     */
+    fun requiresSshTunnel(): Boolean = probed && sshRequired
+
+    companion object {
+        fun unprobed() = PtpipAccessGate()
+    }
+}
+
+/**
  * PTPIP 카메라 정보
  *
  * ⚠️ 불변식 — [name]과 [displayName]의 역할을 절대 섞지 않는다:
@@ -125,7 +191,9 @@ data class PtpipCamera(
     val displayName: String? = null,  // 표시 전용(게이트 입력 아님). null이면 UI가 폴백 체인 적용
     val discoverySource: CameraDiscoverySource = CameraDiscoverySource.UNKNOWN,
     // mDNS TXT `apps` 로 읽은 연결 프로파일. 바디 조작 가능 여부를 좌우한다(NikonConnectionProfile 참조).
-    val connectionProfile: NikonConnectionProfile = NikonConnectionProfile.UNKNOWN
+    val connectionProfile: NikonConnectionProfile = NikonConnectionProfile.UNKNOWN,
+    // 연결 전 UPnP 설명 XML 로 판정한 접속 게이트. 동일성 판정에는 쓰지 않는다(PtpipAccessGate 참조).
+    val accessGate: PtpipAccessGate = PtpipAccessGate.unprobed()
 )
 
 /**

@@ -80,8 +80,12 @@ import com.inik.camcon.R
 import com.inik.camcon.presentation.theme.CamConTheme
 import com.inik.camcon.presentation.ui.screens.components.ApModeContent
 import com.inik.camcon.presentation.ui.screens.components.HotspotStaModeContent
+import com.inik.camcon.presentation.ui.screens.components.SshCredentialsDialog
+import com.inik.camcon.presentation.ui.screens.components.SshHostKeyDialog
+import com.inik.camcon.presentation.ui.screens.components.SshHostKeyMismatchDialog
 import com.inik.camcon.presentation.ui.screens.components.StaModeContent
 import com.inik.camcon.presentation.viewmodel.PtpipViewModel
+import com.inik.camcon.presentation.viewmodel.SshConnectPrompt
 import com.inik.camcon.presentation.viewmodel.AppSettingsViewModel
 import com.inik.camcon.presentation.theme.Surface0
 import com.inik.camcon.presentation.theme.Surface1
@@ -230,6 +234,9 @@ fun PtpipConnectionScreen(
     // PTPIP 연결 진행 상황을 위한 상태
     var showConnectionProgressDialog by remember { mutableStateOf(false) }
     val connectionProgressMessage by ptpipViewModel.connectionProgressMessage.collectAsStateWithLifecycle()
+
+    // SSH 연결이 요구하는 사용자 조치(자격증명 입력 / 지문 대조 / 안내).
+    val sshPrompt by ptpipViewModel.sshPrompt.collectAsStateWithLifecycle()
 
     // 신규 연결(CONNECTING→CONNECTED) 시에만 자동으로 카메라 컨트롤 화면으로 이동한다.
     // 이미 연결된 상태로 이 화면에 재진입하면(예: ADMIN 전송목록 테스트 버튼 사용) 자동 이동을 막아
@@ -622,6 +629,71 @@ fun PtpipConnectionScreen(
                 )
             }
         )
+    }
+
+    // SSH 조치 다이얼로그는 진행 다이얼로그와 겹칠 수 없다. 진행 다이얼로그는 바깥 터치·뒤로가기를
+    // 모두 막고 있어서, 위에 남아 있으면 사용자가 아래의 입력 화면에 손을 댈 수 없다.
+    LaunchedEffect(sshPrompt) {
+        if (sshPrompt != null) {
+            showConnectionProgressDialog = false
+        }
+    }
+
+    when (val prompt = sshPrompt) {
+        is SshConnectPrompt.Credentials -> SshCredentialsDialog(
+            cameraName = prompt.camera.displayName ?: prompt.camera.name,
+            reason = prompt.reason,
+            onSubmit = { user, password -> ptpipViewModel.submitSshCredentials(user, password) },
+            onDismiss = { ptpipViewModel.dismissSshPrompt() }
+        )
+
+        is SshConnectPrompt.HostKeyTrust -> SshHostKeyDialog(
+            cameraName = prompt.camera.displayName ?: prompt.camera.name,
+            fingerprint = prompt.fingerprint,
+            // 신뢰는 사용자가 카메라 화면의 지문과 대조한 뒤 이 버튼을 누를 때만 저장된다.
+            onTrust = { ptpipViewModel.trustSshHostKey() },
+            onDismiss = { ptpipViewModel.dismissSshPrompt() }
+        )
+
+        is SshConnectPrompt.HostKeyMismatch -> SshHostKeyMismatchDialog(
+            cameraName = prompt.camera.displayName ?: prompt.camera.name,
+            fingerprint = prompt.fingerprint,
+            onDismiss = { ptpipViewModel.dismissSshPrompt() }
+        )
+
+        is SshConnectPrompt.TunnelFailed -> AppDialog(
+            onDismissRequest = { ptpipViewModel.dismissSshPrompt() },
+            title = { Text(stringResource(R.string.ssh_tunnel_failed_title)) },
+            text = {
+                Column {
+                    Text(
+                        text = prompt.camera.displayName ?: prompt.camera.name,
+                        style = BodySmall,
+                        color = TextSecondaryV2
+                    )
+                    Spacer(modifier = Modifier.height(Spacing.sm))
+                    Text(
+                        text = stringResource(R.string.ssh_tunnel_failed_body),
+                        style = Body,
+                        color = TextSecondaryV2
+                    )
+                }
+            },
+            confirmButton = {
+                PrimaryButton(
+                    text = stringResource(R.string.ssh_retry),
+                    onClick = { ptpipViewModel.retrySshConnect() }
+                )
+            },
+            dismissButton = {
+                SecondaryButton(
+                    text = stringResource(R.string.close),
+                    onClick = { ptpipViewModel.dismissSshPrompt() }
+                )
+            }
+        )
+
+        null -> Unit
     }
 
     Scaffold(

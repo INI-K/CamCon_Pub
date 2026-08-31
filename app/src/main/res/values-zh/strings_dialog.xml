@@ -53,6 +53,8 @@
     <string name="progress_ptpip_connecting">正在连接相机...</string>
     <string name="progress_ptpip_connection_start">正在启动相机连接...</string>
     <string name="progress_ptpip_authenticating_nikon">正在认证 Nikon 相机...</string>
+    <string name="progress_ptpip_pairing_first">请在相机屏幕上允许连接</string>
+    <string name="progress_ptpip_pairing_forgotten">相机已忘记此设备的注册。请在相机上重新授权连接。</string>
     <string name="progress_ptpip_camera_confirm">📷 请在相机屏幕上点按“允许连接（OK）”</string>
     <string name="progress_ptpip_checking_info">正在检查相机信息...</string>
     <string name="progress_ptpip_listener_start">正在启动事件监听器...</string>
@@ -74,4 +76,21 @@
 
     <string name="notification_settings_title">通知设置</string>
     <string name="notification_settings_subtitle">推送通知与声音设置</string>
+    <!-- SSH 터널 연결 (소니 등 접속 인증이 필요한 카메라) -->
+    <string name="ssh_credentials_title">相机登录信息</string>
+    <string name="ssh_credentials_guide">请输入相机 MENU → 网络 → 访问认证设置 屏幕上显示的值。</string>
+    <string name="ssh_credentials_auth_failed">认证失败。请重新确认输入的值。</string>
+    <string name="ssh_credentials_store_failed">此设备无法安全保存登录信息，因此每次连接都需要重新输入。</string>
+    <string name="ssh_credentials_user_label">用户名</string>
+    <string name="ssh_credentials_password_label">密码</string>
+    <string name="ssh_hostkey_title">确认相机指纹</string>
+    <string name="ssh_hostkey_guide">请确认下方指纹与相机 MENU → 网络 → 访问认证信息 屏幕上显示的指纹是否一致。</string>
+    <string name="ssh_hostkey_trust">一致 - 信任</string>
+    <string name="ssh_hostkey_mismatch_title">相机指纹已更改</string>
+    <string name="ssh_hostkey_mismatch_body">与已保存的指纹不同。可能有其他设备正在冒充该相机，因此已中止连接。</string>
+    <string name="ssh_hostkey_mismatch_hint">如果您重置了相机或重新设置了网络，请在设置中删除已保存的指纹后重新连接。</string>
+    <string name="ssh_tunnel_failed_title">SSH 连接失败</string>
+    <string name="ssh_tunnel_failed_body">无法连接到相机的 SSH 端口。请确认您与相机处于同一网络，并且相机的访问认证设置已开启。</string>
+    <string name="ssh_retry">重试</string>
+
 </resources>

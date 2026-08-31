@@ -107,7 +107,9 @@ class PhotoPreviewViewModel @Inject constructor(
     private val errorHandlingManager: ErrorHandlingManager,
     private val resumeNativeOperationsUseCase: ResumeNativeOperationsUseCase,
     private val deleteCameraFileUseCase: DeleteCameraFileUseCase,
-    private val nikonApplicationModeManager: NikonApplicationModeManager
+    private val nikonApplicationModeManager: NikonApplicationModeManager,
+    private val ptpipEventKeepAlive: com.inik.camcon.data.datasource.nativesource.PtpipEventKeepAlive,
+    private val photoLibraryLocation: com.inik.camcon.data.repository.managers.PhotoLibraryLocation
 ) : ViewModel() {
 
     companion object {
@@ -168,6 +170,29 @@ class PhotoPreviewViewModel @Inject constructor(
     val allPhotos = photoListManager.allPhotos
     val isLoadingPhotos = photoListManager.isLoading
     val isStorageUnsupported = photoListManager.isStorageUnsupported
+
+    // 카드 보기(소니 콘텐츠 전송 모드) 전환 상태와 실패 사유.
+    // ACTIVE 인 동안 촬영·라이브뷰가 카메라 쪽에서 막히므로 화면이 그 사실을 알려야 한다.
+    val cardBrowseState = photoListManager.cardBrowseState
+    val cardBrowseError = photoListManager.cardBrowseError
+
+    /**
+     * 썸네일 제한 안내를 띄워야 하는가.
+     *
+     * 판정은 **광고가 아니라 실제로 받은 바이트**로 한다. 카메라가 돌려준 첫 썸네일이 JPEG 서명
+     * (`FF D8 FF`)을 만족하지 못하면 그 세션을 썸네일 신뢰 불가로 보고 한 번 알린다
+     * ([PhotoImageManager.thumbnailUnsupported]).
+     *
+     * 기종명이나 오퍼레이션 광고로 미리 가려내지 않는다. `0x100A GetThumb` 이 실제로 깨진 바디와
+     * 멀쩡한 바디가 같은 세대 안에 섞여 있어(a7M5 는 깨지고 a7M4 는 정상), 광고나 세대 신호로
+     * 판정하면 멀쩡한 카메라에 오탐이 난다.
+     */
+    private val _showThumbnailLimitNotice = MutableStateFlow(false)
+    val showThumbnailLimitNotice: StateFlow<Boolean> = _showThumbnailLimitNotice.asStateFlow()
+
+    // 세션당 1회만 띄운다. 연결이 끊기면 다시 띄울 수 있게 푼다.
+    private var thumbnailLimitNoticeShown = false
+
     val isLoadingMorePhotos = photoListManager.isLoadingMore
     val hasNextPage = photoListManager.hasNextPage
     val currentFilter = photoListManager.currentFilter
@@ -232,6 +257,9 @@ class PhotoPreviewViewModel @Inject constructor(
 
         // 카메라 초기화 상태 관찰
         observeCameraInitialization()
+
+        // 썸네일 제한 안내 판정
+        observeThumbnailLimitNotice()
         
         // 구독 티어 관찰
         observeSubscriptionTier()
@@ -310,6 +338,13 @@ class PhotoPreviewViewModel @Inject constructor(
                     // 여기서 별도로 호출하지 않음
                 } else if (!isConnected && previousConnected) {
                     Log.d(TAG, "카메라 연결 해제됨")
+                    // 카드 보기가 켜진 상태로 연결이 끊겼다면 앱 상태를 되돌린다. 카메라는 이미
+                    // 사라져 전환 명령을 보낼 수 없고, 다음에 켜질 때 기본 모드로 시작한다.
+                    photoListManager.resetCardBrowseOnDisconnect()
+                    // 세션이 끝났으니 안내도 초기화한다 — 다른 카메라로 다시 연결하면 다시 판정한다.
+                    thumbnailLimitNoticeShown = false
+                    _showThumbnailLimitNotice.value = false
+                    photoImageManager.resetThumbnailSupport()
                     _uiState.update { it.copy(isInitialized = false) }
                     errorHandlingManager.emitError(
                         com.inik.camcon.domain.manager.ErrorType.CONNECTION,
@@ -448,6 +483,79 @@ class PhotoPreviewViewModel @Inject constructor(
     fun refreshPhotos() {
         Log.d(TAG, "사진 목록 새로고침")
         photoListManager.refreshPhotos(_uiState.value.isConnected)
+    }
+
+    /**
+     * 카드 보기로 전환 (PhotoListManager에 위임).
+     *
+     * 성공하면 카드가 보이는 대신 촬영·라이브뷰가 멈춘다. 화면은 [cardBrowseState] 를 보고
+     * 그 사실을 사용자에게 알려야 한다.
+     */
+    fun enterCardBrowse() {
+        Log.d(TAG, "카드 보기 전환 요청")
+        photoListManager.enterCardBrowse()
+    }
+
+    /**
+     * 카드 보기에서 나와 촬영 모드로 복귀 (PhotoListManager에 위임).
+     */
+    fun exitCardBrowse() {
+        Log.d(TAG, "카드 보기 이탈 요청")
+        photoListManager.exitCardBrowse()
+    }
+
+    /**
+     * 썸네일이 실제로 쓸 수 없는 것으로 확인되면 안내를 띄운다.
+     *
+     * [PhotoImageManager] 가 첫 응답의 JPEG 서명 검사로 판정한다. 그 시점에 이미 남은 썸네일
+     * 요청도 중단되므로, 여기서는 사용자에게 알리기만 하면 된다.
+     */
+    private fun observeThumbnailLimitNotice() {
+        viewModelScope.launch {
+            photoImageManager.thumbnailUnsupported.collect { unsupported ->
+                if (!unsupported || thumbnailLimitNoticeShown) return@collect
+
+                thumbnailLimitNoticeShown = true
+                _showThumbnailLimitNotice.value = true
+                Log.i(TAG, "썸네일 제한 안내 표시 — 카메라가 JPEG 이 아닌 썸네일을 반환")
+            }
+        }
+    }
+
+    /**
+     * 이 사진에 "갤러리로 내보내기"를 띄울지.
+     *
+     * 앱 전용 저장소에 있는 사진에만 의미가 있다 — 이미 기기 갤러리에 있는 사진은 내보낼 것이 없다.
+     */
+    fun canExportToGallery(path: String): Boolean =
+        photoLibraryLocation.isInAppPrivateStorage(path)
+
+    /**
+     * 앱 전용 저장소의 사진을 기기 갤러리로 내보낸다. 원본은 그대로 둔다.
+     *
+     * 공유와 목적이 다르다 — 공유는 다른 앱에 한 번 건네는 것이고, 이것은 폰 갤러리에 영속 저장한다.
+     */
+    fun exportToGallery(path: String) {
+        viewModelScope.launch {
+            val ok = photoLibraryLocation.exportToDeviceGallery(java.io.File(path))
+            _uiEvent.emit(
+                if (ok) {
+                    PhotoPreviewUiEvent.ShowInfo(context.getString(R.string.export_to_gallery_success))
+                } else {
+                    PhotoPreviewUiEvent.ShowError(context.getString(R.string.export_to_gallery_failed))
+                }
+            )
+        }
+    }
+
+    /** 썸네일 제한 안내를 사용자가 확인했을 때 호출한다. 세션당 한 번만 뜬다. */
+    fun dismissThumbnailLimitNotice() {
+        _showThumbnailLimitNotice.value = false
+    }
+
+    /** 카드 보기 전환 실패 안내를 사용자가 확인했을 때 호출한다. */
+    fun clearCardBrowseError() {
+        photoListManager.clearCardBrowseError()
     }
 
     /**
@@ -772,6 +880,10 @@ class PhotoPreviewViewModel @Inject constructor(
                 cameraRepository.setPhotoPreviewMode(true)
                 cameraRepository.stopCameraEventListener()
                 Log.d(TAG, "✓ 카드 탐색 진입 — 이벤트 폴 중단")
+                // 폴을 멈추면 PTP/IP 이벤트 소켓을 읽는 주체가 사라진다. 카메라가 보낸
+                // Ping 이 쌓인 채 남으면 카메라가 연결을 끊으므로(libgphoto2 패치 0048),
+                // 낮은 빈도로 소켓만 비우는 경로를 켠다. 소니 PTP/IP 세션에서만 돈다.
+                ptpipEventKeepAlive.start(_uiState.value.isPtpipConnected)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -796,6 +908,16 @@ class PhotoPreviewViewModel @Inject constructor(
 
         // 탭을 떠나면 진행 중인 썸네일 순차 로딩을 즉시 중단(카메라 큐 점유 해제).
         photoImageManager.cancelThumbnailLoading()
+
+        // 이벤트 폴이 곧 재개되므로 소켓 드레인은 더 필요 없다.
+        ptpipEventKeepAlive.stop()
+
+        // 카드 보기(소니 콘텐츠 전송 모드)를 켠 채 탭을 떠나면 카메라가 그 모드에 갇혀 촬영과
+        // 라이브뷰가 계속 막힌다. 이탈은 카메라 왕복이 필요한데 아래 viewModelScope 는 탭 전환
+        // 직후 취소될 수 있으므로, 앱 scope 에서 처리하는 매니저에 위임한다. 카드 보기가 꺼져
+        // 있으면 매니저가 상태를 보고 그냥 돌아간다. 아래 이벤트 리스너 재시작보다 먼저 명령을
+        // 걸어야 카메라가 촬영 모드로 돌아간 뒤 리스너가 붙는다.
+        photoListManager.exitCardBrowse()
 
         viewModelScope.launch {
             try {
@@ -919,7 +1041,11 @@ class PhotoPreviewViewModel @Inject constructor(
             }
         }
 
-        // 매니저들 정리
+        ptpipEventKeepAlive.stop()
+
+        // 매니저들 정리.
+        // [PhotoListManager.cleanup] 은 카드 보기가 켜져 있으면 이탈 명령을 앱 scope 로 걸어
+        // 카메라를 촬영 모드로 되돌린다 — onCleared 에서 카드 보기가 갇히지 않는 경로가 여기다.
         try {
             photoListManager.cleanup()
             photoImageManager.cleanup()

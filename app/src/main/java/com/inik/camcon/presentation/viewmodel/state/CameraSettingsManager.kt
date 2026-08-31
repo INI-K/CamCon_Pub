@@ -43,6 +43,11 @@ class CameraSettingsManager @Inject constructor(
 
     companion object {
         private const val TAG = "카메라설정매니저"
+
+        // 세션 래치 키. 값이 세션 동안 바뀌지 않는 항목만 넣는다.
+        private const val KEY_CAPABILITIES = "capabilities"
+        private const val KEY_EXPOSURE = "exposure"
+        private const val KEY_STORAGE = "storage"
     }
 
     // 카메라 설정 상태
@@ -73,8 +78,20 @@ class CameraSettingsManager @Inject constructor(
     // 설정 캐시 (성능 최적화용) — IO 멀티스레드 동시 접근 대비 ConcurrentHashMap(F24)
     private val settingsCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-    // 기능 정보 캐시 — ConcurrentHashMap(F24)
-    private val capabilitiesCache = java.util.concurrent.ConcurrentHashMap<String, CameraCapabilities>()
+    /**
+     * 이 세션에서 이미 받아 둔 항목. 탭을 다시 열 때 같은 왕복을 반복하지 않기 위한 래치다.
+     *
+     * 예전에는 `capabilitiesCache: Map<cameraId, …>` 였는데 호출자가 cameraId 를 넘기지 않아
+     * (`CameraViewModel.refreshCameraCapabilities`·`loadCameraSettingsManually`) 한 번도 맞지
+     * 않는 死코드였다. 그래서 제어 탭에 들어갈 때마다 기능 정보·EV·스토리지를 처음부터 다시
+     * 물어봤고, 니콘 무선에서 그 왕복만으로 9.5초가 걸렸다(Z 6 실측).
+     *
+     * 카메라가 바뀌면 값도 바뀌므로 세션 경계에서 [onCameraSessionChanged] 로 비운다. 세션 안에서
+     * 값이 바뀌는 항목(EV)은 그 항목만 [invalidateExposure] 로 지운다.
+     */
+    private val sessionLoaded = java.util.Collections.newSetFromMap(
+        java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+    )
 
     /**
      * 카메라 설정 로드
@@ -153,13 +170,11 @@ class CameraSettingsManager @Inject constructor(
             try {
                 logger.d(TAG, "카메라 기능 정보 로딩 시작")
 
-                // 캐시에서 먼저 확인
-                if (cameraId != null) {
-                    capabilitiesCache[cameraId]?.let { cachedCapabilities ->
-                        logger.d(TAG, "기능 정보 캐시에서 로딩")
-                        _cameraCapabilities.value = cachedCapabilities
-                        return@withContext
-                    }
+                // 이 세션에서 이미 받았으면 다시 묻지 않는다. 값이 남아 있는지도 함께 본다 —
+                // 실패로 비어 있으면 다시 시도해야 하기 때문이다.
+                if (KEY_CAPABILITIES in sessionLoaded && _cameraCapabilities.value != null) {
+                    logger.d(TAG, "기능 정보 세션 캐시 사용 — 왕복 생략")
+                    return@withContext
                 }
 
                 getCameraCapabilitiesUseCase()
@@ -176,11 +191,7 @@ class CameraSettingsManager @Inject constructor(
                         }
 
                         _cameraCapabilities.value = capabilities
-
-                        // 캐시에 저장
-                        if (cameraId != null) {
-                            capabilitiesCache[cameraId] = capabilities
-                        }
+                        sessionLoaded.add(KEY_CAPABILITIES)
 
                         logger.d(TAG, "카메라 기능 정보 로딩 성공")
                         logger.d(
@@ -333,9 +344,16 @@ class CameraSettingsManager @Inject constructor(
     suspend fun loadExposureCompensation() {
         withContext(ioDispatcher) {
             try {
+                // 세션 안에서 이미 받았으면 다시 묻지 않는다. EV 는 사용자가 바꿀 수 있으므로
+                // 변경 직후에는 setExposureCompensation 이 이 래치를 지우고 다시 받는다.
+                if (KEY_EXPOSURE in sessionLoaded && _exposureCompensation.value != null) {
+                    logger.d(TAG, "EV 세션 캐시 사용 — 왕복 생략")
+                    return@withContext
+                }
                 getExposureCompensationUseCase()
                     .onSuccess { ev ->
                         _exposureCompensation.value = ev
+                        if (ev != null) sessionLoaded.add(KEY_EXPOSURE)
                         logger.d(TAG, "EV 로딩 결과: current=${ev?.current}, count=${ev?.available?.size}")
                     }
                     .onFailure { e ->
@@ -360,6 +378,8 @@ class CameraSettingsManager @Inject constructor(
                 setExposureCompensationUseCase(value)
                     .onSuccess {
                         logger.d(TAG, "EV 설정 성공: $value")
+                        // 값이 바뀌었으니 EV 래치만 지우고 다시 받는다(다른 항목은 그대로 둔다).
+                        sessionLoaded.remove(KEY_EXPOSURE)
                         loadExposureCompensation()
                     }
                     .onFailure { e ->
@@ -388,9 +408,15 @@ class CameraSettingsManager @Inject constructor(
     suspend fun loadStorageInfo() {
         withContext(ioDispatcher) {
             try {
+                // 스토리지 구성은 세션 동안 바뀌지 않는다(카드 교체는 재연결을 동반한다).
+                if (KEY_STORAGE in sessionLoaded && _storageInfo.value != null) {
+                    logger.d(TAG, "스토리지 정보 세션 캐시 사용 — 왕복 생략")
+                    return@withContext
+                }
                 getStorageInfoUseCase()
                     .onSuccess { info ->
                         _storageInfo.value = info
+                        if (info != null) sessionLoaded.add(KEY_STORAGE)
                         logger.d(
                             TAG,
                             "스토리지 정보 로딩: free=${info?.freeBytes}, imagesFree=${info?.imagesFree}"
@@ -458,11 +484,21 @@ class CameraSettingsManager @Inject constructor(
     }
 
     /**
+     * 카메라 세션이 바뀌었다(연결·해제). 세션 캐시를 통째로 비워 다음 조회가 실제 왕복을 타게 한다.
+     *
+     * 기능 정보·EV·스토리지는 바디마다 다르므로 세션을 넘겨 유지하면 안 된다.
+     */
+    fun onCameraSessionChanged() {
+        sessionLoaded.clear()
+        logger.d(TAG, "카메라 세션 변경 — 설정 세션 캐시 초기화")
+    }
+
+    /**
      * 설정 캐시 초기화
      */
     fun clearSettingsCache() {
         settingsCache.clear()
-        capabilitiesCache.clear()
+        sessionLoaded.clear()
         logger.d(TAG, "설정 캐시 초기화 완료")
     }
 
@@ -496,7 +532,7 @@ class CameraSettingsManager @Inject constructor(
         _exposureCompensation.value = null
         _storageInfo.value = null
         settingsCache.clear()
-        capabilitiesCache.clear()
+        sessionLoaded.clear()
         _isLoadingSettings.value = false
         _isUpdatingSettings.value = false
         logger.d(TAG, "카메라 설정 매니저 정리 완료")

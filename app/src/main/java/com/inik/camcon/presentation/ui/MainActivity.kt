@@ -839,8 +839,14 @@ fun MainScreen(
         }
 
         // USB 연결 및 초기화 상태에 따른 UI 블로킹 오버레이
+        //
+        // ⚠️ **자동 재연결 중에는 띄우지 않는다.** 자동 시도는 사용자가 요청하지 않은 배경 작업인데,
+        // 시도마다 CONNECTING↔ERROR 가 토글되므로 그대로 두면 아무것도 안 했는데 화면을 막는 오버레이가
+        // 반복해서 나타났다 사라진다(5회 재시도 = 5번 깜빡임). 자동 시도의 상태 표시는 연결 칩 같은
+        // 비차단 요소가 맡고, 이 오버레이는 사용자가 **직접 연결을 누른 경우**에만 뜬다.
         val shouldShowOverlay =
-            globalConnectionState.ptpipConnectionState == PtpipConnectionState.CONNECTING ||
+            (globalConnectionState.ptpipConnectionState == PtpipConnectionState.CONNECTING &&
+                    !globalConnectionState.isAutoReconnecting) ||
                     cameraUiState.isUsbInitializing ||
                     cameraUiState.isCameraInitializing
 

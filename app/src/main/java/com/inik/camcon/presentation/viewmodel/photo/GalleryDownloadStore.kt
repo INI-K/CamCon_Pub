@@ -32,6 +32,7 @@ import javax.inject.Singleton
 @Singleton
 class GalleryDownloadStore @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val photoLibraryLocation: com.inik.camcon.data.repository.managers.PhotoLibraryLocation,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
@@ -52,10 +53,37 @@ class GalleryDownloadStore @Inject constructor(
                 Log.w(TAG, "유효하지 않은 카메라 파일명 — 저장 중단: ${LogMask.path(cameraPath)}")
                 return@withContext null
             }
-            val subFolder = extractCameraSubFolder(cameraPath)
+            // 저장 폴더는 `날짜_원본폴더_기종` 한 단계다(PhotoStorageLayout). 테더링 수신 경로와
+            // 같은 체계를 써서 두 경로의 결과가 한자리에 모이게 한다.
+            //
+            // 촬영 시각과 기종 모두 받은 바이트의 EXIF 에서 읽는다. 이 포트에는 연결 정보가
+            // 오지 않으므로 사진 자체가 유일한 출처다(시각은 실패 시 지금 시각으로 폴백).
+            val captureMillis = com.inik.camcon.data.util.ExifCaptureTime.parseMillis(imageData)
+                ?: System.currentTimeMillis()
+            val saveFolderName = photoLibraryLocation.folderNameFor(
+                captureMillis = captureMillis,
+                cameraPath = cameraPath,
+                cameraModel = com.inik.camcon.data.util.ExifCameraModel.parse(imageData)
+            )
+
+            // 저장 위치 분기. 기본은 앱 전용이라 폰 갤러리에 뜨지 않는다.
+            if (!photoLibraryLocation.isDeviceGalleryEnabled()) {
+                val temp = File.createTempFile("gallery_dl_", null, context.cacheDir)
+                temp.writeBytes(imageData)
+                val saved = photoLibraryLocation.saveToAppPrivate(
+                    sourceFile = temp,
+                    displayName = baseName,
+                    folderName = saveFolderName
+                )
+                if (saved == null) {
+                    Log.e(TAG, "앱 전용 저장 실패: $baseName")
+                    runCatching { temp.delete() }
+                }
+                return@withContext saved
+            }
+
             val relativeBase = Constants.FilePaths.getMediaStoreRelativePath()
-            val relativePath =
-                if (subFolder.isNotEmpty()) "$relativeBase/$subFolder" else relativeBase
+            val relativePath = "$relativeBase/$saveFolderName"
 
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, baseName)

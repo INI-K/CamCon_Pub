@@ -11,6 +11,7 @@ import com.inik.camcon.domain.model.GlobalCameraConnectionState
 import com.inik.camcon.domain.model.KnownCameraRef
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
+import com.inik.camcon.domain.model.PtpipConnectFailure
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
@@ -95,6 +96,10 @@ class PtpipViewModelHotspotTest {
         every { ptpipRepository.activeConnectionMethod } returns
             MutableStateFlow<ConnectionMethod?>(null)
         every { ptpipRepository.manualIp } returns MutableStateFlow("")
+        every { ptpipRepository.connectFailure } returns
+            MutableStateFlow<PtpipConnectFailure?>(null)
+        every { ptpipRepository.sshHostKeyFingerprint } returns MutableStateFlow<String?>(null)
+        every { ptpipRepository.connectingCamera } returns MutableStateFlow<PtpipCamera?>(null)
 
         every { globalManager.globalConnectionState } returns
             MutableStateFlow(GlobalCameraConnectionState())

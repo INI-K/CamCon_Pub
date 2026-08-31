@@ -53,6 +53,8 @@
     <string name="progress_ptpip_connecting">カメラに接続中...</string>
     <string name="progress_ptpip_connection_start">カメラ接続を開始しています...</string>
     <string name="progress_ptpip_authenticating_nikon">Nikonカメラを認証中...</string>
+    <string name="progress_ptpip_pairing_first">カメラの画面で接続を許可してください</string>
+    <string name="progress_ptpip_pairing_forgotten">カメラがこの機器の登録を忘れています。カメラの画面でもう一度承認してください</string>
     <string name="progress_ptpip_camera_confirm">📷 カメラの画面で「接続を許可（OK）」を押してください</string>
     <string name="progress_ptpip_checking_info">カメラ情報を確認中...</string>
     <string name="progress_ptpip_listener_start">イベントリスナーを開始中...</string>
@@ -74,4 +76,21 @@
 
     <string name="notification_settings_title">通知設定</string>
     <string name="notification_settings_subtitle">プッシュ通知と音声設定</string>
+    <!-- SSH 터널 연결 (소니 등 접속 인증이 필요한 카메라) -->
+    <string name="ssh_credentials_title">カメラのログイン情報</string>
+    <string name="ssh_credentials_guide">カメラの MENU → ネットワーク → アクセス認証設定 画面に表示された値を入力してください。</string>
+    <string name="ssh_credentials_auth_failed">認証に失敗しました。入力した値をもう一度確認してください。</string>
+    <string name="ssh_credentials_store_failed">この端末ではログイン情報を安全に保存できないため、接続するたびに入力が必要です。</string>
+    <string name="ssh_credentials_user_label">ユーザー名</string>
+    <string name="ssh_credentials_password_label">パスワード</string>
+    <string name="ssh_hostkey_title">カメラのフィンガープリント確認</string>
+    <string name="ssh_hostkey_guide">カメラの MENU → ネットワーク → アクセス認証情報 画面に表示されたフィンガープリントと下の値が一致するか確認してください。</string>
+    <string name="ssh_hostkey_trust">一致する - 信頼する</string>
+    <string name="ssh_hostkey_mismatch_title">カメラのフィンガープリントが変わりました</string>
+    <string name="ssh_hostkey_mismatch_body">保存済みのフィンガープリントと異なります。別の機器がカメラになりすましている可能性があるため、接続を中止しました。</string>
+    <string name="ssh_hostkey_mismatch_hint">カメラを初期化した場合やネットワーク設定をやり直した場合は、設定で保存済みのフィンガープリントを削除してから再接続してください。</string>
+    <string name="ssh_tunnel_failed_title">SSH 接続に失敗しました</string>
+    <string name="ssh_tunnel_failed_body">カメラの SSH ポートに接続できませんでした。カメラと同じネットワークにいるか、カメラのアクセス認証設定が有効かを確認してください。</string>
+    <string name="ssh_retry">再試行</string>
+
 </resources>

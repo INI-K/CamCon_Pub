@@ -9,9 +9,12 @@ import com.inik.camcon.di.ApplicationScope
 import com.inik.camcon.domain.manager.ErrorSeverity
 import com.inik.camcon.domain.manager.ErrorType
 import com.inik.camcon.domain.model.CameraPhoto
+import com.inik.camcon.domain.model.PtpTimeoutException
 import com.inik.camcon.domain.model.SubscriptionTier
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.domain.usecase.camera.GetCameraPhotosPagedUseCase
+import com.inik.camcon.domain.usecase.file.InvalidateFileCacheUseCase
+import com.inik.camcon.domain.usecase.file.SetSonyContentsTransferModeUseCase
 import com.inik.camcon.presentation.viewmodel.state.ErrorHandlingManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -35,6 +38,8 @@ class PhotoListManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val getCameraPhotosPagedUseCase: GetCameraPhotosPagedUseCase,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
+    private val setSonyContentsTransferModeUseCase: SetSonyContentsTransferModeUseCase,
+    private val invalidateFileCacheUseCase: InvalidateFileCacheUseCase,
     private val errorHandlingManager: ErrorHandlingManager,
     @ApplicationScope private val appScope: CoroutineScope
 ) {
@@ -107,6 +112,19 @@ class PhotoListManager @Inject constructor(
     private val _isStorageUnsupported = MutableStateFlow(false)
     val isStorageUnsupported: StateFlow<Boolean> = _isStorageUnsupported.asStateFlow()
 
+    // 소니 콘텐츠 전송 모드(카드 보기) 전환 상태.
+    //
+    // 카드가 안 보이는 소니 세션에서 이 모드로 바꾸면 카드가 스토어로 드러나 기존 목록·
+    // 다운로드 경로가 그대로 동작한다. 대신 켜져 있는 동안은 촬영·라이브뷰가 카메라 쪽에서
+    // 막히므로(소니 명세 규정), 자동으로 켜지 않고 사용자가 고르게 한다.
+    private val _cardBrowseState = MutableStateFlow(CardBrowseState.IDLE)
+    val cardBrowseState: StateFlow<CardBrowseState> = _cardBrowseState.asStateFlow()
+
+    // 전환 실패 사유. 문구는 UI 가 고른다(이 매니저는 문자열을 알지 않는다).
+    // 사용자가 안내를 확인하면 [clearCardBrowseError] 로 지운다.
+    private val _cardBrowseError = MutableStateFlow<CardBrowseError?>(null)
+    val cardBrowseError: StateFlow<CardBrowseError?> = _cardBrowseError.asStateFlow()
+
     // 필터 상태
     private val _currentFilter = MutableStateFlow(FileTypeFilter.JPG)
     val currentFilter: StateFlow<FileTypeFilter> = _currentFilter.asStateFlow()
@@ -123,6 +141,121 @@ class PhotoListManager @Inject constructor(
     // 작업 중단 플래그 — 해제 스레드와 코루틴 워커 간 가시성 보장
     @Volatile
     private var isManagerActive = true
+
+    /**
+     * 카드 보기로 전환한다(소니 콘텐츠 전송 모드 진입).
+     *
+     * 카드가 보이지 않는 소니 세션에서만 의미가 있다. 성공하면 카메라가 메모리 카드를
+     * 스토어로 노출하므로 기존 목록·썸네일·다운로드 경로가 그대로 동작한다.
+     *
+     * **켜져 있는 동안 촬영과 라이브뷰는 카메라 쪽에서 막힌다.** 소니 명세가 그렇게 규정하고
+     * 있어 우회할 수 없다. 그래서 자동으로 켜지 않고 사용자가 고르게 한다.
+     *
+     * 지원하지 않는 카메라(다른 제조사 포함)에서는 왕복 한 번으로 실패가 돌아온다. 전환에
+     * 쓰는 위젯이 소니이면서 해당 오퍼레이션을 광고하는 세션에만 존재하기 때문이다.
+     */
+    fun enterCardBrowse(tier: SubscriptionTier = currentTier) {
+        if (!_cardBrowseState.compareAndSet(CardBrowseState.IDLE, CardBrowseState.ENTERING)) {
+            Log.d(TAG, "카드 보기 진입 건너뛰기: 현재 상태=${_cardBrowseState.value}")
+            return
+        }
+        currentTier = tier
+        _cardBrowseError.value = null
+
+        managerScope.launch {
+            setSonyContentsTransferModeUseCase(true).fold(
+                onSuccess = {
+                    // 네이티브 세션 캐시(미지원 판정·폴더 목록)를 반드시 비운다. 이걸 빠뜨리면
+                    // 카드가 실제로 드러나도 이전 판정이 남아 계속 "미지원"이 돌아온다.
+                    invalidateFileCacheUseCase()
+                    _cardBrowseState.value = CardBrowseState.ACTIVE
+                    _isStorageUnsupported.value = false
+                    Log.i(TAG, "카드 보기 진입 성공 — 목록 재조회")
+                    loadInitialPhotos(isConnected = true, tier = currentTier)
+                },
+                onFailure = { e ->
+                    // 네이티브가 진입에 실패하면 카메라를 원격 제어 모드로 되돌리는 것까지
+                    // camlib 이 처리한다. 앱은 상태만 되돌리면 된다.
+                    Log.w(TAG, "카드 보기 진입 실패", e)
+                    _cardBrowseState.value = CardBrowseState.IDLE
+                    _cardBrowseError.value = CardBrowseError.ENTER_FAILED
+                }
+            )
+        }
+    }
+
+    /**
+     * 카드 보기에서 빠져나와 촬영 모드로 돌아간다.
+     *
+     * 이탈에 실패하면 카메라가 콘텐츠 전송 모드에 갇힌 채 남아 촬영·라이브뷰가 계속 막힌다.
+     * 그때는 [CardBrowseState.STUCK] 으로 두어 UI 가 전원 재기동을 안내하게 한다. 그 상태에서
+     * 다시 호출하면 이탈을 재시도한다.
+     */
+    fun exitCardBrowse() {
+        val current = _cardBrowseState.value
+        if (current != CardBrowseState.ACTIVE && current != CardBrowseState.STUCK) {
+            Log.d(TAG, "카드 보기 이탈 건너뛰기: 현재 상태=$current")
+            return
+        }
+        if (!_cardBrowseState.compareAndSet(current, CardBrowseState.LEAVING)) {
+            Log.d(TAG, "카드 보기 이탈 건너뛰기: 상태가 그사이 바뀜")
+            return
+        }
+        _cardBrowseError.value = null
+
+        // ⚠️ 매니저 scope 가 아니라 앱 scope 다. 이탈은 카메라를 촬영 모드로 되돌리는 명령이라
+        // 중간에 잘리면 카메라가 콘텐츠 전송 모드에 갇혀 촬영과 라이브뷰가 계속 막힌다.
+        // 이 함수는 화면을 떠나는 길목([cleanup] 포함)에서 불리는데, 매니저 scope 는 바로 그
+        // 자리에서 취소되므로 진입([enterCardBrowse])과 달리 취소되지 않는 scope 를 쓴다.
+        appScope.launch {
+            var result = setSonyContentsTransferModeUseCase(false)
+
+            if (result.exceptionOrNull() is PtpTimeoutException) {
+                // 타임아웃은 실패가 확정된 것이 아니다. 명령이 카메라에 닿았는지 알 수 없을
+                // 뿐이라 한 번 더 시도한다. 곧바로 STUCK 으로 두면 되돌릴 수 있는 상황에서도
+                // 사용자에게 카메라 전원을 껐다 켜라고 안내하게 된다.
+                Log.w(TAG, "카드 보기 이탈 응답 시간 초과 — 한 번 더 시도한다")
+                result = setSonyContentsTransferModeUseCase(false)
+            }
+
+            result.fold(
+                onSuccess = {
+                    invalidateFileCacheUseCase()
+                    _cardBrowseState.value = CardBrowseState.IDLE
+                    _allPhotos.value = emptyList()
+                    updateFilteredPhotos(currentTier)
+                    // 카드가 다시 보이지 않는 상태로 돌아간다 — UI 가 카드 보기 안내를 다시 그린다.
+                    _isStorageUnsupported.value = true
+                    Log.i(TAG, "카드 보기 이탈 성공 — 촬영 모드로 복귀")
+                },
+                onFailure = { e ->
+                    Log.e(TAG, "카드 보기 이탈 실패 — 카메라 전원 재기동이 필요하다", e)
+                    _cardBrowseState.value = CardBrowseState.STUCK
+                    _cardBrowseError.value = CardBrowseError.EXIT_FAILED
+                }
+            )
+        }
+    }
+
+    /** 사용자가 전환 실패 안내를 확인했을 때 호출한다. */
+    fun clearCardBrowseError() {
+        _cardBrowseError.value = null
+    }
+
+    /**
+     * 연결이 끊겼을 때 카드 보기 상태를 정리한다.
+     *
+     * 카메라가 사라진 뒤라 전환 명령을 보낼 수는 없다. 세션 자체가 끝났으므로 카메라도 다음에
+     * 켜질 때 기본값인 원격 제어 모드로 시작한다. 여기서 할 일은 앱 상태를 되돌려, 다시
+     * 연결했을 때 "카드 보기가 켜져 있다"고 잘못 알고 있지 않게 하는 것뿐이다.
+     */
+    fun resetCardBrowseOnDisconnect() {
+        if (_cardBrowseState.value != CardBrowseState.IDLE) {
+            Log.d(TAG, "연결 해제 — 카드 보기 상태를 초기화한다 (이전=${_cardBrowseState.value})")
+        }
+        _cardBrowseState.value = CardBrowseState.IDLE
+        _cardBrowseError.value = null
+    }
 
     /**
      * 초기 사진 목록 로드
@@ -492,6 +625,20 @@ class PhotoListManager @Inject constructor(
      * 매니저 정리
      */
     fun cleanup() {
+        // 카드 보기를 켠 채로 화면을 벗어나면 카메라가 콘텐츠 전송 모드에 갇혀 촬영과
+        // 라이브뷰가 계속 막힌 상태로 남는다. [exitCardBrowse] 는 앱 scope 에서 돌기 때문에
+        // 바로 아래의 매니저 scope 취소에 잘려나가지 않는다. 실패하면 그 안에서 STUCK 으로
+        // 두므로 UI 가 전원 재기동을 안내한다 — 여기서 상태를 IDLE 로 덮어쓰면 안 된다.
+        val leaving = _cardBrowseState.value == CardBrowseState.ACTIVE ||
+                _cardBrowseState.value == CardBrowseState.STUCK
+        if (leaving) {
+            Log.w(TAG, "카드 보기가 켜진 채 정리됨 — 촬영 모드로 되돌린다")
+            exitCardBrowse()
+        } else {
+            _cardBrowseState.value = CardBrowseState.IDLE
+            _cardBrowseError.value = null
+        }
+
         // 진행 중 작업 취소 → scope 재생성 후 즉시 재활성화하여
         // @Singleton 재진입(미리보기 재진입) 시 목록 로딩이 영구 차단되지 않도록 한다.(F20)
         managerScope.coroutineContext.job.cancel()
@@ -507,6 +654,41 @@ class PhotoListManager @Inject constructor(
         _prefetchedPage.value = 0
         Log.d(TAG, "사진 목록 매니저 정리 완료")
     }
+}
+
+/**
+ * 카드 보기(소니 콘텐츠 전송 모드) 전환 상태.
+ *
+ * [ACTIVE] 인 동안에는 촬영과 라이브뷰가 카메라 쪽에서 막히므로, UI 는 그 사실을 사용자에게
+ * 알리고 관련 조작을 비활성화해야 한다.
+ */
+enum class CardBrowseState {
+    /** 평소 상태. 촬영·라이브뷰가 동작하고 카드는 보이지 않는다. */
+    IDLE,
+
+    /** 진입하는 중. 전환이 커맨드 큐를 점유하므로 다른 조작을 막는다. */
+    ENTERING,
+
+    /** 카드가 보이는 상태. 촬영·라이브뷰는 멈춰 있다. */
+    ACTIVE,
+
+    /** 빠져나오는 중. */
+    LEAVING,
+
+    /**
+     * 이탈에 실패해 카메라가 콘텐츠 전송 모드에 갇힌 상태.
+     * 촬영이 계속 막히므로 사용자가 카메라 전원을 껐다 켜야 한다. 재시도도 가능하다.
+     */
+    STUCK
+}
+
+/** 카드 보기 전환 실패 사유. 실제 안내 문구는 UI 가 고른다. */
+enum class CardBrowseError {
+    /** 진입 실패. 카메라는 촬영 모드에 그대로 있다. */
+    ENTER_FAILED,
+
+    /** 이탈 실패. 카메라가 갇혀 있어 전원 재기동 안내가 필요하다. */
+    EXIT_FAILED
 }
 
 /**

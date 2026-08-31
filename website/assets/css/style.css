@@ -938,6 +938,8 @@ main { position: relative; z-index: var(--z-content); }
 .footer-nav a:hover { color: var(--amber); }
 .footer-bottom { margin-top: 34px; padding-top: 24px; border-top: 1px solid var(--hair); }
 .footer-bottom p { font-family: var(--mono); font-size: var(--t-meta); color: var(--ink-mute); letter-spacing: .02em; }
+/* 오픈소스 출처·상표 고지 — 저작권 줄에 딸린 부속 고지라 mono 를 벗기고 한 티어 더 낮춘다. */
+.footer-legal { margin-top: 10px; font-family: inherit; font-size: var(--t-label); letter-spacing: 0; max-width: 72ch; opacity: .7; }
 
 /* ============================================================
    REVEAL

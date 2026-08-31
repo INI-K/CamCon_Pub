@@ -250,6 +250,82 @@ class CameraSettingsManagerTest {
         assertNull(manager.getSettingValue("iso"))
     }
 
+    // ── 세션 캐시 (탭 재진입이 왕복을 다시 만들지 않는다) ──
+
+    @Test
+    fun `기능 정보는 세션당 한 번만 조회한다`() = runTest {
+        coEvery { getCameraCapabilitiesUseCase() } returns
+            Result.success(sampleCapabilities(liveView = true, timelapse = true, autofocus = true))
+        val manager = createManager()
+
+        manager.loadCameraCapabilities()
+        manager.loadCameraCapabilities()   // 탭 재진입
+
+        coVerify(exactly = 1) { getCameraCapabilitiesUseCase() }
+        assertTrue(manager.cameraCapabilities.value!!.canLiveView)
+    }
+
+    @Test
+    fun `EV 와 스토리지도 세션당 한 번만 조회한다`() = runTest {
+        coEvery { getExposureCompensationUseCase() } returns
+            Result.success(ExposureCompensation("0", listOf("0")))
+        coEvery { getStorageInfoUseCase() } returns Result.success(StorageInfo(1L, 1L, 1))
+        val manager = createManager()
+
+        manager.loadExposureCompensation()
+        manager.loadStorageInfo()
+        manager.loadExposureCompensation()
+        manager.loadStorageInfo()
+
+        coVerify(exactly = 1) { getExposureCompensationUseCase() }
+        coVerify(exactly = 1) { getStorageInfoUseCase() }
+    }
+
+    @Test
+    fun `조회에 실패하면 캐시하지 않고 다음에 다시 시도한다`() = runTest {
+        // 실패를 "받았다"로 굳히면 그 세션 내내 값이 비어 있게 된다.
+        coEvery { getCameraCapabilitiesUseCase() } returns Result.failure(RuntimeException("실패"))
+        val manager = createManager()
+
+        manager.loadCameraCapabilities()
+        manager.loadCameraCapabilities()
+
+        coVerify(exactly = 2) { getCameraCapabilitiesUseCase() }
+    }
+
+    @Test
+    fun `세션이 바뀌면 다시 조회한다`() = runTest {
+        coEvery { getCameraCapabilitiesUseCase() } returns
+            Result.success(sampleCapabilities(liveView = true, timelapse = true, autofocus = true))
+        val manager = createManager()
+        manager.loadCameraCapabilities()
+
+        manager.onCameraSessionChanged()
+        manager.loadCameraCapabilities()
+
+        // 카메라가 바뀌면 값도 달라지므로 반드시 다시 물어봐야 한다.
+        coVerify(exactly = 2) { getCameraCapabilitiesUseCase() }
+    }
+
+    @Test
+    fun `EV 를 바꾸면 EV 만 다시 조회하고 스토리지는 그대로 둔다`() = runTest {
+        coEvery { getExposureCompensationUseCase() } returns
+            Result.success(ExposureCompensation("0", listOf("0", "+1/3")))
+        coEvery { getStorageInfoUseCase() } returns Result.success(StorageInfo(1L, 1L, 1))
+        coEvery { setExposureCompensationUseCase("+1/3") } returns Result.success(Unit)
+        val manager = createManager()
+        manager.loadExposureCompensation()
+        manager.loadStorageInfo()
+
+        manager.setExposureCompensation("+1/3")
+        manager.loadStorageInfo()
+
+        // 최초 1회 + 변경 후 재조회 1회
+        coVerify(exactly = 2) { getExposureCompensationUseCase() }
+        // 스토리지는 건드리지 않았으므로 그대로 캐시가 유지된다.
+        coVerify(exactly = 1) { getStorageInfoUseCase() }
+    }
+
     // ── 헬퍼 ──
 
     private fun sampleSettings(available: Map<String, List<String>>) = CameraSettings(

@@ -269,6 +269,28 @@ internal fun FilmSimulationSection(
 }
 
 /**
+ * 저장 위치 설정 섹션.
+ *
+ * 기본은 꺼짐 — 사진이 앱 안에서만 보이고 폰 갤러리에는 뜨지 않는다. 대신 **앱을 지우면 사진도
+ * 함께 지워지므로**, 그 대가를 설명 문구에 그대로 적는다(숨기면 사용자가 사진을 잃고 나서 안다).
+ */
+@Composable
+internal fun SaveLocationSection(
+    isSaveToDeviceGalleryEnabled: Boolean,
+    onSaveToDeviceGalleryChange: (Boolean) -> Unit
+) {
+    SettingsSection(title = stringResource(R.string.settings_save_to_device_gallery_title)) {
+        SwitchRowV2(
+            icon = Icons.Default.Photo,
+            title = stringResource(R.string.settings_save_to_device_gallery_title),
+            subtitle = stringResource(R.string.settings_save_to_device_gallery_desc),
+            checked = isSaveToDeviceGalleryEnabled,
+            onCheckedChange = onSaveToDeviceGalleryChange
+        )
+    }
+}
+
+/**
  * RAW 파일 다운로드 설정 섹션 — 허용(PRO+) 시 토글, 아니면 잠금 행에서 페이월([onUpgradeClick])로.
  */
 @Composable

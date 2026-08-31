@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -76,6 +77,9 @@ import com.inik.camcon.presentation.theme.Spacing
 import com.inik.camcon.presentation.theme.TextPrimaryV2
 import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
+import com.inik.camcon.presentation.viewmodel.photo.CardBrowseState
+import com.inik.camcon.presentation.viewmodel.photo.CardBrowseError
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.EmptyState
 import com.inik.camcon.presentation.ui.components.v2.FilterChipV2
 import com.inik.camcon.presentation.ui.components.v2.IconButtonV2
@@ -121,6 +125,9 @@ fun PhotoPreviewScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val photos by viewModel.photos.collectAsStateWithLifecycle()
     val isStorageUnsupported by viewModel.isStorageUnsupported.collectAsStateWithLifecycle()
+    val cardBrowseState by viewModel.cardBrowseState.collectAsStateWithLifecycle()
+    val cardBrowseError by viewModel.cardBrowseError.collectAsStateWithLifecycle()
+    val showThumbnailLimitNotice by viewModel.showThumbnailLimitNotice.collectAsStateWithLifecycle()
     val isLoadingPhotos by viewModel.isLoadingPhotos.collectAsStateWithLifecycle()
     val isLoadingMore by viewModel.isLoadingMorePhotos.collectAsStateWithLifecycle()
     val hasNextPage by viewModel.hasNextPage.collectAsStateWithLifecycle()
@@ -203,10 +210,29 @@ fun PhotoPreviewScreen(
 
                     !uiState.isConnected && !isPtpipConnected -> CameraDisconnectedState()
                     isLoadingPhotos && photos.isEmpty() -> PhotoSkeletonGrid()
-                    // 카드 탐색 미지원 세션(Sony PC리모트) — 일반 빈 상태 대신 이유+해결 경로 상시 안내
-                    photos.isEmpty() && isStorageUnsupported -> CardBrowsingUnsupportedState()
+                    // 카드 탐색 미지원 세션(Sony PC리모트) — 일반 빈 상태 대신 이유+해결 경로 상시 안내.
+                    // 카드 보기로 전환했는데 카드가 비어 있는 경우도 여기로 온다. 그때
+                    // isStorageUnsupported 는 이미 풀려 있으므로 전환 상태를 함께 본다.
+                    photos.isEmpty() &&
+                            (isStorageUnsupported || cardBrowseState != CardBrowseState.IDLE) ->
+                        CardBrowsingUnsupportedState(
+                            cardBrowseState = cardBrowseState,
+                            cardBrowseError = cardBrowseError,
+                            onEnterCardBrowse = viewModel::enterCardBrowse,
+                            onExitCardBrowse = viewModel::exitCardBrowse
+                        )
+
                     photos.isEmpty() -> EmptyPhotosV2()
                     else -> Column(modifier = Modifier.fillMaxSize()) {
+                        // 카드 보기 중에는 그 사실과 빠져나갈 길을 그리드 위에 항상 띄운다.
+                        // 이게 없으면 사진이 뜬 순간 CardBrowsingUnsupportedState 가 사라져
+                        // 촬영 모드로 돌아갈 방법이 화면에서 없어진다.
+                        if (cardBrowseState != CardBrowseState.IDLE) {
+                            CardBrowseBanner(
+                                cardBrowseState = cardBrowseState,
+                                onExitCardBrowse = viewModel::exitCardBrowse
+                            )
+                        }
                         PhotoGrid(
                             photos = photos,
                             isLoadingMore = isLoadingMore,
@@ -241,12 +267,32 @@ fun PhotoPreviewScreen(
         }
     }
 
+    // === 썸네일 제한 안내 ===
+    // 2025년 신형 소니는 GetThumb 을 광고하면서도 실제로는 지원하지 않아 미리보기가 비어 보인다.
+    // 고장으로 오해하지 않도록 카드 보기에 들어갈 때 세션당 한 번 알린다.
+    if (showThumbnailLimitNotice) {
+        AppDialog(
+            onDismissRequest = { viewModel.dismissThumbnailLimitNotice() },
+            title = { Text(stringResource(R.string.preview_thumbnail_unsupported_title)) },
+            text = { Text(stringResource(R.string.preview_thumbnail_unsupported_desc)) },
+            confirmButton = {
+                PrimaryButton(
+                    text = stringResource(R.string.ok),
+                    onClick = { viewModel.dismissThumbnailLimitNotice() }
+                )
+            }
+        )
+    }
+
     // === FullScreen Viewer 오버레이 ===
     uiState.selectedPhoto?.let { photo ->
         val fullImageCache by viewModel.fullImageCache.collectAsStateWithLifecycle()
         // StateFlow 구독 — 일반 함수(getThumbnail)로 읽으면 캐시가 채워져도
         // recomposition이 없어 썸네일이 영영 placeholder로 남는다(2026-07-03 실측).
-        val thumbnailCache by viewModel.thumbnailCache.collectAsStateWithLifecycle()
+        // ⚠️ collectAsStateWithLifecycle 로 받지 않는다. 스냅샷 맵을 그냥 읽으면 Compose 가
+        // **읽은 키만** 추적해, 그 썸네일이 도착할 때 해당 항목만 다시 그린다.
+        // 통째로 구독하면 썸네일 한 장마다 화면의 모든 항목이 다시 그려진다(원래 증상).
+        val thumbnailCache = viewModel.thumbnailCache
         val downloadingImages by viewModel.downloadingImages.collectAsStateWithLifecycle()
 
         LaunchedEffect(photo.path) {
@@ -690,16 +736,106 @@ private fun CameraDisconnectedState() {
  * 토스트는 놓치기 쉬워 빈 화면 자리에 이유와 해결 경로(USB+MTP)를 상시 표시한다.
  */
 @Composable
-private fun CardBrowsingUnsupportedState() {
+private fun CardBrowsingUnsupportedState(
+    cardBrowseState: CardBrowseState,
+    cardBrowseError: CardBrowseError?,
+    onEnterCardBrowse: () -> Unit,
+    onExitCardBrowse: () -> Unit
+) {
+    // 자동 진입은 하지 않는다 — 들어가면 촬영·라이브뷰가 멈추므로 사용자가 알고 골라야 한다.
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        EmptyState(
-            icon = Icons.Outlined.PhotoLibrary,
-            title = stringResource(R.string.preview_card_browse_unsupported_title),
-            description = stringResource(R.string.preview_card_browse_unsupported_desc)
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(horizontal = Spacing.lg)
+        ) {
+            EmptyState(
+                icon = Icons.Outlined.PhotoLibrary,
+                title = stringResource(R.string.preview_card_browse_unsupported_title),
+                description = stringResource(
+                    when (cardBrowseState) {
+                        CardBrowseState.STUCK -> R.string.preview_card_browse_stuck
+                        CardBrowseState.ENTERING -> R.string.preview_card_browse_entering
+                        CardBrowseState.LEAVING -> R.string.preview_card_browse_leaving
+                        CardBrowseState.ACTIVE -> R.string.preview_card_browse_active
+                        CardBrowseState.IDLE ->
+                            if (cardBrowseError == CardBrowseError.ENTER_FAILED) {
+                                R.string.preview_card_browse_enter_failed
+                            } else {
+                                R.string.preview_card_browse_available_desc
+                            }
+                    }
+                )
+            )
+            Spacer(modifier = Modifier.height(Spacing.lg))
+            when (cardBrowseState) {
+                // 전환 중에는 조작을 막는다. 커맨드 큐를 점유하는 구간이다.
+                CardBrowseState.ENTERING, CardBrowseState.LEAVING -> Unit
+
+                CardBrowseState.ACTIVE -> SecondaryButton(
+                    text = stringResource(R.string.preview_card_browse_exit),
+                    onClick = onExitCardBrowse
+                )
+
+                // 갇힌 상태에서 조용히 IDLE로 돌리지 않는다. 촬영이 계속 막혀 있으므로
+                // 사용자가 재시도하거나 카메라를 껐다 켜야 한다는 것을 알아야 한다.
+                CardBrowseState.STUCK -> PrimaryButton(
+                    text = stringResource(R.string.preview_card_browse_retry_exit),
+                    onClick = onExitCardBrowse
+                )
+
+                CardBrowseState.IDLE -> PrimaryButton(
+                    text = stringResource(R.string.preview_card_browse_enter),
+                    onClick = onEnterCardBrowse
+                )
+            }
+        }
+    }
+}
+
+/**
+ * 카드 보기 중임을 알리고 빠져나갈 길을 항상 제공하는 배너.
+ *
+ * 사진이 뜨고 나면 [CardBrowsingUnsupportedState] 는 그려지지 않는다. 이 배너가 없으면
+ * 카드 보기가 켜져 있다는 사실도, 촬영 모드로 돌아가는 버튼도 화면에서 사라진다.
+ */
+@Composable
+private fun CardBrowseBanner(
+    cardBrowseState: CardBrowseState,
+    onExitCardBrowse: () -> Unit
+) {
+    SurfaceV2(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        tier = 2
+    ) {
+        Row(
+            modifier = Modifier.padding(Spacing.md),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(
+                    when (cardBrowseState) {
+                        CardBrowseState.LEAVING -> R.string.preview_card_browse_leaving
+                        CardBrowseState.STUCK -> R.string.preview_card_browse_stuck
+                        else -> R.string.preview_card_browse_active
+                    }
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f)
+            )
+            // 전환 중(LEAVING)에는 버튼을 내린다. 커맨드 큐를 점유하는 구간이라 조작을 막는다.
+            if (cardBrowseState == CardBrowseState.ACTIVE || cardBrowseState == CardBrowseState.STUCK) {
+                Spacer(modifier = Modifier.width(Spacing.sm))
+                SecondaryButton(
+                    text = stringResource(R.string.preview_card_browse_exit),
+                    onClick = onExitCardBrowse
+                )
+            }
+        }
     }
 }
 
@@ -779,7 +915,9 @@ private fun PhotoGrid(
     val lazyGridState = rememberLazyStaggeredGridState()
     val fullImageCache by viewModel.fullImageCache.collectAsStateWithLifecycle()
     // StateFlow 구독 — getThumbnail 함수 호출로는 캐시 갱신 시 recomposition이 없다.
-    val thumbnailCache by viewModel.thumbnailCache.collectAsStateWithLifecycle()
+    // ⚠️ 스냅샷 맵이라 통째로 구독하지 않는다(위 PhotoImageManager 주석 참조).
+    // 각 항목이 자기 경로의 키만 읽으므로 그 썸네일이 올 때 그 항목만 다시 그려진다.
+    val thumbnailCache = viewModel.thumbnailCache
 
     val widthSizeClass = LocalWindowSizeClass.current.widthSizeClass
     val gridColumns = when (widthSizeClass) {
@@ -825,11 +963,17 @@ private fun PhotoGrid(
         }
 
         // 나머지
+        // ⚠️ `photos.drop(1)` 을 쓰지 않는다. 그 호출은 재구성마다 목록 전체를 새 리스트로
+        // 복사하는데, 사진이 수백 장이면 그 자체가 비용이고 새 인스턴스라 안정성도 깨진다.
+        // 첫 장은 위에서 따로 그리므로 시작 인덱스만 옮겨 같은 리스트를 그대로 쓴다.
+        val gridItemCount = if (isMultiSelectMode) photos.size else (photos.size - 1).coerceAtLeast(0)
+        val gridItemOffset = if (isMultiSelectMode) 0 else 1
         items(
-            items = if (isMultiSelectMode) photos else photos.drop(1),
-            key = { photo -> photo.path },
+            count = gridItemCount,
+            key = { index -> photos[index + gridItemOffset].path },
             contentType = { "photo_thumbnail" }
-        ) { photo ->
+        ) { index ->
+            val photo = photos[index + gridItemOffset]
             FluidPhotoThumbnail(
                 photo = photo,
                 thumbnailData = thumbnailCache[photo.path],

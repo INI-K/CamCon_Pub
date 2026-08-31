@@ -97,6 +97,16 @@ class InvalidateFileCacheUseCase @Inject constructor(
     suspend operator fun invoke(): Result<Boolean> = repository.invalidateFileCache()
 }
 
+/**
+ * 소니 콘텐츠 전송 모드 전환. 켜면 카드가 보이는 대신 촬영·라이브뷰가 멈춘다.
+ */
+class SetSonyContentsTransferModeUseCase @Inject constructor(
+    private val repository: CameraFileRepository
+) {
+    suspend operator fun invoke(enabled: Boolean): Result<Boolean> =
+        repository.setSonyContentsTransferMode(enabled)
+}
+
 class GetRecentCapturedPathsUseCase @Inject constructor(
     private val repository: CameraFileRepository
 ) {

@@ -28,6 +28,8 @@ class PhotoListManagerAppendDistinctTest {
         context = mockk(relaxed = true),
         getCameraPhotosPagedUseCase = mockk(relaxed = true),
         validateImageFormatUseCase = mockk(relaxed = true),
+        setSonyContentsTransferModeUseCase = mockk(relaxed = true),
+        invalidateFileCacheUseCase = mockk(relaxed = true),
         errorHandlingManager = mockk(relaxed = true),
         appScope = CoroutineScope(Dispatchers.Unconfined)
     )

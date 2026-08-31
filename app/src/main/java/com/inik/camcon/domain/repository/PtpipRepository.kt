@@ -5,6 +5,7 @@ import com.inik.camcon.domain.model.CameraCaptureCallback
 import com.inik.camcon.domain.model.ConnectionMethod
 import com.inik.camcon.domain.model.PtpipCamera
 import com.inik.camcon.domain.model.PtpipCameraInfo
+import com.inik.camcon.domain.model.PtpipConnectFailure
 import com.inik.camcon.domain.model.PtpipConnectionState
 import com.inik.camcon.domain.model.WifiCapabilities
 import com.inik.camcon.domain.model.WifiNetworkState
@@ -38,6 +39,39 @@ interface PtpipRepository {
     /** 연결 끊어짐 알림 메시지 */
     val connectionLostMessage: StateFlow<String?>
 
+    /**
+     * 직전 연결 시도가 실패한 구조적 사유. null이면 사유가 없다.
+     *
+     * 문자열 진행 메시지와 달리 이 값으로는 "무엇을 띄울지"를 결정할 수 있다. 페어링 대기는 안내만
+     * 하고 재시도를 유지하는 반면, SSH 계열은 자격증명 입력이나 지문 대조 다이얼로그가 필요하다.
+     */
+    val connectFailure: StateFlow<PtpipConnectFailure?>
+
+    /**
+     * 서버가 제시한 SSH 호스트키 지문. 호스트키 계열 실패에서만 값이 차고, 나머지는 null이다.
+     *
+     * TOFU 다이얼로그가 이 값을 사용자에게 보여 주고 카메라 본체 화면과 대조하게 한다.
+     * [connectFailure]와 짝으로 읽는다.
+     */
+    val sshHostKeyFingerprint: StateFlow<String?>
+
+    /**
+     * SSH 연결 시도 억제를 즉시 해제한다.
+     *
+     * 실패한 SSH 연결은 자동 경로가 되풀이하지 못하도록 일정 시간 억제된다. 사용자가 자격증명을
+     * 입력했거나 지문을 신뢰했거나 연결을 다시 누른 뒤에는 이 함수로 억제를 풀고 시도한다.
+     */
+    fun clearSshAttemptThrottle()
+
+    /**
+     * 지금 연결을 시도 중인(또는 직전에 시도한) 카메라. 시도가 없었으면 null이다.
+     *
+     * [connectFailure]가 "무엇이 실패했는지"를, 이 값이 "어느 카메라의 실패인지"를 알려 준다.
+     * 자동 재연결·Wi-Fi 폴링·자동 연결처럼 화면을 거치지 않고 시작된 연결의 실패에도 조치 대상을
+     * 특정할 수 있어야 하므로, 이 값은 데이터 레이어가 채운다.
+     */
+    val connectingCamera: StateFlow<PtpipCamera?>
+
     /** 현재 활성화된 사용자 시나리오 (AP / STA_ROUTER / STA_PHONE_HOTSPOT). */
     val activeConnectionMethod: StateFlow<ConnectionMethod?>
 
@@ -60,6 +94,24 @@ interface PtpipRepository {
 
     /** 카메라 연결 해제 */
     suspend fun disconnect()
+
+    // ── SSH 자격증명 / 호스트키 (사용자 조치 반영) ──
+
+    /**
+     * 사용자가 입력한 SSH 사용자명·비밀번호를 저장한다.
+     *
+     * @return 이 기기에서 암호화 저장소를 쓸 수 없으면 false. 이때 평문으로 저장하지 않으므로
+     *   (fail-closed) 호출자는 "연결할 때마다 입력이 필요하다"고 안내해야 한다.
+     */
+    suspend fun saveSshCredentials(camera: PtpipCamera, user: String, password: String): Boolean
+
+    /**
+     * 사용자가 카메라 본체 화면의 지문과 대조해 승인한 호스트키를 저장한다(TOFU).
+     *
+     * ⚠️ 대조 없이 호출하면 TOFU 보호가 사라진다. 사용자가 [sshHostKeyFingerprint]로 표시된 값을
+     * 직접 확인하고 승인한 경로에서만 부른다.
+     */
+    suspend fun trustSshHostKey(camera: PtpipCamera, fingerprint: String)
 
     /**
      * 진행 중 연결의 협조적 취소 요청. mutex를 획득하지 않고 즉시 반환한다.

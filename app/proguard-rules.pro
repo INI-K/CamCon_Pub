@@ -135,6 +135,13 @@
     <clinit>();
 }
 
+# ---- JSch (SSH 터널) ----
+# JSch 는 암호 알고리즘 구현체를 jsch.config 의 클래스명 문자열로 리플렉션 로드한다.
+# 난독화되면 문자열은 그대로인데 클래스 이름이 바뀌어 릴리스 빌드에서만
+# "algorithm negotiation fail" 이 난다(디버그 빌드에서는 재현되지 않는다).
+-keep class com.jcraft.jsch.** { *; }
+-dontwarn com.jcraft.jsch.**
+
 # ---- 경고 무시 ----
 -dontwarn java.lang.invoke.**
 -dontwarn org.conscrypt.**

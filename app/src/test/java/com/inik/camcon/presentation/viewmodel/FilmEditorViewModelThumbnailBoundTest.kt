@@ -124,6 +124,7 @@ class FilmEditorViewModelThumbnailBoundTest {
             observeEffectiveTierUseCase = observeEffectiveTierUseCase,
             validateFeatureAccessUseCase = validateFeatureAccessUseCase,
             appSettingsRepository = mockk(relaxed = true),
+            photoLibraryLocation = io.mockk.mockk(relaxed = true),
             context = context,
             ioDispatcher = testDispatcher
         )

@@ -211,9 +211,12 @@ fun FullScreenPhotoViewer(
     val photos by viewModel?.photos?.collectAsStateWithLifecycle() ?: remember(localPhotos) {
         mutableStateOf(localPhotos ?: listOf(photo))
     }
-    val thumbnailCache by viewModel?.thumbnailCache?.collectAsStateWithLifecycle() ?: remember(thumbnailData) {
-        mutableStateOf(thumbnailData?.let { mapOf(photo.path to it) } ?: emptyMap())
-    }
+    // 썸네일 캐시는 스냅샷 맵이라 통째로 구독하지 않고 그대로 읽는다(PhotoImageManager 주석 참조).
+    // viewModel 이 없는 프리뷰·로컬 경로에서는 넘겨받은 한 장짜리 맵을 쓴다.
+    val thumbnailCache: Map<String, ByteArray> = viewModel?.thumbnailCache
+        ?: remember(thumbnailData) {
+            thumbnailData?.let { mapOf(photo.path to it) } ?: emptyMap()
+        }
 
     val currentPhotoIndex = if (viewModel != null || localPhotos != null) {
         remember(photo.path, photos) {
@@ -364,6 +367,15 @@ fun FullScreenPhotoViewer(
                     currentThumbnailData,
                     shareStrings
                 )
+            },
+            onExportClick = viewModel?.let { vm ->
+                val currentPhoto = photos.getOrNull(pagerState.currentPage) ?: photo
+                // 앱 전용 저장소에 있는 사진에만 뜬다 — 이미 기기 갤러리에 있으면 내보낼 것이 없다.
+                if (vm.canExportToGallery(currentPhoto.path)) {
+                    { vm.exportToGallery(currentPhoto.path) }
+                } else {
+                    null
+                }
             },
             onFilmEditClick = onFilmEdit?.let { handler ->
                 val currentPhoto =

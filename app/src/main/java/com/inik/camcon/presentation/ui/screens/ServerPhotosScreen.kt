@@ -25,8 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,6 +42,7 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -64,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.SubcomposeAsyncImage
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import android.content.ContentUris
@@ -107,6 +107,20 @@ import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.util.imageContentUriOrNull
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.PhoneAndroid
+import com.inik.camcon.presentation.viewmodel.GalleryExportProgress
+import com.inik.camcon.presentation.viewmodel.GalleryExportTargets
+import com.inik.camcon.presentation.viewmodel.GalleryGroup
+import com.inik.camcon.presentation.viewmodel.GalleryGroupKey
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.utils.LogMask
@@ -122,6 +136,9 @@ fun MyPhotosScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var selectedPhoto by remember { mutableStateOf<CapturedPhoto?>(null) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    // null 이 아니면 내보내기 확인 다이얼로그가 떠 있다. 미리 계산한 대상 집계를 함께 들고 있어
+    // 다이얼로그 본문이 다시 계산하지 않는다.
+    var exportConfirmTargets by remember { mutableStateOf<GalleryExportTargets?>(null) }
 
     // 화면에 진입할 때마다 새로고침 - 탭 전환 시 확실히 실행됨
     DisposableEffect(Unit) {
@@ -160,9 +177,36 @@ fun MyPhotosScreen(
         }
     }
 
+    // 그룹이 바뀌거나 닫히면 열려 있던 사진 선택도 버린다. 남겨 두면 다른 날짜를 열었을 때
+    // 그 사진이 목록에 있는 경우 뷰어가 저절로 다시 열린다.
+    LaunchedEffect(uiState.openedGroup) {
+        selectedPhoto = null
+    }
+
+    // 뒤로가기 3단계 — 뷰어 → 2단 사진 그리드 → 1단 날짜 목록. 한 번에 한 단계씩만 내려간다.
+    // 세 핸들러의 enabled 조건은 서로 배타적이라 어느 것이 먼저 소비할지 순서에 의존하지 않는다.
+
     // 멀티 선택 모드에서 뒤로가기 처리
-    BackHandler(enabled = uiState.isMultiSelectMode) {
+    BackHandler(enabled = uiState.isMultiSelectMode && selectedPhoto == null) {
         viewModel.exitMultiSelectMode()
+    }
+
+    // 2단(사진 그리드)에서 시스템 백은 날짜 목록으로 돌아간다. 탭을 떠나지 않는다.
+    BackHandler(
+        enabled = selectedPhoto == null &&
+                !uiState.isMultiSelectMode &&
+                uiState.openedGroup != null
+    ) {
+        viewModel.closeGroup()
+    }
+
+    // 전체화면 뷰어에서 시스템 백은 뷰어만 닫고 2단 그리드에 남는다.
+    //
+    // ⚠️ [FullScreenPhotoViewer] 자체에는 BackHandler 가 없다 — 여는 쪽이 등록하는 규약이다
+    // (CameraControlScreen 도 같은 방식). 이 핸들러가 없으면 위의 그룹 핸들러가 백을 대신
+    // 소비해서 뷰어에서 곧장 1단 날짜 목록까지 건너뛴다.
+    BackHandler(enabled = selectedPhoto != null) {
+        selectedPhoto = null
     }
 
     Column(
@@ -172,17 +216,37 @@ fun MyPhotosScreen(
             .statusBarsPadding()
     ) {
         // 상단 헤더 - 멀티 선택 모드에 따라 다르게 표시
-        if (uiState.isMultiSelectMode) {
+        val opened = uiState.openedGroup
+        if (opened != null && !uiState.isMultiSelectMode) {
+            GalleryGroupHeader(
+                group = opened,
+                photoCount = uiState.photos.size,
+                onBack = { viewModel.closeGroup() },
+                onRefresh = { viewModel.refreshPhotos() }
+            )
+        } else if (uiState.isMultiSelectMode) {
             MyPhotosMultiSelectActionBar(
                 selectedCount = uiState.selectedPhotos.size,
                 onSelectAll = { viewModel.selectAllPhotos() },
                 onDeselectAll = { viewModel.deselectAllPhotos() },
+                onExport = {
+                    // 대상이 0장(전부 기기 저장소)이면 확인을 물을 것이 없다 —
+                    // 그대로 실행해 "이미 기기 저장소" 안내만 띄운다.
+                    val plan = viewModel.previewExportTargets()
+                    if (plan.targets.isEmpty()) {
+                        viewModel.exportSelectedPhotos()
+                    } else {
+                        exportConfirmTargets = plan
+                    }
+                },
                 onDelete = { showDeleteConfirmDialog = true },
-                onCancel = { viewModel.exitMultiSelectMode() }
+                onCancel = { viewModel.exitMultiSelectMode() },
+                exportProgress = uiState.exportProgress,
+                onCancelExport = { viewModel.cancelExport() }
             )
         } else {
             ModernMyPhotosHeader(
-                photoCount = uiState.photos.size,
+                photoCount = uiState.groups.sumOf { it.photoCount },
                 onRefresh = { viewModel.refreshPhotos() }
             )
         }
@@ -190,6 +254,18 @@ fun MyPhotosScreen(
         when {
             uiState.isLoading -> {
                 LoadingIndicator()
+            }
+
+            // 1단 — 날짜 목록. 사진은 아직 읽지 않는다(폴더 이름과 개수만 보고 그린다).
+            opened == null -> {
+                if (uiState.groups.isEmpty()) {
+                    EmptyMyPhotosState()
+                } else {
+                    GalleryGroupList(
+                        groups = uiState.groups,
+                        onGroupClick = { viewModel.openGroup(it) }
+                    )
+                }
             }
 
             uiState.photos.isEmpty() -> {
@@ -291,6 +367,48 @@ fun MyPhotosScreen(
         )
     }
 
+    // 내보내기 확인 다이얼로그. 대상이 0장이면 열지 않는다(위 onExport 에서 걸러진다).
+    exportConfirmTargets?.let { plan ->
+        AppDialog(
+            onDismissRequest = { exportConfirmTargets = null },
+            title = { Text(stringResource(R.string.gallery_export_confirm_title)) },
+            text = {
+                Column {
+                    Text(
+                        stringResource(
+                            R.string.gallery_export_confirm_message,
+                            plan.targets.size
+                        )
+                    )
+                    if (plan.alreadyInDeviceStorage > 0) {
+                        Text(
+                            text = stringResource(
+                                R.string.gallery_export_confirm_skipped,
+                                plan.alreadyInDeviceStorage
+                            ),
+                            style = BodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                PrimaryButton(
+                    text = stringResource(R.string.gallery_export_action),
+                    onClick = {
+                        viewModel.exportSelectedPhotos()
+                        exportConfirmTargets = null
+                    }
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = { exportConfirmTargets = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     // 에러 표시
     uiState.error?.let { error ->
         Box(
@@ -323,6 +441,69 @@ fun MyPhotosScreen(
                 Text(
                     text = error,
                     color = MaterialTheme.colorScheme.onError
+                )
+            }
+        }
+    }
+
+    // 일괄 내보내기 결과 안내. 성공·건너뜀·실패를 한 줄에 정직하게 싣는다.
+    uiState.exportSummary?.let { summary ->
+        // 한 장도 못 내보냈고 실패만 있으면 오류로 알린다(그 외에는 정보 안내).
+        val isFailure = summary.exported == 0 && summary.failed > 0
+        val message = buildList {
+            if (summary.exported > 0) {
+                add(stringResource(R.string.gallery_export_result_exported, summary.exported))
+            }
+            if (summary.alreadyInDeviceStorage > 0) {
+                add(
+                    stringResource(
+                        R.string.gallery_export_result_skipped,
+                        summary.alreadyInDeviceStorage
+                    )
+                )
+            }
+            if (summary.failed > 0) {
+                add(stringResource(R.string.gallery_export_result_failed, summary.failed))
+            }
+        }.joinToString(", ")
+
+        LaunchedEffect(summary) {
+            kotlinx.coroutines.delay(4000)
+            viewModel.clearExportSummary()
+        }
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Snackbar(
+                modifier = Modifier.padding(Spacing.base),
+                containerColor = if (isFailure) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                dismissAction = {
+                    IconButton(onClick = { viewModel.clearExportSummary() }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.close),
+                            tint = if (isFailure) {
+                                MaterialTheme.colorScheme.onError
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                    }
+                }
+            ) {
+                Text(
+                    text = message,
+                    color = if (isFailure) {
+                        MaterialTheme.colorScheme.onError
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 )
             }
         }
@@ -391,8 +572,13 @@ private fun FluidPhotoGrid(
     onPhotoLongClick: (CapturedPhoto) -> Unit = {},
     onToggleSelection: (CapturedPhoto) -> Unit = {}
 ) {
-    LazyVerticalStaggeredGrid(
-        columns = StaggeredGridCells.Fixed(4),
+    // ⚠️ 스태거드 그리드가 아니라 **균일 그리드**다.
+    //
+    // 스태거드는 항목을 "가장 짧은 열"에 넣으므로 마지막 줄의 한 장이 첫 칸이 아니라 아무 칸에나
+    // 뜨고, 항목 높이가 제각각이라 줄마다 좌우 오프셋도 미묘하게 어긋난다(실기 스크린샷 확인).
+    // 사진 격자는 줄이 가지런한 편이 훑기 좋으므로 고정 4칸·정사각 타일로 간다.
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(4),
         // 바깥 여백은 헤더 좌측 앵커(Spacing.base)와 일치시키고, 타일 간 거터만 4dp로 촘촘히 유지한다.
         contentPadding = PaddingValues(
             start = Spacing.base,
@@ -401,7 +587,7 @@ private fun FluidPhotoGrid(
             bottom = Spacing.lg
         ),
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-        verticalItemSpacing = Spacing.xs,
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         modifier = Modifier.fillMaxSize()
     ) {
         items(
@@ -434,10 +620,33 @@ private fun FluidPhotoGrid(
 // RAW 파일 확장자 목록
 private val RAW_EXTENSIONS = setOf("nef", "cr2", "cr3", "arw", "dng", "orf", "rw2", "raf", "raw")
 
+/**
+ * EXIF 방향만큼 비트맵을 돌린다. RAW 내장 썸네일 전용이다.
+ *
+ * JPEG/PNG 는 Coil 이 알아서 처리하므로 이 함수를 쓰지 않는다. RAW 만 Coil 이 못 읽어 수동
+ * 경로가 남았고, 그 경로에도 같은 보정을 넣어야 화면이 어긋나지 않는다.
+ */
+private fun rotateByExif(bitmap: Bitmap, rotationDegrees: Int): Bitmap {
+    if (rotationDegrees % 360 == 0) return bitmap
+    return try {
+        val matrix = android.graphics.Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+        Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            .also { if (it !== bitmap) bitmap.recycle() }
+    } catch (e: OutOfMemoryError) {
+        // 썸네일이라 사실상 안 나지만, 나더라도 눕은 채로 보여주는 편이 크래시보다 낫다.
+        Log.w("ServerPhotosScreen", "RAW 썸네일 회전 중 메모리 부족 — 원본 그대로 표시", e)
+        bitmap
+    }
+}
+
 // 빈 화면 안내 문구가 넓은 화면에서 한 줄로 늘어지지 않도록 잡는 측정 폭 상한.
 private val EmptyStateMaxWidth = 320.dp
 
-// 썸네일 LRU 캐시 (메모리의 1/8 사용, 최대 64MB)
+// RAW 내장 썸네일 전용 LRU 캐시 (메모리의 1/8, 최대 64MB).
+//
+// ⚠️ **JPEG/PNG 는 여기 오지 않는다.** 그쪽은 Coil 이 맡고 Coil 의 메모리·디스크 캐시를 쓴다
+// (수동 decode 금지 규약). RAW 만 Coil 이 읽지 못해 수동 경로가 남았고, 그 경로가 스크롤마다
+// EXIF 를 다시 읽지 않도록 이 캐시와 아래 세마포어를 남겨 둔다.
 private val thumbnailCache: LruCache<String, Bitmap> by lazy {
     val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
     val cacheSize = minOf(maxMemory / 8, 64 * 1024)  // 최대 64MB
@@ -448,7 +657,7 @@ private val thumbnailCache: LruCache<String, Bitmap> by lazy {
     }
 }
 
-// 동시 썸네일 로드 수 제한 (최대 4개)
+// RAW 내장 썸네일 동시 로드 수 제한 (최대 4개). JPEG/PNG 는 Coil 이 자체 큐로 관리한다.
 private val thumbnailLoadSemaphore = kotlinx.coroutines.sync.Semaphore(4)
 
 @Composable
@@ -460,13 +669,8 @@ private fun FluidPhotoGridItem(
     isSelected: Boolean = false,
     isMultiSelectMode: Boolean = false
 ) {
-    val aspectRatio = remember(photo.id) {
-        if (photo.width > 0 && photo.height > 0) {
-            photo.width.toFloat() / photo.height.toFloat()
-        } else {
-            0.75f
-        }
-    }
+    // 균일 그리드라 타일은 정사각이다. 사진 비율은 Crop 이 맞추고, 원본 비율은 뷰어에서 본다.
+    val aspectRatio = 1f
 
     // RAW 파일 여부 확인
     val isRawFile = remember(photo.filePath) {
@@ -511,7 +715,12 @@ private fun FluidPhotoGridItem(
                                     } else {
                                         ExifInterface(photo.filePath)
                                     }
-                                    exif?.thumbnailBitmap?.also { bitmap ->
+                                    // ⚠️ 내장 썸네일에도 **방향 보정을 적용한다.** RAW 는 Coil 이
+                                    // 읽지 못해 이 수동 경로가 남는데, 보정을 빠뜨리면 JPEG 만
+                                    // 바로 서고 RAW 만 눕는 어긋난 화면이 된다.
+                                    exif?.thumbnailBitmap?.let { bitmap ->
+                                        rotateByExif(bitmap, exif.rotationDegrees)
+                                    }?.also { bitmap ->
                                         thumbnailCache.put(photo.id, bitmap)
                                     }
                                 } catch (e: Exception) {
@@ -560,63 +769,51 @@ private fun FluidPhotoGridItem(
                     }
                 }
             } else {
-                // JPEG/PNG: 캐시 → 시스템 썸네일 순서로 로드
+                // JPEG/PNG: **Coil 로 로드한다. 수동 디코딩 금지.**
+                //
+                // 예전에는 여기서 시스템 썸네일(300×300)을 직접 받아 셀에 그렸다. 두 가지가 한꺼번에
+                // 틀어졌다.
+                //  ① 흐림 — 300px 짜리를 셀 크기로 확대하니 뭉개진다.
+                //  ② 세로 사진 눕힘 — 수동 경로는 EXIF orientation 을 읽지 않는다. 수신 사진을
+                //     픽셀 회전 없이 태그만 보존하도록 바꾼 뒤(저장 배치)로는 태그를 해석하지 않는
+                //     표시 경로가 곧 눕은 사진이 된다.
+                //
+                // Coil 은 orientation 을 자동 적용하고, size() 로 셀 크기를 알려 주면 그 해상도로
+                // 다운샘플한다. 자체 LruCache·세마포어는 Coil 의 메모리/디스크 캐시가 대신한다
+                // (갤러리 스트립 7.7초 정지 사고 이후 굳은 규약 — 수동 decode 금지).
                 val context = LocalContext.current
-                val thumbnailState = produceState<Bitmap?>(
-                    initialValue = thumbnailCache.get(photo.id),
-                    key1 = photo.id
-                ) {
-                    if (value == null) {
-                        thumbnailLoadSemaphore.acquire()
-                        try {
-                            value = withContext(Dispatchers.IO) {
-                                try {
-                                    val mediaId = photo.id.toLongOrNull()
-                                    val bitmap = if (mediaId != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                        // Android 10+: 시스템 썸네일 사용 (가장 빠름)
-                                        val uri = ContentUris.withAppendedId(
-                                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, 
-                                            mediaId
-                                        )
-                                        context.contentResolver.loadThumbnail(
-                                            uri,
-                                            Size(300, 300),
-                                            CancellationSignal()
-                                        )
-                                    } else {
-                                        // 폴백: ExifInterface로 내장 썸네일 추출
-                                        val exif = ExifInterface(photo.filePath)
-                                        exif.thumbnailBitmap
-                                    }
-                                    bitmap?.also { thumbnailCache.put(photo.id, it) }
-                                } catch (e: Exception) {
-                                    null
-                                }
-                            }
-                        } finally {
-                            thumbnailLoadSemaphore.release()
+                val model = remember(photo.id, photo.filePath) {
+                    // MediaStore 항목은 content URI 로 관통한다(스코프드 스토리지에서 파일 경로가 막힌다).
+                    photo.id.toLongOrNull()
+                        ?.let {
+                            ContentUris.withAppendedId(
+                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI, it
+                            )
                         }
-                    }
+                        ?: photo.filePath
                 }
 
-                when (val thumbnail = thumbnailState.value) {
-                    null -> {
-                        // 로딩 중: CINE 정합 스켈레톤 shimmer (그리드 개별 타일이라 발화 억제)
+                // SubcomposeAsyncImage 는 **컴포저블의 실측 크기**를 요청에 넘긴다. 셀이 얼마나
+                // 큰지 상수로 추측할 필요가 없어 흐림도 과다 디코딩도 생기지 않는다.
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(model)
+                        .crossfade(true)
+                        .allowHardware(true)
+                        .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                        .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = photo.filePath.substringAfterLast('/'),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    loading = {
                         SkeletonLoader(
                             modifier = Modifier.fillMaxSize(),
                             shape = RoundedCornerShape(Radius.sm),
                             announceLoading = false
                         )
                     }
-                    else -> {
-                        Image(
-                            bitmap = thumbnail.asImageBitmap(),
-                            contentDescription = "${photo.id} 썸네일",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                }
+                )
             }
 
             // 다중선택 모드에서는 미선택 타일에도 빈 체크 링을 그려 '선택 가능' 상태를 알린다.
@@ -678,8 +875,9 @@ private fun LoadingIndicator() {
             "s4" to 0.85f, "s5" to 1f, "s6" to 0.7f, "s7" to 1.2f
         )
     }
-    LazyVerticalStaggeredGrid(
-        columns = StaggeredGridCells.Fixed(4),
+    // 실사진 그리드와 **같은 배치**여야 로딩→로드 전환에서 타일이 튀지 않는다.
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(4),
         // 로딩→로드 전환에서 좌측 앵커가 튀지 않도록 FluidPhotoGrid와 동일한 여백을 쓴다.
         contentPadding = PaddingValues(
             start = Spacing.base,
@@ -688,7 +886,7 @@ private fun LoadingIndicator() {
             bottom = Spacing.lg
         ),
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-        verticalItemSpacing = Spacing.xs,
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         modifier = Modifier.fillMaxSize()
     ) {
         items(items = placeholders, key = { it.first }) { (key, ratio) ->
@@ -828,8 +1026,12 @@ fun MyPhotosMultiSelectActionBar(
     selectedCount: Int,
     onSelectAll: () -> Unit,
     onDeselectAll: () -> Unit,
+    onExport: () -> Unit,
     onDelete: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    /** null 이 아니면 일괄 내보내기가 도는 중이다. */
+    exportProgress: GalleryExportProgress? = null,
+    onCancelExport: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -853,8 +1055,38 @@ fun MyPhotosMultiSelectActionBar(
             color = Accent        // 선택 = 활성 상태 → 앰버
         )
 
-        // 액션 4종은 개수 옆에 두면 독일어처럼 라벨이 긴 로케일에서 잘리므로 별도 행으로 내리고,
+        if (exportProgress != null) {
+            // 내보내는 동안에는 액션을 감추고 진행 상황과 취소만 남긴다 — 도는 중에 삭제나
+            // 선택 변경이 끼어들면 집계가 무엇을 센 것인지 알 수 없게 된다.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(
+                        R.string.gallery_export_progress,
+                        exportProgress.done,
+                        exportProgress.total
+                    ),
+                    style = ButtonText,
+                    color = TextSecondaryV2,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                ActionBarTextButton(
+                    text = stringResource(R.string.cancel),
+                    color = TextSecondaryV2,
+                    onClick = onCancelExport,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+            }
+            return@Column
+        }
+
+        // 액션은 개수 옆에 두면 독일어처럼 라벨이 긴 로케일에서 잘리므로 별도 행으로 내리고,
         // weight(fill = false)로 폭이 모자랄 때만 균등 분배되게 해 어떤 로케일에서도 버튼이 사라지지 않게 한다.
+        // 다섯 개를 한 줄에 세우면 그 로케일에서 라벨이 다시 잘리므로 선택 도우미와 실제 동작을
+        // 두 줄로 가른다.
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -870,6 +1102,18 @@ fun MyPhotosMultiSelectActionBar(
                 text = stringResource(R.string.server_photos_deselect_all),
                 color = TextSecondaryV2,
                 onClick = onDeselectAll,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ActionBarTextButton(
+                text = stringResource(R.string.gallery_export_action),
+                color = TextSecondaryV2,
+                onClick = onExport,
                 modifier = Modifier.weight(1f, fill = false)
             )
             ActionBarTextButton(
@@ -938,6 +1182,7 @@ private fun MyPhotosMultiSelectActionBarPreview() {
             selectedCount = 37,
             onSelectAll = {},
             onDeselectAll = {},
+            onExport = {},
             onDelete = {},
             onCancel = {}
         )
@@ -960,5 +1205,137 @@ fun CapturedPhotoItemPreview() {
             photo = PreviewCapturedPhoto,
             onDelete = {}
         )
+    }
+}
+
+/**
+ * 갤러리 탭 1단 — 날짜 목록.
+ *
+ * 사진을 읽지 않는다. 항목은 날짜(또는 "기기 저장소")와 장수뿐이고, 그 값은 폴더 이름과 파일
+ * 개수만으로 구한다([PhotoLibraryLocation.listDateFolders]). 수백 장에서도 탭 진입이 가볍다.
+ *
+ * 대표 썸네일은 넣지 않았다. 넣으려면 날짜마다 사진 한 장을 골라 디코딩해야 하는데, 그러면 이
+ * 화면이 가벼워야 한다는 요건과 정면으로 어긋난다.
+ */
+@Composable
+private fun GalleryGroupList(
+    groups: List<GalleryGroup>,
+    onGroupClick: (GalleryGroupKey) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(Spacing.base),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+    ) {
+        items(
+            count = groups.size,
+            key = { index -> groups[index].key.toString() }
+        ) { index ->
+            val group = groups[index]
+            GalleryGroupRow(group = group, onClick = { onGroupClick(group.key) })
+        }
+    }
+}
+
+/** 날짜 목록의 항목 하나. 기기 저장소도 같은 문법으로 그린다(명칭 + 장수). */
+@Composable
+private fun GalleryGroupRow(
+    group: GalleryGroup,
+    onClick: () -> Unit
+) {
+    SurfaceV2(
+        tier = 1,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Spacing.base),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = when (group.key) {
+                    is GalleryGroupKey.Date -> Icons.Default.DateRange
+                    GalleryGroupKey.DeviceStorage -> Icons.Default.PhoneAndroid
+                },
+                contentDescription = null,
+                tint = Accent
+            )
+            Spacer(modifier = Modifier.width(Spacing.base))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = when (val key = group.key) {
+                        is GalleryGroupKey.Date -> key.date
+                        GalleryGroupKey.DeviceStorage ->
+                            stringResource(R.string.gallery_group_device_storage)
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimaryV2
+                )
+                Text(
+                    text = stringResource(R.string.gallery_group_photo_count, group.photoCount),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondaryV2
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = TextSecondaryV2
+            )
+        }
+    }
+}
+
+/**
+ * 갤러리 탭 2단 헤더 — 뒤로가기 + 그룹 이름 + 장수.
+ *
+ * 시스템 백은 화면 상단의 [BackHandler] 가 같은 동작을 한다.
+ */
+@Composable
+private fun GalleryGroupHeader(
+    group: GalleryGroupKey,
+    photoCount: Int,
+    onBack: () -> Unit,
+    onRefresh: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.base, vertical = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.cd_back),
+                tint = TextPrimaryV2
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = when (group) {
+                    is GalleryGroupKey.Date -> group.date
+                    GalleryGroupKey.DeviceStorage ->
+                        stringResource(R.string.gallery_group_device_storage)
+                },
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimaryV2
+            )
+            Text(
+                text = stringResource(R.string.gallery_group_photo_count, photoCount),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondaryV2
+            )
+        }
+        IconButton(onClick = onRefresh) {
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = stringResource(R.string.cd_refresh),
+                tint = TextPrimaryV2
+            )
+        }
     }
 }
