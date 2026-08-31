@@ -25,8 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
 import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,6 +42,7 @@ import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -64,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.SubcomposeAsyncImage
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import android.content.ContentUris
@@ -109,6 +109,9 @@ import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.util.imageContentUriOrNull
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
@@ -169,17 +172,36 @@ fun MyPhotosScreen(
         }
     }
 
+    // 그룹이 바뀌거나 닫히면 열려 있던 사진 선택도 버린다. 남겨 두면 다른 날짜를 열었을 때
+    // 그 사진이 목록에 있는 경우 뷰어가 저절로 다시 열린다.
+    LaunchedEffect(uiState.openedGroup) {
+        selectedPhoto = null
+    }
+
+    // 뒤로가기 3단계 — 뷰어 → 2단 사진 그리드 → 1단 날짜 목록. 한 번에 한 단계씩만 내려간다.
+    // 세 핸들러의 enabled 조건은 서로 배타적이라 어느 것이 먼저 소비할지 순서에 의존하지 않는다.
+
     // 멀티 선택 모드에서 뒤로가기 처리
-    BackHandler(enabled = uiState.isMultiSelectMode) {
+    BackHandler(enabled = uiState.isMultiSelectMode && selectedPhoto == null) {
         viewModel.exitMultiSelectMode()
     }
 
     // 2단(사진 그리드)에서 시스템 백은 날짜 목록으로 돌아간다. 탭을 떠나지 않는다.
-    //
-    // ⚠️ 멀티 선택 핸들러보다 **뒤에** 선언한다. Compose 의 BackHandler 는 나중에 등록된 것이
-    // 먼저 소비하므로, 멀티 선택 중에는 그쪽이 먼저 처리해야 한다.
-    BackHandler(enabled = !uiState.isMultiSelectMode && uiState.openedGroup != null) {
+    BackHandler(
+        enabled = selectedPhoto == null &&
+                !uiState.isMultiSelectMode &&
+                uiState.openedGroup != null
+    ) {
         viewModel.closeGroup()
+    }
+
+    // 전체화면 뷰어에서 시스템 백은 뷰어만 닫고 2단 그리드에 남는다.
+    //
+    // ⚠️ [FullScreenPhotoViewer] 자체에는 BackHandler 가 없다 — 여는 쪽이 등록하는 규약이다
+    // (CameraControlScreen 도 같은 방식). 이 핸들러가 없으면 위의 그룹 핸들러가 백을 대신
+    // 소비해서 뷰어에서 곧장 1단 날짜 목록까지 건너뛴다.
+    BackHandler(enabled = selectedPhoto != null) {
+        selectedPhoto = null
     }
 
     Column(
@@ -428,8 +450,13 @@ private fun FluidPhotoGrid(
     onPhotoLongClick: (CapturedPhoto) -> Unit = {},
     onToggleSelection: (CapturedPhoto) -> Unit = {}
 ) {
-    LazyVerticalStaggeredGrid(
-        columns = StaggeredGridCells.Fixed(4),
+    // ⚠️ 스태거드 그리드가 아니라 **균일 그리드**다.
+    //
+    // 스태거드는 항목을 "가장 짧은 열"에 넣으므로 마지막 줄의 한 장이 첫 칸이 아니라 아무 칸에나
+    // 뜨고, 항목 높이가 제각각이라 줄마다 좌우 오프셋도 미묘하게 어긋난다(실기 스크린샷 확인).
+    // 사진 격자는 줄이 가지런한 편이 훑기 좋으므로 고정 4칸·정사각 타일로 간다.
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(4),
         // 바깥 여백은 헤더 좌측 앵커(Spacing.base)와 일치시키고, 타일 간 거터만 4dp로 촘촘히 유지한다.
         contentPadding = PaddingValues(
             start = Spacing.base,
@@ -438,7 +465,7 @@ private fun FluidPhotoGrid(
             bottom = Spacing.lg
         ),
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-        verticalItemSpacing = Spacing.xs,
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         modifier = Modifier.fillMaxSize()
     ) {
         items(
@@ -471,10 +498,33 @@ private fun FluidPhotoGrid(
 // RAW 파일 확장자 목록
 private val RAW_EXTENSIONS = setOf("nef", "cr2", "cr3", "arw", "dng", "orf", "rw2", "raf", "raw")
 
+/**
+ * EXIF 방향만큼 비트맵을 돌린다. RAW 내장 썸네일 전용이다.
+ *
+ * JPEG/PNG 는 Coil 이 알아서 처리하므로 이 함수를 쓰지 않는다. RAW 만 Coil 이 못 읽어 수동
+ * 경로가 남았고, 그 경로에도 같은 보정을 넣어야 화면이 어긋나지 않는다.
+ */
+private fun rotateByExif(bitmap: Bitmap, rotationDegrees: Int): Bitmap {
+    if (rotationDegrees % 360 == 0) return bitmap
+    return try {
+        val matrix = android.graphics.Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+        Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+            .also { if (it !== bitmap) bitmap.recycle() }
+    } catch (e: OutOfMemoryError) {
+        // 썸네일이라 사실상 안 나지만, 나더라도 눕은 채로 보여주는 편이 크래시보다 낫다.
+        Log.w("ServerPhotosScreen", "RAW 썸네일 회전 중 메모리 부족 — 원본 그대로 표시", e)
+        bitmap
+    }
+}
+
 // 빈 화면 안내 문구가 넓은 화면에서 한 줄로 늘어지지 않도록 잡는 측정 폭 상한.
 private val EmptyStateMaxWidth = 320.dp
 
-// 썸네일 LRU 캐시 (메모리의 1/8 사용, 최대 64MB)
+// RAW 내장 썸네일 전용 LRU 캐시 (메모리의 1/8, 최대 64MB).
+//
+// ⚠️ **JPEG/PNG 는 여기 오지 않는다.** 그쪽은 Coil 이 맡고 Coil 의 메모리·디스크 캐시를 쓴다
+// (수동 decode 금지 규약). RAW 만 Coil 이 읽지 못해 수동 경로가 남았고, 그 경로가 스크롤마다
+// EXIF 를 다시 읽지 않도록 이 캐시와 아래 세마포어를 남겨 둔다.
 private val thumbnailCache: LruCache<String, Bitmap> by lazy {
     val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
     val cacheSize = minOf(maxMemory / 8, 64 * 1024)  // 최대 64MB
@@ -485,7 +535,7 @@ private val thumbnailCache: LruCache<String, Bitmap> by lazy {
     }
 }
 
-// 동시 썸네일 로드 수 제한 (최대 4개)
+// RAW 내장 썸네일 동시 로드 수 제한 (최대 4개). JPEG/PNG 는 Coil 이 자체 큐로 관리한다.
 private val thumbnailLoadSemaphore = kotlinx.coroutines.sync.Semaphore(4)
 
 @Composable
@@ -497,13 +547,8 @@ private fun FluidPhotoGridItem(
     isSelected: Boolean = false,
     isMultiSelectMode: Boolean = false
 ) {
-    val aspectRatio = remember(photo.id) {
-        if (photo.width > 0 && photo.height > 0) {
-            photo.width.toFloat() / photo.height.toFloat()
-        } else {
-            0.75f
-        }
-    }
+    // 균일 그리드라 타일은 정사각이다. 사진 비율은 Crop 이 맞추고, 원본 비율은 뷰어에서 본다.
+    val aspectRatio = 1f
 
     // RAW 파일 여부 확인
     val isRawFile = remember(photo.filePath) {
@@ -548,7 +593,12 @@ private fun FluidPhotoGridItem(
                                     } else {
                                         ExifInterface(photo.filePath)
                                     }
-                                    exif?.thumbnailBitmap?.also { bitmap ->
+                                    // ⚠️ 내장 썸네일에도 **방향 보정을 적용한다.** RAW 는 Coil 이
+                                    // 읽지 못해 이 수동 경로가 남는데, 보정을 빠뜨리면 JPEG 만
+                                    // 바로 서고 RAW 만 눕는 어긋난 화면이 된다.
+                                    exif?.thumbnailBitmap?.let { bitmap ->
+                                        rotateByExif(bitmap, exif.rotationDegrees)
+                                    }?.also { bitmap ->
                                         thumbnailCache.put(photo.id, bitmap)
                                     }
                                 } catch (e: Exception) {
@@ -597,63 +647,51 @@ private fun FluidPhotoGridItem(
                     }
                 }
             } else {
-                // JPEG/PNG: 캐시 → 시스템 썸네일 순서로 로드
+                // JPEG/PNG: **Coil 로 로드한다. 수동 디코딩 금지.**
+                //
+                // 예전에는 여기서 시스템 썸네일(300×300)을 직접 받아 셀에 그렸다. 두 가지가 한꺼번에
+                // 틀어졌다.
+                //  ① 흐림 — 300px 짜리를 셀 크기로 확대하니 뭉개진다.
+                //  ② 세로 사진 눕힘 — 수동 경로는 EXIF orientation 을 읽지 않는다. 수신 사진을
+                //     픽셀 회전 없이 태그만 보존하도록 바꾼 뒤(저장 배치)로는 태그를 해석하지 않는
+                //     표시 경로가 곧 눕은 사진이 된다.
+                //
+                // Coil 은 orientation 을 자동 적용하고, size() 로 셀 크기를 알려 주면 그 해상도로
+                // 다운샘플한다. 자체 LruCache·세마포어는 Coil 의 메모리/디스크 캐시가 대신한다
+                // (갤러리 스트립 7.7초 정지 사고 이후 굳은 규약 — 수동 decode 금지).
                 val context = LocalContext.current
-                val thumbnailState = produceState<Bitmap?>(
-                    initialValue = thumbnailCache.get(photo.id),
-                    key1 = photo.id
-                ) {
-                    if (value == null) {
-                        thumbnailLoadSemaphore.acquire()
-                        try {
-                            value = withContext(Dispatchers.IO) {
-                                try {
-                                    val mediaId = photo.id.toLongOrNull()
-                                    val bitmap = if (mediaId != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                        // Android 10+: 시스템 썸네일 사용 (가장 빠름)
-                                        val uri = ContentUris.withAppendedId(
-                                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, 
-                                            mediaId
-                                        )
-                                        context.contentResolver.loadThumbnail(
-                                            uri,
-                                            Size(300, 300),
-                                            CancellationSignal()
-                                        )
-                                    } else {
-                                        // 폴백: ExifInterface로 내장 썸네일 추출
-                                        val exif = ExifInterface(photo.filePath)
-                                        exif.thumbnailBitmap
-                                    }
-                                    bitmap?.also { thumbnailCache.put(photo.id, it) }
-                                } catch (e: Exception) {
-                                    null
-                                }
-                            }
-                        } finally {
-                            thumbnailLoadSemaphore.release()
+                val model = remember(photo.id, photo.filePath) {
+                    // MediaStore 항목은 content URI 로 관통한다(스코프드 스토리지에서 파일 경로가 막힌다).
+                    photo.id.toLongOrNull()
+                        ?.let {
+                            ContentUris.withAppendedId(
+                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI, it
+                            )
                         }
-                    }
+                        ?: photo.filePath
                 }
 
-                when (val thumbnail = thumbnailState.value) {
-                    null -> {
-                        // 로딩 중: CINE 정합 스켈레톤 shimmer (그리드 개별 타일이라 발화 억제)
+                // SubcomposeAsyncImage 는 **컴포저블의 실측 크기**를 요청에 넘긴다. 셀이 얼마나
+                // 큰지 상수로 추측할 필요가 없어 흐림도 과다 디코딩도 생기지 않는다.
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(model)
+                        .crossfade(true)
+                        .allowHardware(true)
+                        .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                        .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                        .build(),
+                    contentDescription = photo.filePath.substringAfterLast('/'),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    loading = {
                         SkeletonLoader(
                             modifier = Modifier.fillMaxSize(),
                             shape = RoundedCornerShape(Radius.sm),
                             announceLoading = false
                         )
                     }
-                    else -> {
-                        Image(
-                            bitmap = thumbnail.asImageBitmap(),
-                            contentDescription = "${photo.id} 썸네일",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                }
+                )
             }
 
             // 다중선택 모드에서는 미선택 타일에도 빈 체크 링을 그려 '선택 가능' 상태를 알린다.
@@ -715,8 +753,9 @@ private fun LoadingIndicator() {
             "s4" to 0.85f, "s5" to 1f, "s6" to 0.7f, "s7" to 1.2f
         )
     }
-    LazyVerticalStaggeredGrid(
-        columns = StaggeredGridCells.Fixed(4),
+    // 실사진 그리드와 **같은 배치**여야 로딩→로드 전환에서 타일이 튀지 않는다.
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(4),
         // 로딩→로드 전환에서 좌측 앵커가 튀지 않도록 FluidPhotoGrid와 동일한 여백을 쓴다.
         contentPadding = PaddingValues(
             start = Spacing.base,
@@ -725,7 +764,7 @@ private fun LoadingIndicator() {
             bottom = Spacing.lg
         ),
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-        verticalItemSpacing = Spacing.xs,
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         modifier = Modifier.fillMaxSize()
     ) {
         items(items = placeholders, key = { it.first }) { (key, ratio) ->

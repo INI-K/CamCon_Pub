@@ -451,6 +451,13 @@ class ServerPhotosViewModel @Inject constructor(
                         }
                     }
                 }
+                // 2단 진입 시 파일명을 한 줄로 남긴다. 중복 파일명이나 같은 사진이 두 번 뜨는지
+                // 로그만으로 판정할 수 있어야 한다(연사와 중복 표시는 화면으로 구분되지 않는다).
+                Log.d(
+                    "ServerPhotosViewModel",
+                    "그룹 $key 사진 ${photos.size}장: " +
+                            photos.joinToString(", ") { it.filePath.substringAfterLast('/') }
+                )
                 _uiState.value = _uiState.value.copy(
                     photos = photos.sortedByDescending { it.captureTime },
                     isLoading = false
