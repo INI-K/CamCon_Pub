@@ -115,6 +115,18 @@ class MainActivityViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 케이블 부착 직후라 [UsbAutoConnectManager] 가 시스템 자동 부여를 기다리는 중인가.
+     *
+     * 이 유예 중에 재개 점검 경로가 권한을 직접 요청하면, 화면에 떠 있는 시스템 앱
+     * 선택지("한 번만 / 항상") 위로 앱 다이얼로그가 겹쳐 프롬프트가 두 개가 된다(실기
+     * 관측: 부착 4초 뒤 이 경로가 발화). 권한 프롬프트의 주인은 자동 연결 매니저 한 곳이고,
+     * 유예가 끝나도 부여가 없으면 그쪽 폴백이 요청하므로 여기서 겹칠 필요가 없다.
+     * 창 폭은 매니저의 부착 유예(12초)에 약간의 여유를 더한 값이다.
+     */
+    private fun isInAttachGraceWindow(): Boolean =
+        usbDeviceRepository.msSinceCameraAttached() <= 15_000L
+
     private suspend fun checkUsbPermissionStatusInternal() {
         try {
             val currentDevice = usbDeviceRepository.getCurrentDeviceInfo()
@@ -123,6 +135,10 @@ class MainActivityViewModel @Inject constructor(
                 LogcatManager.d(TAG, "앱 재개 시 기존 연결된 디바이스 확인: ${currentDevice.deviceName}")
 
                 if (!usbDeviceRepository.hasUsbPermission.value) {
+                    if (isInAttachGraceWindow()) {
+                        LogcatManager.d(TAG, "부착 직후 유예 중 - 권한 요청은 자동 연결 매니저에 위임")
+                        return
+                    }
                     LogcatManager.d(TAG, "기존 디바이스의 권한이 없음, 권한 요청: ${currentDevice.deviceName}")
                     usbDeviceRepository.requestPermission(currentDevice.deviceId)
                 } else if (!usbDeviceRepository.isNativeCameraConnected.value) {
@@ -142,6 +158,10 @@ class MainActivityViewModel @Inject constructor(
 
             val device = devices.first()
             if (!usbDeviceRepository.hasUsbPermission.value) {
+                if (isInAttachGraceWindow()) {
+                    LogcatManager.d(TAG, "부착 직후 유예 중 - 권한 요청은 자동 연결 매니저에 위임")
+                    return
+                }
                 LogcatManager.d(TAG, "권한이 없는 디바이스 발견, 권한 요청: ${device.deviceName}")
                 usbDeviceRepository.requestPermission(device.deviceId)
             } else if (!usbDeviceRepository.isNativeCameraConnected.value) {
