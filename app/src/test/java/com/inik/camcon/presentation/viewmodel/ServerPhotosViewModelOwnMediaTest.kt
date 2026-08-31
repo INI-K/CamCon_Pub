@@ -107,6 +107,10 @@ class ServerPhotosViewModelOwnMediaTest {
             context,
             cameraRepository,
             validateImageFormatUseCase,
+            // 앱 전용 저장소는 이 테스트의 관심 밖이다 — 빈 폴더를 돌려주면 MediaStore 결과만 남는다.
+            io.mockk.mockk(relaxed = true) {
+                io.mockk.every { appPrivateRoot() } returns java.io.File("/tmp/camcon_no_such_dir")
+            },
             testDispatcher
         )
 

@@ -366,6 +366,17 @@ class AppSettingsViewModel @Inject constructor(
     /**
      * 라이브뷰 그리드 오버레이 활성화 여부 (기본값: false)
      */
+    /**
+     * 기기 갤러리에도 저장할지. 기본은 false — 사진이 앱 안에서만 보인다.
+     */
+    val isSaveToDeviceGalleryEnabled: StateFlow<Boolean> =
+        appSettingsRepository.isSaveToDeviceGalleryEnabled
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000),
+                initialValue = false
+            )
+
     val isLiveViewGridEnabled: StateFlow<Boolean> =
         appSettingsRepository.isLiveViewGridEnabled
             .stateIn(
@@ -718,6 +729,12 @@ class AppSettingsViewModel @Inject constructor(
     /**
      * 라이브뷰 그리드 오버레이 활성화 토글
      */
+    fun setSaveToDeviceGalleryEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            appSettingsRepository.setSaveToDeviceGalleryEnabled(enabled)
+        }
+    }
+
     fun setLiveViewGridEnabled(enabled: Boolean) {
         viewModelScope.launch {
             appSettingsRepository.setLiveViewGridEnabled(enabled)

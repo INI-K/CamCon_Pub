@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.DriveFileMoveRtl
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.TextButton
@@ -74,6 +75,14 @@ fun FullScreenTopBar(
     onInfoClick: () -> Unit,
     onDownloadClick: (() -> Unit)?,
     onShareClick: () -> Unit,
+    /**
+     * 기기 갤러리로 내보내기.
+     *
+     * 공유(Share)와 목적이 다르다 — 공유는 다른 앱에 한 번 건네는 것이고, 내보내기는 **폰 갤러리에
+     * 영속 저장**하는 것이다. 앱 전용 저장소에 있는 사진에만 의미가 있으므로, 이미 기기 갤러리에
+     * 있는 사진에는 호출자가 null 을 넘겨 버튼을 감춘다.
+     */
+    onExportClick: (() -> Unit)? = null,
     onFilmEditClick: (() -> Unit)? = null,
     onDeleteClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -180,6 +189,24 @@ fun FullScreenTopBar(
                     contentDescription = stringResource(R.string.cd_share),
                     tint = TextPrimaryV2
                 )
+            }
+
+            // 갤러리로 내보내기 — 앱 전용 저장소에 있는 사진에만 뜬다.
+            if (onExportClick != null) {
+                IconButton(
+                    onClick = onExportClick,
+                    modifier = Modifier
+                        .background(
+                            Surface0.copy(alpha = 0.6f),
+                            RoundedCornerShape(Radius.sm)
+                        )
+                ) {
+                    Icon(
+                        Icons.Default.DriveFileMoveRtl,
+                        contentDescription = stringResource(R.string.cd_export_to_gallery),
+                        tint = TextPrimaryV2
+                    )
+                }
             }
 
             // 필름 편집 아이콘 — 로컬 디코딩 가능 파일이며 RAW 아닐 때만 호출자가 전달(Phase 4 진입점).

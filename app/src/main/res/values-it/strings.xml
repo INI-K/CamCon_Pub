@@ -211,6 +211,13 @@
     <string name="preview_card_browse_stuck">La fotocamera è bloccata nella vista scheda e lo scatto resta impedito. Riprova oppure spegni e riaccendi la fotocamera.</string>
     <string name="preview_thumbnail_unsupported_title">Le miniature non funzionano su questa fotocamera</string>
     <string name="preview_thumbnail_unsupported_desc">Su questa fotocamera il trasferimento delle miniature non funziona, quindi l\'anteprima è limitata. Puoi comunque vedere ogni foto scaricando l\'originale. Con il Wi-Fi potrebbe richiedere più tempo.</string>
+    <string name="cd_export_to_gallery">Esporta nella galleria</string>
+    <string name="gallery_group_device_storage">Memoria del dispositivo</string>
+    <string name="gallery_group_photo_count">%1$d foto</string>
+    <string name="settings_save_to_device_gallery_title">Salva nella galleria del dispositivo</string>
+    <string name="settings_save_to_device_gallery_desc">Se disattivato, le foto restano visibili solo in CamCon e vengono eliminate se disinstalli l\'app. Attivalo per salvarle anche nella galleria del telefono.</string>
+    <string name="export_to_gallery_success">Esportato nella galleria</string>
+    <string name="export_to_gallery_failed">Impossibile esportare nella galleria</string>
     <string name="preview_card_browse_retry_exit">Riprova</string>
     <string name="connect_camera_and_capture">Collega la fotocamera tramite USB\ne scatta foto</string>
     <string name="check_camera_connection">• Verifica se la fotocamera è collegata\n• Scorri verso il basso per aggiornare</string>

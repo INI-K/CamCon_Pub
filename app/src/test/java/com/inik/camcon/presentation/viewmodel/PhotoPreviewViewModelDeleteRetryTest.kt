@@ -126,7 +126,8 @@ class PhotoPreviewViewModelDeleteRetryTest {
         resumeNativeOperationsUseCase = resumeNativeOperationsUseCase,
         deleteCameraFileUseCase = deleteCameraFileUseCase,
         nikonApplicationModeManager = io.mockk.mockk(relaxed = true),
-        ptpipEventKeepAlive = io.mockk.mockk(relaxed = true)
+        ptpipEventKeepAlive = io.mockk.mockk(relaxed = true),
+        photoLibraryLocation = io.mockk.mockk(relaxed = true)
     )
 
     private fun cameraPhoto(path: String) = CameraPhoto(

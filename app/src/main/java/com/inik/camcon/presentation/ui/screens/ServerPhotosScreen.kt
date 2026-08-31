@@ -107,6 +107,15 @@ import com.inik.camcon.presentation.ui.components.v2.SkeletonLoader
 import com.inik.camcon.presentation.ui.components.v2.SurfaceV2
 import com.inik.camcon.presentation.ui.screens.components.FullScreenPhotoViewer
 import com.inik.camcon.presentation.util.imageContentUriOrNull
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.PhoneAndroid
+import com.inik.camcon.presentation.viewmodel.GalleryGroup
+import com.inik.camcon.presentation.viewmodel.GalleryGroupKey
 import com.inik.camcon.presentation.viewmodel.ServerPhotosViewModel
 import com.inik.camcon.domain.model.ThemeMode
 import com.inik.camcon.utils.LogMask
@@ -165,6 +174,14 @@ fun MyPhotosScreen(
         viewModel.exitMultiSelectMode()
     }
 
+    // 2단(사진 그리드)에서 시스템 백은 날짜 목록으로 돌아간다. 탭을 떠나지 않는다.
+    //
+    // ⚠️ 멀티 선택 핸들러보다 **뒤에** 선언한다. Compose 의 BackHandler 는 나중에 등록된 것이
+    // 먼저 소비하므로, 멀티 선택 중에는 그쪽이 먼저 처리해야 한다.
+    BackHandler(enabled = !uiState.isMultiSelectMode && uiState.openedGroup != null) {
+        viewModel.closeGroup()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -172,7 +189,15 @@ fun MyPhotosScreen(
             .statusBarsPadding()
     ) {
         // 상단 헤더 - 멀티 선택 모드에 따라 다르게 표시
-        if (uiState.isMultiSelectMode) {
+        val opened = uiState.openedGroup
+        if (opened != null && !uiState.isMultiSelectMode) {
+            GalleryGroupHeader(
+                group = opened,
+                photoCount = uiState.photos.size,
+                onBack = { viewModel.closeGroup() },
+                onRefresh = { viewModel.refreshPhotos() }
+            )
+        } else if (uiState.isMultiSelectMode) {
             MyPhotosMultiSelectActionBar(
                 selectedCount = uiState.selectedPhotos.size,
                 onSelectAll = { viewModel.selectAllPhotos() },
@@ -182,7 +207,7 @@ fun MyPhotosScreen(
             )
         } else {
             ModernMyPhotosHeader(
-                photoCount = uiState.photos.size,
+                photoCount = uiState.groups.sumOf { it.photoCount },
                 onRefresh = { viewModel.refreshPhotos() }
             )
         }
@@ -190,6 +215,18 @@ fun MyPhotosScreen(
         when {
             uiState.isLoading -> {
                 LoadingIndicator()
+            }
+
+            // 1단 — 날짜 목록. 사진은 아직 읽지 않는다(폴더 이름과 개수만 보고 그린다).
+            opened == null -> {
+                if (uiState.groups.isEmpty()) {
+                    EmptyMyPhotosState()
+                } else {
+                    GalleryGroupList(
+                        groups = uiState.groups,
+                        onGroupClick = { viewModel.openGroup(it) }
+                    )
+                }
             }
 
             uiState.photos.isEmpty() -> {
@@ -960,5 +997,137 @@ fun CapturedPhotoItemPreview() {
             photo = PreviewCapturedPhoto,
             onDelete = {}
         )
+    }
+}
+
+/**
+ * 갤러리 탭 1단 — 날짜 목록.
+ *
+ * 사진을 읽지 않는다. 항목은 날짜(또는 "기기 저장소")와 장수뿐이고, 그 값은 폴더 이름과 파일
+ * 개수만으로 구한다([PhotoLibraryLocation.listDateFolders]). 수백 장에서도 탭 진입이 가볍다.
+ *
+ * 대표 썸네일은 넣지 않았다. 넣으려면 날짜마다 사진 한 장을 골라 디코딩해야 하는데, 그러면 이
+ * 화면이 가벼워야 한다는 요건과 정면으로 어긋난다.
+ */
+@Composable
+private fun GalleryGroupList(
+    groups: List<GalleryGroup>,
+    onGroupClick: (GalleryGroupKey) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(Spacing.base),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+    ) {
+        items(
+            count = groups.size,
+            key = { index -> groups[index].key.toString() }
+        ) { index ->
+            val group = groups[index]
+            GalleryGroupRow(group = group, onClick = { onGroupClick(group.key) })
+        }
+    }
+}
+
+/** 날짜 목록의 항목 하나. 기기 저장소도 같은 문법으로 그린다(명칭 + 장수). */
+@Composable
+private fun GalleryGroupRow(
+    group: GalleryGroup,
+    onClick: () -> Unit
+) {
+    SurfaceV2(
+        tier = 1,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(Spacing.base),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = when (group.key) {
+                    is GalleryGroupKey.Date -> Icons.Default.DateRange
+                    GalleryGroupKey.DeviceStorage -> Icons.Default.PhoneAndroid
+                },
+                contentDescription = null,
+                tint = Accent
+            )
+            Spacer(modifier = Modifier.width(Spacing.base))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = when (val key = group.key) {
+                        is GalleryGroupKey.Date -> key.date
+                        GalleryGroupKey.DeviceStorage ->
+                            stringResource(R.string.gallery_group_device_storage)
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimaryV2
+                )
+                Text(
+                    text = stringResource(R.string.gallery_group_photo_count, group.photoCount),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondaryV2
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = TextSecondaryV2
+            )
+        }
+    }
+}
+
+/**
+ * 갤러리 탭 2단 헤더 — 뒤로가기 + 그룹 이름 + 장수.
+ *
+ * 시스템 백은 화면 상단의 [BackHandler] 가 같은 동작을 한다.
+ */
+@Composable
+private fun GalleryGroupHeader(
+    group: GalleryGroupKey,
+    photoCount: Int,
+    onBack: () -> Unit,
+    onRefresh: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.base, vertical = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.cd_back),
+                tint = TextPrimaryV2
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = when (group) {
+                    is GalleryGroupKey.Date -> group.date
+                    GalleryGroupKey.DeviceStorage ->
+                        stringResource(R.string.gallery_group_device_storage)
+                },
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimaryV2
+            )
+            Text(
+                text = stringResource(R.string.gallery_group_photo_count, photoCount),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondaryV2
+            )
+        }
+        IconButton(onClick = onRefresh) {
+            Icon(
+                imageVector = Icons.Default.Refresh,
+                contentDescription = stringResource(R.string.cd_refresh),
+                tint = TextPrimaryV2
+            )
+        }
     }
 }

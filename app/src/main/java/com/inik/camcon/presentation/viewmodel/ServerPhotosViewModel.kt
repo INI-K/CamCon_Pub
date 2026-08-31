@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.inik.camcon.di.IoDispatcher
 import com.inik.camcon.domain.model.CapturedPhoto
+import com.inik.camcon.data.repository.managers.PhotoLibraryLocation
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.usecase.ValidateImageFormatUseCase
 import com.inik.camcon.utils.LogMask
@@ -22,8 +23,35 @@ import java.io.File
 import java.util.UUID
 import javax.inject.Inject
 
+/**
+ * 갤러리 탭의 그룹 하나. 루트 화면(날짜 목록)의 항목이자 2단 화면의 입력이다.
+ *
+ * **구획은 소스로 가른다.** 앱 내부 저장분은 날짜별로 나뉘고([Date]), 기기 저장소(MediaStore)는
+ * 통째로 하나다([DeviceStorage]). 배포본 사용자들이 예전 방식으로 저장해 온 사진이 후자에 있는데,
+ * 그것을 날짜로 쪼개 앞쪽 구획에 섞으면 "앱이 관리하는 사진"과 "기기에 남아 있는 사진"의 경계가
+ * 사라진다.
+ */
+sealed interface GalleryGroupKey {
+    /** 앱 내부 저장분의 날짜 하나(`yyyy-MM-dd`). */
+    data class Date(val date: String) : GalleryGroupKey
+
+    /** MediaStore 의 CamCon 사진 전부(`DCIM/CamCon` + `Pictures/CamCon`). */
+    data object DeviceStorage : GalleryGroupKey
+}
+
+/** 루트 화면에 그릴 항목. 사진 자체는 담지 않는다 — 열 때 그 그룹만 읽는다. */
+data class GalleryGroup(
+    val key: GalleryGroupKey,
+    val photoCount: Int
+)
+
 data class ServerPhotosUiState(
+    /** 지금 열린 그룹의 사진들. 루트(날짜 목록)에서는 비어 있다. */
     val photos: List<CapturedPhoto> = emptyList(),
+    /** 루트 화면의 항목들. 앱 내부 날짜들 + 맨 뒤에 기기 저장소 하나. */
+    val groups: List<GalleryGroup> = emptyList(),
+    /** null 이면 루트(날짜 목록), 아니면 2단(사진 그리드). */
+    val openedGroup: GalleryGroupKey? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
     val selectedPhotos: Set<String> = emptySet(), // 선택된 사진들의 ID 집합
@@ -37,6 +65,7 @@ class ServerPhotosViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val cameraRepository: CameraRepository,
     private val validateImageFormatUseCase: ValidateImageFormatUseCase,
+    private val photoLibraryLocation: com.inik.camcon.data.repository.managers.PhotoLibraryLocation,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
@@ -61,9 +90,7 @@ class ServerPhotosViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
             try {
-                val photos = withContext(ioDispatcher) {
-                    loadPhotosFromDCIM()
-                }
+                val photos = withContext(ioDispatcher) { loadPhotosFromDCIM() }
 
                 _uiState.value = _uiState.value.copy(
                     photos = photos.sortedByDescending { it.captureTime }, // 확실히 최신순으로 재정렬
@@ -160,6 +187,43 @@ class ServerPhotosViewModel @Inject constructor(
         }
 
         return photos
+    }
+
+    /**
+     * 앱 전용 저장소(`Android/data/<패키지>/files/DCIM/CamCon`)의 사진을 읽는다.
+     *
+     * 기본 저장 위치라 대부분의 사진이 여기 있다. 미디어 스캔 대상이 아니어서 MediaStore 질의로는
+     * 절대 나오지 않으므로 파일시스템을 직접 훑는다. 폴더가 없으면(설정을 계속 켜 두었다면)
+     * 빈 목록이고, 그건 오류가 아니다.
+     */
+    private fun loadAppPrivatePhotos(date: String?): List<CapturedPhoto> {
+        val root = photoLibraryLocation.appPrivateRoot()
+        if (!root.exists() || !root.isDirectory) return emptyList()
+
+        // date 가 주어지면 그 날짜 폴더만 훑는다 — 2단 화면은 한 날짜만 필요하다.
+        // null 이면 전체(중복 접기 기준을 만들 때 쓴다).
+        val dirs = root.listFiles()
+            ?.filter { it.isDirectory && (date == null || it.name.startsWith("${date}_") || it.name == date) }
+            .orEmpty()
+
+        return dirs.asSequence()
+            .flatMap { it.listFiles()?.asSequence().orEmpty() }
+            .filter { it.isFile && PhotoLibraryLocation.isImage(it.name) }
+            .map { file ->
+                CapturedPhoto(
+                    id = UUID.randomUUID().toString(),
+                    filePath = file.absolutePath,
+                    thumbnailPath = null,
+                    captureTime = file.lastModified(),
+                    cameraModel = "Unknown",
+                    settings = null,
+                    size = file.length(),
+                    width = 0,
+                    height = 0,
+                    isDownloading = false
+                )
+            }
+            .toList()
     }
 
     /**
@@ -316,8 +380,114 @@ class ServerPhotosViewModel @Inject constructor(
      * 사진 목록 새로고침
      */
     fun refreshPhotos() {
-        Log.d("ServerPhotosViewModel", "DCIM/CamCon 사진 목록 새로고침")
-        loadLocalPhotos()
+        Log.d("ServerPhotosViewModel", "갤러리 새로고침")
+        loadGroups()
+        // 2단 화면을 열어 둔 채 돌아온 경우(뷰어에서 복귀 등)에는 그 그룹도 다시 읽는다.
+        _uiState.value.openedGroup?.let { loadPhotosForGroup(it) }
+    }
+
+    /**
+     * 루트 화면(날짜 목록)을 채운다.
+     *
+     * **파일 메타를 읽지 않는다.** 앱 내부는 디렉터리 목록과 파일 개수만 세고, 기기 저장소는
+     * 개수만 질의한다. 탭에 들어올 때마다 도는 경로라 여기서 전체 스캔을 하면 진입이 느려진다.
+     */
+    private fun loadGroups() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val groups = withContext(ioDispatcher) {
+                    val dateGroups = photoLibraryLocation.listDateFolders().map {
+                        GalleryGroup(GalleryGroupKey.Date(it.date), it.photoCount)
+                    }
+                    val deviceCount = countDeviceStoragePhotos()
+                    // 기기 저장소는 항상 목록 맨 뒤다 — 앱이 관리하는 최신 사진이 위에 오도록.
+                    if (deviceCount > 0) {
+                        dateGroups + GalleryGroup(GalleryGroupKey.DeviceStorage, deviceCount)
+                    } else {
+                        dateGroups
+                    }
+                }
+                _uiState.value = _uiState.value.copy(groups = groups, isLoading = false)
+                Log.d("ServerPhotosViewModel", "갤러리 그룹 ${groups.size}개")
+            } catch (e: Exception) {
+                Log.e("ServerPhotosViewModel", "갤러리 그룹 로드 실패", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "사진을 불러오는 중 오류가 발생했습니다: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /** 그룹을 열어 2단(사진 그리드)으로 들어간다. */
+    fun openGroup(key: GalleryGroupKey) {
+        _uiState.value = _uiState.value.copy(openedGroup = key, photos = emptyList())
+        loadPhotosForGroup(key)
+    }
+
+    /** 2단에서 루트(날짜 목록)로 돌아간다. 뒤로가기 버튼과 시스템 백이 같이 부른다. */
+    fun closeGroup() {
+        _uiState.value = _uiState.value.copy(
+            openedGroup = null,
+            photos = emptyList(),
+            selectedPhotos = emptySet(),
+            isMultiSelectMode = false
+        )
+    }
+
+    private fun loadPhotosForGroup(key: GalleryGroupKey) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val photos = withContext(ioDispatcher) {
+                    when (key) {
+                        is GalleryGroupKey.Date -> loadAppPrivatePhotos(key.date)
+                        GalleryGroupKey.DeviceStorage -> {
+                            // 내보내기로 양쪽에 있는 파일은 앱 내부 쪽에만 보이게 접는다.
+                            val appPrivate = loadAppPrivatePhotos(date = null)
+                            val seen = appPrivate.mapTo(HashSet()) { fingerprint(it) }
+                            loadPhotosFromDCIM().filterNot { fingerprint(it) in seen }
+                        }
+                    }
+                }
+                _uiState.value = _uiState.value.copy(
+                    photos = photos.sortedByDescending { it.captureTime },
+                    isLoading = false
+                )
+            } catch (e: Exception) {
+                Log.e("ServerPhotosViewModel", "그룹 사진 로드 실패: $key", e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "사진을 불러오는 중 오류가 발생했습니다: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /** 중복 접기 기준. 파일명 + 크기 — 같은 사진이 두 소스에 있으면 둘 다 같다. */
+    private fun fingerprint(photo: CapturedPhoto): String =
+        "${photo.filePath.substringAfterLast('/')}:${photo.size}"
+
+    /**
+     * 기기 저장소(MediaStore)의 CamCon 사진 개수.
+     *
+     * ⚠️ 앱을 재설치하면 과거에 기여한 항목의 소유권이 사라져 스코프드 스토리지에서 안 읽힐 수 있다.
+     * 그때는 조용한 빈 화면 대신 로그를 남기고, 읽히는 것만 보여준다(권한 요청은 범위 밖).
+     */
+    private suspend fun countDeviceStoragePhotos(): Int {
+        val count = runCatching { loadPhotosFromDCIM().size }.getOrElse { e ->
+            Log.w("ServerPhotosViewModel", "기기 저장소 조회 실패 — 읽히는 것만 표시한다", e)
+            0
+        }
+        if (count == 0) {
+            Log.i(
+                "ServerPhotosViewModel",
+                "기기 저장소에 CamCon 사진이 없다. 앱을 재설치했다면 과거 기여분의 소유권이 " +
+                        "사라져 읽히지 않을 수 있다(스코프드 스토리지)."
+            )
+        }
+        return count
     }
 
     /**

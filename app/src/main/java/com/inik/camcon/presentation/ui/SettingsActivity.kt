@@ -70,6 +70,7 @@ import com.inik.camcon.presentation.ui.screens.settings.LanguageSelectionDialog
 import com.inik.camcon.presentation.ui.screens.settings.LiveViewQualitySelectionDialog
 import com.inik.camcon.presentation.ui.screens.settings.LogoutConfirmDialog
 import com.inik.camcon.presentation.ui.screens.settings.NativeLogDialog
+import com.inik.camcon.presentation.ui.screens.settings.SaveLocationSection
 import com.inik.camcon.presentation.ui.screens.settings.RawDownloadSection
 import com.inik.camcon.presentation.ui.screens.settings.ReferralRedeemDialog
 import com.inik.camcon.presentation.ui.screens.settings.ServerSection
@@ -237,6 +238,8 @@ fun SettingsScreen(
     val selectedFilmLutLocked by appSettingsViewModel.selectedFilmLutLocked.collectAsStateWithLifecycle()
     val filmSimulationIntensity by appSettingsViewModel.filmSimulationIntensity.collectAsStateWithLifecycle()
     val isRawFileDownloadEnabled by appSettingsViewModel.isRawFileDownloadEnabled.collectAsStateWithLifecycle()
+    val isSaveToDeviceGalleryEnabled by
+        appSettingsViewModel.isSaveToDeviceGalleryEnabled.collectAsStateWithLifecycle()
     val isShutterSoundEnabled by appSettingsViewModel.isShutterSoundEnabled.collectAsStateWithLifecycle()
 
     val subscriptionTier by appSettingsViewModel.subscriptionTier.collectAsStateWithLifecycle()
@@ -476,6 +479,14 @@ fun SettingsScreen(
                     defaultFilmSelectLauncher.launch(intent)
                 },
                 onIntensityChange = { appSettingsViewModel.setFilmSimulationIntensity(it) }
+            )
+
+            // 저장 위치 — 기본은 앱 안에서만 보이게 둔다.
+            SaveLocationSection(
+                isSaveToDeviceGalleryEnabled = isSaveToDeviceGalleryEnabled,
+                onSaveToDeviceGalleryChange = {
+                    appSettingsViewModel.setSaveToDeviceGalleryEnabled(it)
+                }
             )
 
             // RAW 파일 다운로드 설정

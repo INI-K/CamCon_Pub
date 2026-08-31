@@ -211,6 +211,13 @@
     <string name="preview_card_browse_stuck">カメラがカード表示モードのままで、撮影がブロックされています。再試行するか、カメラの電源を入れ直してください。</string>
     <string name="preview_thumbnail_unsupported_title">このカメラではサムネイルが正しく動作しません</string>
     <string name="preview_thumbnail_unsupported_desc">このカメラはサムネイル転送が正しく動作しないため、プレビューが制限されます。写真は元画像をダウンロードして確認できます。Wi-Fi 接続では時間がかかる場合があります。</string>
+    <string name="cd_export_to_gallery">ギャラリーに書き出す</string>
+    <string name="gallery_group_device_storage">端末のストレージ</string>
+    <string name="gallery_group_photo_count">写真 %1$d 枚</string>
+    <string name="settings_save_to_device_gallery_title">端末のギャラリーに保存</string>
+    <string name="settings_save_to_device_gallery_desc">オフにすると写真はアプリ内にのみ表示され、アプリを削除すると写真も削除されます。オンにすると端末のギャラリーにも保存されます。</string>
+    <string name="export_to_gallery_success">ギャラリーに書き出しました</string>
+    <string name="export_to_gallery_failed">ギャラリーに書き出せませんでした</string>
     <string name="preview_card_browse_retry_exit">再試行</string>
     <string name="connect_camera_and_capture">USB経由でカメラを接続し\n写真を撮影してください</string>
     <string name="check_camera_connection">• カメラが接続されているか確認してください\n• 下にスワイプして更新</string>

@@ -108,7 +108,8 @@ class PhotoPreviewViewModel @Inject constructor(
     private val resumeNativeOperationsUseCase: ResumeNativeOperationsUseCase,
     private val deleteCameraFileUseCase: DeleteCameraFileUseCase,
     private val nikonApplicationModeManager: NikonApplicationModeManager,
-    private val ptpipEventKeepAlive: com.inik.camcon.data.datasource.nativesource.PtpipEventKeepAlive
+    private val ptpipEventKeepAlive: com.inik.camcon.data.datasource.nativesource.PtpipEventKeepAlive,
+    private val photoLibraryLocation: com.inik.camcon.data.repository.managers.PhotoLibraryLocation
 ) : ViewModel() {
 
     companion object {
@@ -518,6 +519,32 @@ class PhotoPreviewViewModel @Inject constructor(
                 _showThumbnailLimitNotice.value = true
                 Log.i(TAG, "썸네일 제한 안내 표시 — 카메라가 JPEG 이 아닌 썸네일을 반환")
             }
+        }
+    }
+
+    /**
+     * 이 사진에 "갤러리로 내보내기"를 띄울지.
+     *
+     * 앱 전용 저장소에 있는 사진에만 의미가 있다 — 이미 기기 갤러리에 있는 사진은 내보낼 것이 없다.
+     */
+    fun canExportToGallery(path: String): Boolean =
+        photoLibraryLocation.isInAppPrivateStorage(path)
+
+    /**
+     * 앱 전용 저장소의 사진을 기기 갤러리로 내보낸다. 원본은 그대로 둔다.
+     *
+     * 공유와 목적이 다르다 — 공유는 다른 앱에 한 번 건네는 것이고, 이것은 폰 갤러리에 영속 저장한다.
+     */
+    fun exportToGallery(path: String) {
+        viewModelScope.launch {
+            val ok = photoLibraryLocation.exportToDeviceGallery(java.io.File(path))
+            _uiEvent.emit(
+                if (ok) {
+                    PhotoPreviewUiEvent.ShowInfo(context.getString(R.string.export_to_gallery_success))
+                } else {
+                    PhotoPreviewUiEvent.ShowError(context.getString(R.string.export_to_gallery_failed))
+                }
+            )
         }
     }
 

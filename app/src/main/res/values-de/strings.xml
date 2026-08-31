@@ -211,6 +211,13 @@
     <string name="preview_card_browse_stuck">Die Kamera hängt in der Kartenansicht, die Aufnahme bleibt blockiert. Versuchen Sie es erneut oder schalten Sie die Kamera aus und wieder ein.</string>
     <string name="preview_thumbnail_unsupported_title">Miniaturansichten funktionieren auf dieser Kamera nicht</string>
     <string name="preview_thumbnail_unsupported_desc">Bei dieser Kamera funktioniert die Übertragung von Miniaturansichten nicht, daher ist die Vorschau eingeschränkt. Fotos lassen sich weiterhin ansehen, indem Sie das Original herunterladen. Über WLAN kann das länger dauern.</string>
+    <string name="cd_export_to_gallery">In Galerie exportieren</string>
+    <string name="gallery_group_device_storage">Gerätespeicher</string>
+    <string name="gallery_group_photo_count">%1$d Fotos</string>
+    <string name="settings_save_to_device_gallery_title">In Gerätegalerie speichern</string>
+    <string name="settings_save_to_device_gallery_desc">Wenn deaktiviert, bleiben Fotos nur in CamCon sichtbar und werden beim Deinstallieren der App mit gelöscht. Aktivieren Sie die Option, um sie auch in der Galerie Ihres Telefons zu speichern.</string>
+    <string name="export_to_gallery_success">In Galerie exportiert</string>
+    <string name="export_to_gallery_failed">Export in die Galerie fehlgeschlagen</string>
     <string name="preview_card_browse_retry_exit">Erneut versuchen</string>
     <string name="connect_camera_and_capture">Verbinden Sie Ihre Kamera über USB\nund nehmen Sie Fotos auf</string>
     <string name="check_camera_connection">• Prüfen Sie, ob die Kamera verbunden ist\n• Nach unten wischen zum Aktualisieren</string>

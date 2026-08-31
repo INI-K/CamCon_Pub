@@ -75,6 +75,7 @@ class FilmEditorViewModel @Inject constructor(
     private val observeEffectiveTierUseCase: ObserveEffectiveTierUseCase,
     private val validateFeatureAccessUseCase: ValidateFeatureAccessUseCase,
     private val appSettingsRepository: AppSettingsRepository,
+    private val photoLibraryLocation: com.inik.camcon.data.repository.managers.PhotoLibraryLocation,
     @ApplicationContext private val context: Context,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
@@ -567,15 +568,35 @@ class FilmEditorViewModel @Inject constructor(
     }
 
     /** 결과 임시 파일을 MediaStore(Pictures/CamCon)에 저장한다. 실패 시 외부 파일 폴백. */
-    private fun saveToGallery(source: File): Boolean {
+    private suspend fun saveToGallery(source: File): Boolean {
         val displayName = "camcon_film_${System.currentTimeMillis()}.jpg"
+
+        // 저장 위치 분기. 기본은 앱 전용 저장소라 편집 결과가 폰 갤러리에 뜨지 않는다.
+        // 폰 갤러리로 보내려면 설정을 켜거나, 뷰어의 "갤러리로 내보내기"를 쓴다.
+        //
+        // ⚠️ 폴더 체계도 다른 저장 경로와 통일했다. 예전에는 이 경로만 `Pictures/CamCon` 으로
+        // 따로 갔는데, 그러면 같은 앱이 만든 사진이 두 군데로 갈린다. 이미 저장된 사진은
+        // 옮기지 않는다 — 앞으로 저장되는 것만 한자리에 모인다.
+        val folderName = photoLibraryLocation.folderNameFor(
+            captureMillis = System.currentTimeMillis(),
+            cameraPath = null,
+            cameraModel = null
+        )
+        if (!photoLibraryLocation.isDeviceGalleryEnabled()) {
+            return photoLibraryLocation.saveToAppPrivate(
+                sourceFile = source,
+                displayName = displayName,
+                folderName = folderName
+            ) != null
+        }
+
         return try {
             val values = ContentValues().apply {
                 put(MediaStore.Images.Media.DISPLAY_NAME, displayName)
                 put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
                 put(
                     MediaStore.Images.Media.RELATIVE_PATH,
-                    "${Environment.DIRECTORY_PICTURES}/CamCon"
+                    "${com.inik.camcon.utils.Constants.FilePaths.getMediaStoreRelativePath()}/$folderName"
                 )
                 // IS_PENDING 으로 기록 완료 전까지 갤러리/타 앱 노출·고아 엔트리를 막는다(repo 공통 패턴).
                 put(MediaStore.Images.Media.IS_PENDING, 1)

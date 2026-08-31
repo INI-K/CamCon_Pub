@@ -211,6 +211,13 @@
     <string name="preview_card_browse_stuck">카메라가 카드 보기에서 빠져나오지 못해 촬영이 계속 막혀 있습니다. 다시 시도하거나, 카메라 전원을 껐다 켜 주세요.</string>
     <string name="preview_thumbnail_unsupported_title">이 카메라는 썸네일이 정상 동작하지 않습니다</string>
     <string name="preview_thumbnail_unsupported_desc">이 카메라는 썸네일 전송이 정상 동작하지 않아 미리보기가 제한됩니다. 사진은 원본을 내려받아 확인할 수 있으며, Wi-Fi 연결에서는 시간이 더 걸릴 수 있습니다.</string>
+    <string name="cd_export_to_gallery">갤러리로 내보내기</string>
+    <string name="gallery_group_device_storage">기기 저장소</string>
+    <string name="gallery_group_photo_count">사진 %1$d장</string>
+    <string name="settings_save_to_device_gallery_title">기기 갤러리에 저장</string>
+    <string name="settings_save_to_device_gallery_desc">끄면 사진이 앱 안에서만 보이며, 앱을 삭제하면 사진도 함께 삭제됩니다. 켜면 폰 갤러리에도 저장됩니다.</string>
+    <string name="export_to_gallery_success">갤러리로 내보냈습니다</string>
+    <string name="export_to_gallery_failed">갤러리로 내보내지 못했습니다</string>
     <string name="preview_card_browse_retry_exit">다시 시도</string>
     <string name="connect_camera_and_capture">카메라를 USB로 연결하고\n사진을 촬영해보세요</string>
     <string name="check_camera_connection">• 카메라가 연결되어 있는지 확인하세요\n• 위로 당겨서 새로고침하세요</string>

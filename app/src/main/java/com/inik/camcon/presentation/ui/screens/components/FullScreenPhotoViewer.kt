@@ -368,6 +368,15 @@ fun FullScreenPhotoViewer(
                     shareStrings
                 )
             },
+            onExportClick = viewModel?.let { vm ->
+                val currentPhoto = photos.getOrNull(pagerState.currentPage) ?: photo
+                // 앱 전용 저장소에 있는 사진에만 뜬다 — 이미 기기 갤러리에 있으면 내보낼 것이 없다.
+                if (vm.canExportToGallery(currentPhoto.path)) {
+                    { vm.exportToGallery(currentPhoto.path) }
+                } else {
+                    null
+                }
+            },
             onFilmEditClick = onFilmEdit?.let { handler ->
                 val currentPhoto =
                     if (viewModel != null) (photos.getOrNull(pagerState.currentPage)

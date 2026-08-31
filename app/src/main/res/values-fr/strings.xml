@@ -211,6 +211,13 @@
     <string name="preview_card_browse_stuck">L\'appareil est bloqué en vue carte et la capture reste impossible. Réessayez ou éteignez puis rallumez l\'appareil.</string>
     <string name="preview_thumbnail_unsupported_title">Les miniatures ne fonctionnent pas sur cet appareil</string>
     <string name="preview_thumbnail_unsupported_desc">Sur cet appareil photo, le transfert des miniatures ne fonctionne pas, l\'aperçu est donc limité. Vous pouvez toujours consulter chaque photo en téléchargeant l\'original. En Wi-Fi, cela peut prendre plus de temps.</string>
+    <string name="cd_export_to_gallery">Exporter vers la galerie</string>
+    <string name="gallery_group_device_storage">Stockage de l\'appareil</string>
+    <string name="gallery_group_photo_count">%1$d photos</string>
+    <string name="settings_save_to_device_gallery_title">Enregistrer dans la galerie de l\'appareil</string>
+    <string name="settings_save_to_device_gallery_desc">Lorsque l\'option est désactivée, les photos restent visibles uniquement dans CamCon et sont supprimées si vous désinstallez l\'application. Activez-la pour les enregistrer aussi dans la galerie du téléphone.</string>
+    <string name="export_to_gallery_success">Exporté vers la galerie</string>
+    <string name="export_to_gallery_failed">Impossible d\'exporter vers la galerie</string>
     <string name="preview_card_browse_retry_exit">Réessayer</string>
     <string name="connect_camera_and_capture">Connectez votre appareil photo via USB\net capturez des photos</string>
     <string name="check_camera_connection">• Vérifiez si l\'appareil photo est connecté\n• Balayez vers le bas pour actualiser</string>

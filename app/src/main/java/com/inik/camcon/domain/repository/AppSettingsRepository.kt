@@ -32,6 +32,17 @@ interface AppSettingsRepository {
 
     /** 사진 도착(수신·저장 완료) 시 진동 알림 여부 (기본값: false). */
     val isVibrateOnPhotoReceivedEnabled: Flow<Boolean>
+    /**
+     * 촬영·다운로드한 사진을 **기기 갤러리에도 보이게** 저장할지 (기본값: false).
+     *
+     * 꺼져 있으면 앱 전용 외부 저장소에만 넣는다. 미디어 스캔 대상이 아니라 폰 갤러리와 다른 앱에
+     * 사진이 뜨지 않고 저장 권한도 필요 없다. 대신 **앱을 지우면 사진도 함께 지워진다** — 이
+     * 대가를 사용자가 알고 고르도록 설정 문구에 그대로 적는다.
+     *
+     * 켜면 종전처럼 MediaStore(DCIM/CamCon)로 저장한다. 개별 사진은 이 값과 무관하게 뷰어의
+     * "갤러리로 내보내기"로 언제든 내보낼 수 있다.
+     */
+    val isSaveToDeviceGalleryEnabled: Flow<Boolean>
     val isLiveViewGridEnabled: Flow<Boolean>
     val liveViewQuality: Flow<LiveViewQuality>
     val hasSeenCaptureCoachmark: Flow<Boolean>
@@ -66,6 +77,7 @@ interface AppSettingsRepository {
     suspend fun setOnboardingCompleted(completed: Boolean)
     suspend fun setShutterSoundEnabled(enabled: Boolean)
     suspend fun setVibrateOnPhotoReceivedEnabled(enabled: Boolean)
+    suspend fun setSaveToDeviceGalleryEnabled(enabled: Boolean)
     suspend fun setLiveViewGridEnabled(enabled: Boolean)
     suspend fun setLiveViewQuality(quality: LiveViewQuality)
     suspend fun setHasSeenCaptureCoachmark(seen: Boolean)
