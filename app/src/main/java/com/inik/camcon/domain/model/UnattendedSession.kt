@@ -82,5 +82,29 @@ enum class TerminationCause(val notifiesUser: Boolean) {
     LinkLostNoReconnect(true),
 
     /** 프로세스가 되살아났지만 세션을 복구하지 못했다(2단계). */
-    RestartUnrecovered(true)
+    RestartUnrecovered(true),
+
+    /**
+     * 프로세스가 되살아났는데 되살릴 세션 자체가 없었다.
+     *
+     * 사용자가 이미 끝낸 세션이라 알릴 것이 없다. 시스템이 서비스만 재기동한 경우이므로
+     * 알림 없이 곧바로 정지해 idle 포그라운드 서비스가 남지 않게 한다.
+     */
+    RestartNoSession(false)
 }
+
+/**
+ * 디스크에 남겨 두는 무인 수신 세션의 흔적.
+ *
+ * 프로세스가 죽으면 메모리의 세션 상태는 함께 사라진다. 시스템이 서비스를 되살렸을 때
+ * "원래 무인 수신 중이었는가"를 판단할 근거가 이 기록뿐이라, 세션을 시작할 때 남기고
+ * 끝낼 때 지운다(그 두 시점 외에는 쓰지 않는다 — 수신 중 반복 기록은 불필요한 디스크 쓰기다).
+ *
+ * @param cameraLabel 진단용 표시값이다. 카메라 이름·장치명은 식별 정보이므로 [com.inik.camcon.utils.LogMask]
+ *   로 마스킹한 값만 저장한다.
+ */
+data class PersistedUnattendedSession(
+    val startedAtMillis: Long,
+    val connectionType: CameraConnectionType,
+    val cameraLabel: String
+)

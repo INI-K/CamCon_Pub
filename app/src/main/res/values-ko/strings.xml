@@ -421,6 +421,10 @@
     <string name="photo_delete_camera_failed">카메라에서 사진을 삭제하지 못했습니다</string>
     <string name="notif_channel_status_name">카메라 상태</string>
     <string name="notif_channel_status_desc">카메라 연결·파일 수신 상태 표시</string>
+    <string name="notif_channel_session_ended_name">무인 수신 종료</string>
+    <string name="notif_channel_session_ended_desc">백그라운드 사진 수신이 멈추면 알립니다</string>
+    <string name="notif_session_ended_title">수신이 중단되었습니다</string>
+    <string name="notif_session_ended_action_reconnect">재연결</string>
     <string name="connection_status_usb_connected">USB 카메라 연결됨</string>
     <string name="connection_status_ap_connected">AP 모드 연결됨 (%1$s)</string>
     <string name="connection_status_sta_connected">STA 모드 연결됨 (%1$s)</string>

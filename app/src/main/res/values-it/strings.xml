@@ -417,6 +417,10 @@
     <string name="photo_delete_camera_failed">Impossibile eliminare la foto dalla fotocamera</string>
     <string name="notif_channel_status_name">Stato della fotocamera</string>
     <string name="notif_channel_status_desc">Mostra lo stato di connessione e ricezione file della fotocamera</string>
+    <string name="notif_channel_session_ended_name">Ricezione non presidiata terminata</string>
+    <string name="notif_channel_session_ended_desc">Ti avvisa quando la ricezione delle foto in background si interrompe</string>
+    <string name="notif_session_ended_title">Ricezione interrotta</string>
+    <string name="notif_session_ended_action_reconnect">Riconnetti</string>
     <string name="connection_status_usb_connected">Fotocamera USB connessa</string>
     <string name="connection_status_ap_connected">Modalità AP connessa (%1$s)</string>
     <string name="connection_status_sta_connected">Modalità STA connessa (%1$s)</string>

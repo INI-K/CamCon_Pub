@@ -417,6 +417,10 @@
     <string name="photo_delete_camera_failed">无法从相机删除照片</string>
     <string name="notif_channel_status_name">相机状态</string>
     <string name="notif_channel_status_desc">显示相机连接和文件接收状态</string>
+    <string name="notif_channel_session_ended_name">无人接收结束</string>
+    <string name="notif_channel_session_ended_desc">后台照片接收停止时通知您</string>
+    <string name="notif_session_ended_title">已停止接收</string>
+    <string name="notif_session_ended_action_reconnect">重新连接</string>
     <string name="connection_status_usb_connected">USB相机已连接</string>
     <string name="connection_status_ap_connected">AP 模式已连接 (%1$s)</string>
     <string name="connection_status_sta_connected">STA 模式已连接 (%1$s)</string>

@@ -416,6 +416,10 @@
     <string name="photo_delete_camera_failed">Foto konnte nicht von der Kamera gelöscht werden</string>
     <string name="notif_channel_status_name">Kamerastatus</string>
     <string name="notif_channel_status_desc">Zeigt den Verbindungs- und Dateiempfangsstatus der Kamera an</string>
+    <string name="notif_channel_session_ended_name">Unbeaufsichtigter Empfang beendet</string>
+    <string name="notif_channel_session_ended_desc">Benachrichtigt Sie, wenn der Fotoempfang im Hintergrund stoppt</string>
+    <string name="notif_session_ended_title">Empfang gestoppt</string>
+    <string name="notif_session_ended_action_reconnect">Neu verbinden</string>
     <string name="connection_status_usb_connected">USB-Kamera verbunden</string>
     <string name="connection_status_ap_connected">AP-Modus verbunden (%1$s)</string>
     <string name="connection_status_sta_connected">STA-Modus verbunden (%1$s)</string>

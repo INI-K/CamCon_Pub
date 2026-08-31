@@ -418,6 +418,10 @@
     <string name="photo_delete_camera_failed">Impossible de supprimer la photo de l\'appareil</string>
     <string name="notif_channel_status_name">État de l\'appareil</string>
     <string name="notif_channel_status_desc">Affiche l\'état de connexion et de réception de fichiers de l\'appareil</string>
+    <string name="notif_channel_session_ended_name">Réception autonome terminée</string>
+    <string name="notif_channel_session_ended_desc">Vous avertit lorsque la réception de photos en arrière-plan s\'arrête</string>
+    <string name="notif_session_ended_title">Réception arrêtée</string>
+    <string name="notif_session_ended_action_reconnect">Reconnecter</string>
     <string name="connection_status_usb_connected">Appareil USB connecté</string>
     <string name="connection_status_ap_connected">Mode AP connecté (%1$s)</string>
     <string name="connection_status_sta_connected">Mode STA connecté (%1$s)</string>

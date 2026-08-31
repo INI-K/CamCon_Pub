@@ -654,6 +654,10 @@
     <string name="notif_bg_sync_waiting">Waiting for camera connection…</string>
     <string name="notif_channel_status_name">Camera status</string>
     <string name="notif_channel_status_desc">Shows camera connection and file-receiving status</string>
+    <string name="notif_channel_session_ended_name">Unattended receiving ended</string>
+    <string name="notif_channel_session_ended_desc">Notifies you when background photo receiving stops</string>
+    <string name="notif_session_ended_title">Receiving stopped</string>
+    <string name="notif_session_ended_action_reconnect">Reconnect</string>
 
     <!-- 연결 상태 메시지 (CameraConnectionGlobalManager → UiText, presentation 해석) -->
     <string name="connection_status_usb_connected">USB camera connected</string>

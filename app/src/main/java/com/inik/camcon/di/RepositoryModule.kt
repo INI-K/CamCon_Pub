@@ -57,6 +57,7 @@ import com.inik.camcon.domain.repository.CameraStreamingRepository
 import com.inik.camcon.domain.repository.ColorTransferRepository
 import com.inik.camcon.domain.repository.CameraRepository
 import com.inik.camcon.domain.repository.SubscriptionRepository
+import com.inik.camcon.domain.repository.UnattendedSessionRepository
 import com.inik.camcon.domain.repository.UsbDeviceRepository
 import com.inik.camcon.domain.util.Logger
 import com.inik.camcon.presentation.viewmodel.state.CameraUiStateManager
@@ -242,6 +243,16 @@ abstract class RepositoryModule {
     abstract fun bindUnattendedSessionManager(
         impl: UnattendedSessionManagerImpl
     ): UnattendedSessionManager
+
+    /**
+     * 무인 수신 세션 영속 플래그. 평문 DataStore 를 이미 소유한 [AppPreferencesDataSource] 가
+     * 그대로 구현한다 — 같은 저장소를 두 클래스가 나눠 갖게 하면 키 관리 지점이 둘로 갈린다.
+     */
+    @Binds
+    @Singleton
+    abstract fun bindUnattendedSessionRepository(
+        impl: AppPreferencesDataSource
+    ): UnattendedSessionRepository
 
     @Binds
     @Singleton

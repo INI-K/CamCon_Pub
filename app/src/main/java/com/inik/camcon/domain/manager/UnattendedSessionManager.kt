@@ -24,6 +24,18 @@ interface UnattendedSessionManager {
     fun endByUser(cause: TerminationCause)
 
     /**
+     * 프로세스가 죽었다 되살아난 뒤 세션을 되살린다.
+     *
+     * 세션을 [UnattendedSession.Recovering] 으로 올려 서비스가 FGS·WakeLock 을 유지하게 한
+     * 다음, 디스크에 남은 세션 기록이 가리키는 방식으로 한 번 재연결한다. 성공하면 연결 상태가
+     * 세션을 [UnattendedSession.Active] 로 되돌리고, 실패하면
+     * [TerminationCause.RestartUnrecovered] 로 끝난다.
+     *
+     * @return 복구에 성공했으면 true.
+     */
+    suspend fun recoverAfterProcessRestart(): Boolean
+
+    /**
      * 종료 사유를 한 번만 꺼내 간다. 알림을 두 번 띄우지 않기 위한 소비형 읽기다.
      *
      * @return 아직 소비되지 않은 사유. 없으면 null.

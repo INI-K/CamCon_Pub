@@ -419,6 +419,10 @@
     <string name="photo_delete_camera_failed">カメラから写真を削除できませんでした</string>
     <string name="notif_channel_status_name">カメラの状態</string>
     <string name="notif_channel_status_desc">カメラの接続とファイル受信の状態を表示します</string>
+    <string name="notif_channel_session_ended_name">無人受信の終了</string>
+    <string name="notif_channel_session_ended_desc">バックグラウンドの写真受信が停止したときに通知します</string>
+    <string name="notif_session_ended_title">受信を停止しました</string>
+    <string name="notif_session_ended_action_reconnect">再接続</string>
     <string name="connection_status_usb_connected">USBカメラ接続済み</string>
     <string name="connection_status_ap_connected">APモード接続済み (%1$s)</string>
     <string name="connection_status_sta_connected">STAモード接続済み (%1$s)</string>
