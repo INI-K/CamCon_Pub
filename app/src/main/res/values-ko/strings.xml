@@ -209,6 +209,8 @@
     <string name="preview_card_browse_active">카드 보기 중 — 촬영과 라이브뷰가 멈춰 있습니다.</string>
     <string name="preview_card_browse_enter_failed">카드 보기로 전환하지 못했습니다. 카메라는 촬영 모드 그대로입니다.</string>
     <string name="preview_card_browse_stuck">카메라가 카드 보기에서 빠져나오지 못해 촬영이 계속 막혀 있습니다. 다시 시도하거나, 카메라 전원을 껐다 켜 주세요.</string>
+    <string name="preview_thumbnail_unsupported_title">이 카메라는 썸네일이 정상 동작하지 않습니다</string>
+    <string name="preview_thumbnail_unsupported_desc">이 카메라는 썸네일 전송이 정상 동작하지 않아 미리보기가 제한됩니다. 사진은 원본을 내려받아 확인할 수 있으며, Wi-Fi 연결에서는 시간이 더 걸릴 수 있습니다.</string>
     <string name="preview_card_browse_retry_exit">다시 시도</string>
     <string name="connect_camera_and_capture">카메라를 USB로 연결하고\n사진을 촬영해보세요</string>
     <string name="check_camera_connection">• 카메라가 연결되어 있는지 확인하세요\n• 위로 당겨서 새로고침하세요</string>

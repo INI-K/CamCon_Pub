@@ -209,6 +209,8 @@
     <string name="preview_card_browse_active">Kartenansicht aktiv — Aufnahme und Live-View sind pausiert.</string>
     <string name="preview_card_browse_enter_failed">Wechsel zur Kartenansicht fehlgeschlagen. Die Kamera bleibt im Aufnahmemodus.</string>
     <string name="preview_card_browse_stuck">Die Kamera hängt in der Kartenansicht, die Aufnahme bleibt blockiert. Versuchen Sie es erneut oder schalten Sie die Kamera aus und wieder ein.</string>
+    <string name="preview_thumbnail_unsupported_title">Miniaturansichten funktionieren auf dieser Kamera nicht</string>
+    <string name="preview_thumbnail_unsupported_desc">Bei dieser Kamera funktioniert die Übertragung von Miniaturansichten nicht, daher ist die Vorschau eingeschränkt. Fotos lassen sich weiterhin ansehen, indem Sie das Original herunterladen. Über WLAN kann das länger dauern.</string>
     <string name="preview_card_browse_retry_exit">Erneut versuchen</string>
     <string name="connect_camera_and_capture">Verbinden Sie Ihre Kamera über USB\nund nehmen Sie Fotos auf</string>
     <string name="check_camera_connection">• Prüfen Sie, ob die Kamera verbunden ist\n• Nach unten wischen zum Aktualisieren</string>

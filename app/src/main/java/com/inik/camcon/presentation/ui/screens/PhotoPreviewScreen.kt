@@ -79,6 +79,7 @@ import com.inik.camcon.presentation.theme.TextSecondaryV2
 import com.inik.camcon.presentation.theme.TextTertiary
 import com.inik.camcon.presentation.viewmodel.photo.CardBrowseState
 import com.inik.camcon.presentation.viewmodel.photo.CardBrowseError
+import com.inik.camcon.presentation.ui.components.v2.AppDialog
 import com.inik.camcon.presentation.ui.components.v2.EmptyState
 import com.inik.camcon.presentation.ui.components.v2.FilterChipV2
 import com.inik.camcon.presentation.ui.components.v2.IconButtonV2
@@ -126,6 +127,7 @@ fun PhotoPreviewScreen(
     val isStorageUnsupported by viewModel.isStorageUnsupported.collectAsStateWithLifecycle()
     val cardBrowseState by viewModel.cardBrowseState.collectAsStateWithLifecycle()
     val cardBrowseError by viewModel.cardBrowseError.collectAsStateWithLifecycle()
+    val showThumbnailLimitNotice by viewModel.showThumbnailLimitNotice.collectAsStateWithLifecycle()
     val isLoadingPhotos by viewModel.isLoadingPhotos.collectAsStateWithLifecycle()
     val isLoadingMore by viewModel.isLoadingMorePhotos.collectAsStateWithLifecycle()
     val hasNextPage by viewModel.hasNextPage.collectAsStateWithLifecycle()
@@ -263,6 +265,23 @@ fun PhotoPreviewScreen(
                 )
             }
         }
+    }
+
+    // === 썸네일 제한 안내 ===
+    // 2025년 신형 소니는 GetThumb 을 광고하면서도 실제로는 지원하지 않아 미리보기가 비어 보인다.
+    // 고장으로 오해하지 않도록 카드 보기에 들어갈 때 세션당 한 번 알린다.
+    if (showThumbnailLimitNotice) {
+        AppDialog(
+            onDismissRequest = { viewModel.dismissThumbnailLimitNotice() },
+            title = { Text(stringResource(R.string.preview_thumbnail_unsupported_title)) },
+            text = { Text(stringResource(R.string.preview_thumbnail_unsupported_desc)) },
+            confirmButton = {
+                PrimaryButton(
+                    text = stringResource(R.string.ok),
+                    onClick = { viewModel.dismissThumbnailLimitNotice() }
+                )
+            }
+        )
     }
 
     // === FullScreen Viewer 오버레이 ===

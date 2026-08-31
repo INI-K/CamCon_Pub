@@ -174,6 +174,23 @@ class PhotoPreviewViewModel @Inject constructor(
     val cardBrowseState = photoListManager.cardBrowseState
     val cardBrowseError = photoListManager.cardBrowseError
 
+    /**
+     * 썸네일 제한 안내를 띄워야 하는가.
+     *
+     * 판정은 **광고가 아니라 실제로 받은 바이트**로 한다. 카메라가 돌려준 첫 썸네일이 JPEG 서명
+     * (`FF D8 FF`)을 만족하지 못하면 그 세션을 썸네일 신뢰 불가로 보고 한 번 알린다
+     * ([PhotoImageManager.thumbnailUnsupported]).
+     *
+     * 기종명이나 오퍼레이션 광고로 미리 가려내지 않는다. `0x100A GetThumb` 이 실제로 깨진 바디와
+     * 멀쩡한 바디가 같은 세대 안에 섞여 있어(a7M5 는 깨지고 a7M4 는 정상), 광고나 세대 신호로
+     * 판정하면 멀쩡한 카메라에 오탐이 난다.
+     */
+    private val _showThumbnailLimitNotice = MutableStateFlow(false)
+    val showThumbnailLimitNotice: StateFlow<Boolean> = _showThumbnailLimitNotice.asStateFlow()
+
+    // 세션당 1회만 띄운다. 연결이 끊기면 다시 띄울 수 있게 푼다.
+    private var thumbnailLimitNoticeShown = false
+
     val isLoadingMorePhotos = photoListManager.isLoadingMore
     val hasNextPage = photoListManager.hasNextPage
     val currentFilter = photoListManager.currentFilter
@@ -238,6 +255,9 @@ class PhotoPreviewViewModel @Inject constructor(
 
         // 카메라 초기화 상태 관찰
         observeCameraInitialization()
+
+        // 썸네일 제한 안내 판정
+        observeThumbnailLimitNotice()
         
         // 구독 티어 관찰
         observeSubscriptionTier()
@@ -319,6 +339,10 @@ class PhotoPreviewViewModel @Inject constructor(
                     // 카드 보기가 켜진 상태로 연결이 끊겼다면 앱 상태를 되돌린다. 카메라는 이미
                     // 사라져 전환 명령을 보낼 수 없고, 다음에 켜질 때 기본 모드로 시작한다.
                     photoListManager.resetCardBrowseOnDisconnect()
+                    // 세션이 끝났으니 안내도 초기화한다 — 다른 카메라로 다시 연결하면 다시 판정한다.
+                    thumbnailLimitNoticeShown = false
+                    _showThumbnailLimitNotice.value = false
+                    photoImageManager.resetThumbnailSupport()
                     _uiState.update { it.copy(isInitialized = false) }
                     errorHandlingManager.emitError(
                         com.inik.camcon.domain.manager.ErrorType.CONNECTION,
@@ -476,6 +500,29 @@ class PhotoPreviewViewModel @Inject constructor(
     fun exitCardBrowse() {
         Log.d(TAG, "카드 보기 이탈 요청")
         photoListManager.exitCardBrowse()
+    }
+
+    /**
+     * 썸네일이 실제로 쓸 수 없는 것으로 확인되면 안내를 띄운다.
+     *
+     * [PhotoImageManager] 가 첫 응답의 JPEG 서명 검사로 판정한다. 그 시점에 이미 남은 썸네일
+     * 요청도 중단되므로, 여기서는 사용자에게 알리기만 하면 된다.
+     */
+    private fun observeThumbnailLimitNotice() {
+        viewModelScope.launch {
+            photoImageManager.thumbnailUnsupported.collect { unsupported ->
+                if (!unsupported || thumbnailLimitNoticeShown) return@collect
+
+                thumbnailLimitNoticeShown = true
+                _showThumbnailLimitNotice.value = true
+                Log.i(TAG, "썸네일 제한 안내 표시 — 카메라가 JPEG 이 아닌 썸네일을 반환")
+            }
+        }
+    }
+
+    /** 썸네일 제한 안내를 사용자가 확인했을 때 호출한다. 세션당 한 번만 뜬다. */
+    fun dismissThumbnailLimitNotice() {
+        _showThumbnailLimitNotice.value = false
     }
 
     /** 카드 보기 전환 실패 안내를 사용자가 확인했을 때 호출한다. */

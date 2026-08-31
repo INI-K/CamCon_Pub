@@ -135,7 +135,23 @@ data class PtpipAccessGate(
     val pairingRequired: Boolean = false,
     val serverVersion: String? = null,
     /** dd.xml의 UDN. 자격증명·호스트키의 안정 식별자로 쓴다(IP는 DHCP라 불안정하다). */
-    val udn: String? = null
+    val udn: String? = null,
+    /**
+     * `X_PTP_MediaServerSupport = Enable`. 카드 조회 전용 모드(콘텐츠 전송 모드)를 지원한다.
+     *
+     * 소니 Compatibility 표 기준으로 카드 사진 조회가 가능한 기종을 연결 전에 가려낸다.
+     */
+    val mediaServerSupported: Boolean = false,
+    /**
+     * `X_PTP_ContentsTransferSupport = Enable`. 촬영과 조회를 함께 하는 모드를 지원한다.
+     *
+     * 이 태그는 2025년 신형(ILCE-7RM6·ILCE-7M5·DSC-RX1RM3)에만 있다. 명세 예시로 실린 ILCE-1 의
+     * 설명 XML 에는 태그 자체가 없다. 따라서 **태그 부재는 false** 이고, 그 구분이 곧 세대 구분이다.
+     *
+     * ⚠️ 이 기종들은 `0x100A GetThumb` 을 **광고하면서도 실제로는 지원하지 않는다**(a7m5 실측
+     * 2026-08-30: 117KB 디코딩 불가 데이터 반환). 그래서 썸네일 제한 안내의 판정 신호로 쓴다.
+     */
+    val contentsTransferSupported: Boolean = false
 ) {
     /**
      * SSH 터널 경로로 분기해야 하는지 판정한다.

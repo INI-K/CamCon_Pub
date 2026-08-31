@@ -39,18 +39,19 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * [PhotoPreviewViewModel] 의 `uiState.canAccessRawFormats` StateFlow 방출 검증.
+ * [PhotoPreviewViewModel.showThumbnailLimitNotice] StateFlow 방출 검증.
  *
- * 구독 티어가 바뀔 때 미리보기 탭/전체포맷 접근 플래그가 올바르게 방출되는지 확인한다.
- * 게이팅 판정은 [ValidateFeatureAccessUseCase] 단일 지점에 위임되므로(CLAUDE.md §2),
- * 이 UseCase 는 무의존 순수 함수라 **실제 인스턴스**를 사용하고, 티어→boolean 매핑은
- * `isPhotoPreviewAllowed`(PRO/REFERRER/ADMIN 만 true)의 실제 로직을 그대로 관통시킨다.
+ * 고정하는 계약은 셋이다.
  *
- * ViewModel 테스트 원칙: 구현 세부사항이 아닌 StateFlow 방출만 검증(Turbine).
- * 구독 티어는 [getSubscriptionUseCase] 의 콜드 flow 를 MutableStateFlow 로 구동해 전이시킨다.
+ * 1. **판정 신호는 실동작 하나뿐이다.** 카메라가 돌려준 썸네일이 JPEG 서명을 만족하지 못했을
+ *    때만 안내한다([PhotoImageManager.thumbnailUnsupported]). 기종명·오퍼레이션 광고·설명 XML 은
+ *    쓰지 않는다 — 같은 세대 안에 깨진 바디(a7M5)와 멀쩡한 바디(a7M4)가 섞여 있어 그런 신호로
+ *    판정하면 멀쩡한 카메라에 오탐이 난다.
+ * 2. **정상 카메라에서는 뜨지 않는다.**
+ * 3. **세션당 한 번만 뜬다.** 사용자가 확인해 닫은 뒤 다시 띄우지 않는다.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class PhotoPreviewViewModelCanAccessRawTest {
+class PhotoPreviewViewModelThumbnailNoticeTest {
 
     private val testDispatcher = StandardTestDispatcher()
 
@@ -67,11 +68,10 @@ class PhotoPreviewViewModelCanAccessRawTest {
     private lateinit var resumeNativeOperationsUseCase: ResumeNativeOperationsUseCase
     private lateinit var deleteCameraFileUseCase: DeleteCameraFileUseCase
 
-    // 게이팅 단일 지점 — 무의존 순수 함수라 실제 인스턴스로 실제 티어 매핑을 관통.
     private val validateFeatureAccessUseCase = ValidateFeatureAccessUseCase()
 
-    // 구독 티어 구동용. getSubscriptionTier() 가 이 flow 를 반환하도록 스텁.
-    private lateinit var tierFlow: MutableStateFlow<SubscriptionTier>
+    /** 썸네일 실동작 판정을 테스트가 직접 구동한다. */
+    private lateinit var thumbnailUnsupportedFlow: MutableStateFlow<Boolean>
 
     @Before
     fun setUp() {
@@ -89,11 +89,11 @@ class PhotoPreviewViewModelCanAccessRawTest {
         resumeNativeOperationsUseCase = mockk(relaxed = true)
         deleteCameraFileUseCase = mockk(relaxed = true)
 
-        tierFlow = MutableStateFlow(SubscriptionTier.FREE)
+        thumbnailUnsupportedFlow = MutableStateFlow(false)
 
-        // init 에서 collect/first 되는 flow 만 명시 스텁(relaxed mock 의 flow 방출 불확정성 회피).
-        every { getSubscriptionUseCase.getSubscriptionTier() } returns tierFlow
-        every { cameraRepository.isPtpipConnected() } returns flowOf(false)
+        every { getSubscriptionUseCase.getSubscriptionTier() } returns
+            MutableStateFlow(SubscriptionTier.PRO)
+        every { cameraRepository.isPtpipConnected() } returns flowOf(true)
         every { cameraRepository.isInitializing() } returns flowOf(false)
         every { appSettingsRepository.isRawFileDownloadEnabled } returns flowOf(true)
         every { globalManager.globalConnectionState } returns
@@ -101,13 +101,10 @@ class PhotoPreviewViewModelCanAccessRawTest {
         every { errorHandlingManager.errorEvent } returns MutableSharedFlow<ErrorEvent>()
         every { photoImageManager.downloadResult } returns
             MutableSharedFlow<PhotoImageManager.DownloadResult>()
+        every { photoImageManager.thumbnailUnsupported } returns thumbnailUnsupportedFlow
         every { photoListManager.filteredPhotos } returns
             MutableStateFlow(emptyList<CameraPhoto>())
-        every { photoListManager.currentFilter } returns
-            MutableStateFlow(FileTypeFilter.JPG)
-        // 썸네일 제한 안내 관찰자가 이 flow 를 collect 한다. relaxed mock 의 기본 반환은
-        // collect 시 예외를 던지므로 반드시 명시 스텁이 필요하다.
-        every { photoImageManager.thumbnailUnsupported } returns MutableStateFlow(false)
+        every { photoListManager.currentFilter } returns MutableStateFlow(FileTypeFilter.JPG)
     }
 
     @After
@@ -130,53 +127,79 @@ class PhotoPreviewViewModelCanAccessRawTest {
         errorHandlingManager = errorHandlingManager,
         resumeNativeOperationsUseCase = resumeNativeOperationsUseCase,
         deleteCameraFileUseCase = deleteCameraFileUseCase,
-        nikonApplicationModeManager = io.mockk.mockk(relaxed = true)
+        nikonApplicationModeManager = mockk(relaxed = true)
     )
 
     @Test
-    fun `FREE 티어는 canAccessRawFormats false 를 방출`() = runTest {
-        tierFlow.value = SubscriptionTier.FREE
+    fun `썸네일이 JPEG 이 아니면 안내를 방출한다`() = runTest {
         val viewModel = createViewModel()
+        advanceUntilIdle()
 
-        viewModel.uiState.test {
-            // 초기 방출(옵저버 실행 전 기본값)
-            assertFalse(awaitItem().canAccessRawFormats)
+        viewModel.showThumbnailLimitNotice.test {
+            assertFalse("판정 전에는 뜨지 않는다", awaitItem())
 
-            // 티어 옵저버 구동
+            thumbnailUnsupportedFlow.value = true
             advanceUntilIdle()
-            assertFalse(expectMostRecentItem().canAccessRawFormats)
 
+            assertTrue("실제로 못 쓰는 것을 확인했으므로 알려야 한다", expectMostRecentItem())
             cancelAndConsumeRemainingEvents()
         }
     }
 
     @Test
-    fun `PRO REFERRER ADMIN 은 true, FREE BASIC 은 false 를 방출`() = runTest {
+    fun `썸네일이 정상인 카메라에서는 안내하지 않는다`() = runTest {
+        // a7M4 처럼 신형 콘텐츠 API 를 지원하면서도 GetThumb 이 멀쩡한 바디가 여기 해당한다.
+        // 광고나 세대 신호로 판정했다면 이 카메라에 오탐이 났을 자리다.
         val viewModel = createViewModel()
+        advanceUntilIdle()
 
-        viewModel.uiState.test {
-            // 초기 상태 소비 후 FREE 옵저버 구동
-            awaitItem()
+        viewModel.showThumbnailLimitNotice.test {
+            assertFalse(awaitItem())
+
+            // 썸네일을 여러 장 정상 수신해도 판정 flow 는 false 그대로다.
             advanceUntilIdle()
-            assertFalse("FREE 는 접근 불가", expectMostRecentItem().canAccessRawFormats)
 
-            tierFlow.value = SubscriptionTier.PRO
-            advanceUntilIdle()
-            assertTrue("PRO 는 접근 가능", expectMostRecentItem().canAccessRawFormats)
+            expectNoEvents()
+            assertFalse("정상 카메라에 안내를 띄우면 거짓말이 된다", viewModel.showThumbnailLimitNotice.value)
+        }
+    }
 
-            tierFlow.value = SubscriptionTier.REFERRER
-            advanceUntilIdle()
-            assertTrue("REFERRER 는 접근 가능", expectMostRecentItem().canAccessRawFormats)
+    @Test
+    fun `사용자가 확인하면 안내가 닫힌다`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
 
-            tierFlow.value = SubscriptionTier.ADMIN
-            advanceUntilIdle()
-            assertTrue("ADMIN 은 접근 가능", expectMostRecentItem().canAccessRawFormats)
+        thumbnailUnsupportedFlow.value = true
+        advanceUntilIdle()
 
-            tierFlow.value = SubscriptionTier.BASIC
-            advanceUntilIdle()
-            assertFalse("BASIC 은 접근 불가", expectMostRecentItem().canAccessRawFormats)
+        viewModel.showThumbnailLimitNotice.test {
+            assertTrue(awaitItem())
 
+            viewModel.dismissThumbnailLimitNotice()
+
+            assertFalse(awaitItem())
             cancelAndConsumeRemainingEvents()
         }
+    }
+
+    @Test
+    fun `한 세션에서 판정이 되풀이돼도 안내는 한 번만 뜬다`() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        thumbnailUnsupportedFlow.value = true
+        advanceUntilIdle()
+        assertTrue(viewModel.showThumbnailLimitNotice.value)
+
+        viewModel.dismissThumbnailLimitNotice()
+        assertFalse(viewModel.showThumbnailLimitNotice.value)
+
+        // 새 세션 판정이 풀렸다가 다시 미지원으로 확정되는 흐름을 흉내낸다.
+        thumbnailUnsupportedFlow.value = false
+        advanceUntilIdle()
+        thumbnailUnsupportedFlow.value = true
+        advanceUntilIdle()
+
+        assertFalse("같은 세션에서 되풀이하면 방해가 된다", viewModel.showThumbnailLimitNotice.value)
     }
 }

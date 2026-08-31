@@ -209,6 +209,8 @@
     <string name="preview_card_browse_active">正在浏览存储卡 — 拍摄和实时取景已暂停。</string>
     <string name="preview_card_browse_enter_failed">无法切换到存储卡浏览。相机仍处于拍摄模式。</string>
     <string name="preview_card_browse_stuck">相机停留在存储卡浏览模式，拍摄仍被阻止。请重试，或将相机关机再开机。</string>
+    <string name="preview_thumbnail_unsupported_title">此相机的缩略图无法正常工作</string>
+    <string name="preview_thumbnail_unsupported_desc">此相机的缩略图传输无法正常工作，因此预览受限。您仍可下载原图来查看照片。通过 Wi-Fi 连接时可能需要更长时间。</string>
     <string name="preview_card_browse_retry_exit">重试</string>
     <string name="connect_camera_and_capture">通过USB连接您的相机\n并拍摄照片</string>
     <string name="check_camera_connection">• 检查相机是否已连接\n• 下滑刷新</string>

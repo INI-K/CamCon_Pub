@@ -106,6 +106,9 @@ class PhotoPreviewViewModelBatchDownloadTest {
             MutableStateFlow(emptyList<CameraPhoto>())
         every { photoListManager.currentFilter } returns
             MutableStateFlow(FileTypeFilter.JPG)
+        // 썸네일 제한 안내 관찰자가 이 flow 를 collect 한다. relaxed mock 의 기본 반환은
+        // collect 시 예외를 던지므로 반드시 명시 스텁이 필요하다.
+        every { photoImageManager.thumbnailUnsupported } returns MutableStateFlow(false)
 
         // RAW 게이팅(동기)은 전부 통과시켜 eligiblePaths = 선택 전량이 되게 한다.
         every {

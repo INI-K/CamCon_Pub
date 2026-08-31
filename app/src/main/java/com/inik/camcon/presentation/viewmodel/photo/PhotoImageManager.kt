@@ -128,6 +128,20 @@ class PhotoImageManager @Inject constructor(
     private val _loadingThumbnails = MutableStateFlow<Set<String>>(emptySet())
     val loadingThumbnails: StateFlow<Set<String>> = _loadingThumbnails.asStateFlow()
 
+    /**
+     * 이 세션의 카메라가 쓸 수 있는 썸네일을 주지 못한다.
+     *
+     * **광고가 아니라 실제로 받은 바이트로 판정한다.** 어떤 카메라는 `0x100A GetThumb` 을
+     * 광고하면서도 JPEG 이 아닌 것을 돌려준다(소니 a7m5 실측 2026-08-30: 117KB, `BitmapFactory`
+     * 디코딩 실패). 반대로 같은 세대라도 정상인 바디가 있으므로(a7M4) 기종명이나 오퍼레이션
+     * 광고로 미리 가려내면 멀쩡한 카메라에 오탐이 난다. 그래서 첫 응답의 JPEG 서명을 보고 판정한다.
+     *
+     * true 가 되면 남은 썸네일 요청을 중단한다. 계속 받아 봐야 쓸 수 없는 데이터를 사진당
+     * 100KB 넘게 실어 나르고 로그만 채운다. 세션이 끝나면 [resetThumbnailSupport] 로 푼다.
+     */
+    private val _thumbnailUnsupported = MutableStateFlow(false)
+    val thumbnailUnsupported: StateFlow<Boolean> = _thumbnailUnsupported.asStateFlow()
+
     // EXIF 정보 캐시
     private val _exifCache = MutableStateFlow<Map<String, String>>(emptyMap())
     val exifCache: StateFlow<Map<String, String>> = _exifCache.asStateFlow()
@@ -167,6 +181,25 @@ class PhotoImageManager @Inject constructor(
         }
     }
 
+    /** 유효한 JPEG 인가. 모든 JPEG 은 `FF D8 FF` 로 시작한다. */
+    private fun isJpeg(data: ByteArray): Boolean =
+        data.size >= 3 &&
+                data[0] == 0xFF.toByte() &&
+                data[1] == 0xD8.toByte() &&
+                data[2] == 0xFF.toByte()
+
+    /**
+     * 새 카메라 세션이 시작되면 썸네일 지원 판정을 다시 하게 한다.
+     *
+     * 판정은 바디마다 다르므로 세션을 넘겨 유지하면 안 된다. 연결이 끊길 때 호출한다.
+     */
+    fun resetThumbnailSupport() {
+        if (_thumbnailUnsupported.value) {
+            Log.d(TAG, "썸네일 지원 판정 초기화 — 새 세션에서 다시 확인한다")
+        }
+        _thumbnailUnsupported.value = false
+    }
+
     /**
      * 썸네일 로드
      */
@@ -177,6 +210,12 @@ class PhotoImageManager @Inject constructor(
         thumbnailLoadJob = managerScope.launch {
             if (!isManagerActive) {
                 Log.d(TAG, "썸네일 로딩 중단됨 (매니저 비활성)")
+                return@launch
+            }
+
+            // 이 카메라가 쓸 수 있는 썸네일을 못 준다고 이미 판정됐다면 요청 자체를 하지 않는다.
+            if (_thumbnailUnsupported.value) {
+                Log.d(TAG, "썸네일 미지원 세션 — 로딩을 건너뛴다")
                 return@launch
             }
 
@@ -206,13 +245,19 @@ class PhotoImageManager @Inject constructor(
                             }
 
                             if (thumbnailData.isNotEmpty()) {
-                                // JPEG 헤더 확인 (FF D8 FF로 시작해야 함)
-                                if (!(thumbnailData.size >= 3 &&
-                                            thumbnailData[0] == 0xFF.toByte() &&
-                                            thumbnailData[1] == 0xD8.toByte() &&
-                                            thumbnailData[2] == 0xFF.toByte())
-                                ) {
-                                    Log.w(TAG, "비정상적인 썸네일 헤더 감지됨: ${photo.name}")
+                                // JPEG 서명 검사가 곧 "이 카메라가 쓸 수 있는 썸네일을 주는가"의
+                                // 판정이다. 실패하면 이 세션의 나머지 요청을 통째로 중단한다 —
+                                // 같은 카메라가 다음 사진에서 갑자기 정상 JPEG 을 줄 이유가 없고,
+                                // 계속 받으면 쓸 수 없는 데이터만 사진당 100KB 넘게 실어 나른다.
+                                if (!isJpeg(thumbnailData)) {
+                                    Log.w(
+                                        TAG,
+                                        "썸네일이 JPEG 이 아니다: ${photo.name} " +
+                                                "(${thumbnailData.size}바이트) — 이 세션의 썸네일을 중단한다"
+                                    )
+                                    _thumbnailUnsupported.value = true
+                                    // 루프의 finally 가 로딩 상태를 정리하므로 여기서는 빠져나가기만 한다.
+                                    return@launch
                                 }
 
                                 val newSize = synchronized(thumbnailCacheLock) {

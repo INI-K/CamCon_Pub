@@ -209,6 +209,8 @@
     <string name="preview_card_browse_active">Vue carte active — la capture et la visée en direct sont en pause.</string>
     <string name="preview_card_browse_enter_failed">Impossible de passer à la vue carte. L\'appareil reste en mode prise de vue.</string>
     <string name="preview_card_browse_stuck">L\'appareil est bloqué en vue carte et la capture reste impossible. Réessayez ou éteignez puis rallumez l\'appareil.</string>
+    <string name="preview_thumbnail_unsupported_title">Les miniatures ne fonctionnent pas sur cet appareil</string>
+    <string name="preview_thumbnail_unsupported_desc">Sur cet appareil photo, le transfert des miniatures ne fonctionne pas, l\'aperçu est donc limité. Vous pouvez toujours consulter chaque photo en téléchargeant l\'original. En Wi-Fi, cela peut prendre plus de temps.</string>
     <string name="preview_card_browse_retry_exit">Réessayer</string>
     <string name="connect_camera_and_capture">Connectez votre appareil photo via USB\net capturez des photos</string>
     <string name="check_camera_connection">• Vérifiez si l\'appareil photo est connecté\n• Balayez vers le bas pour actualiser</string>
