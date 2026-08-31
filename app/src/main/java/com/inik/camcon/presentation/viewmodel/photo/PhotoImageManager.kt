@@ -1,6 +1,8 @@
 package com.inik.camcon.presentation.viewmodel.photo
 
 import android.util.Log
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.exifinterface.media.ExifInterface
 import com.inik.camcon.domain.model.CameraPhoto
 import com.inik.camcon.domain.model.SubscriptionTier
@@ -112,9 +114,38 @@ class PhotoImageManager @Inject constructor(
         synchronized(persistedPathsLock) { persistedPaths.add(photoPath) }
     }
 
-    // 썸네일 캐시
-    private val _thumbnailCache = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
-    val thumbnailCache: StateFlow<Map<String, ByteArray>> = _thumbnailCache.asStateFlow()
+    /**
+     * 썸네일 캐시. **Compose 스냅샷 맵이다.**
+     *
+     * StateFlow<Map> 이던 시절에는 썸네일 한 장이 도착할 때마다 맵 전체를 새로 만들어 방출했고,
+     * 그리드가 그 맵을 통째로 구독하고 있어서 화면에 보이는 항목 전부가 다시 그려졌다. 사진 N 장을
+     * 받는 동안 재구성이 N×M 번 일어난 셈이다.
+     *
+     * 스냅샷 맵은 **키 단위로 읽기를 추적한다.** 항목이 `thumbnailCache[내 경로]` 를 읽으면 그 키가
+     * 바뀔 때만 그 항목이 무효화되고, 다른 항목과 그리드 자체는 건드리지 않는다.
+     *
+     * ⚠️ 그래서 화면은 이 값을 `collectAsStateWithLifecycle` 로 받으면 안 된다. 그러면 맵 전체를
+     * 다시 통째로 구독하는 셈이라 원래 문제로 돌아간다. 컴포지션 안에서 그냥 읽는다.
+     */
+    private val _thumbnailCache = mutableStateMapOf<String, ByteArray>()
+    val thumbnailCache: Map<String, ByteArray> = _thumbnailCache
+
+    // 축출 순서를 명시적으로 들고 있는다. 스냅샷 맵은 삽입 순서를 보장하지 않으므로,
+    // 예전 코드가 `keys.firstOrNull()` 로 기대하던 FIFO 를 여기서 직접 유지한다.
+    private val thumbnailInsertOrder = ArrayDeque<String>()
+
+    /** 썸네일을 캐시에 넣고 상한을 넘으면 가장 오래된 것부터 버린다. 반환값은 저장 후 캐시 크기. */
+    private fun putThumbnail(path: String, data: ByteArray): Int =
+        synchronized(thumbnailCacheLock) {
+            if (_thumbnailCache.put(path, data) == null) {
+                thumbnailInsertOrder.addLast(path)
+            }
+            while (_thumbnailCache.size > Constants.Cache.MAX_THUMBNAIL_CACHE_SIZE) {
+                val oldest = thumbnailInsertOrder.removeFirstOrNull() ?: break
+                _thumbnailCache.remove(oldest)
+            }
+            _thumbnailCache.size
+        }
 
     // 고해상도 이미지 캐시
     private val _fullImageCache = MutableStateFlow<Map<String, ByteArray>>(emptyMap())
@@ -124,9 +155,16 @@ class PhotoImageManager @Inject constructor(
     private val _downloadingImages = MutableStateFlow<Set<String>>(emptySet())
     val downloadingImages: StateFlow<Set<String>> = _downloadingImages.asStateFlow()
 
-    // 썸네일 로딩 상태 관리 (중복 방지용)
-    private val _loadingThumbnails = MutableStateFlow<Set<String>>(emptySet())
-    val loadingThumbnails: StateFlow<Set<String>> = _loadingThumbnails.asStateFlow()
+    /**
+     * 지금 받고 있는 썸네일 경로. [thumbnailCache] 와 같은 이유로 스냅샷 집합이다.
+     *
+     * 예전에는 `MutableStateFlow<Set<String>>` 이라 한 장을 시작·완료할 때마다 집합을 통째로
+     * 새로 만들어 방출했다(`value = value + path` / `value - path`). 사진 한 장에 두 번, 목록
+     * 한 화면이면 수백 번 집합이 복사된다. 스냅샷 집합은 원소 단위로 추적하므로 복사가 없고,
+     * 로딩 표시를 구독하는 항목도 자기 것만 다시 그린다.
+     */
+    private val _loadingThumbnails = mutableStateSetOf<String>()
+    val loadingThumbnails: Set<String> = _loadingThumbnails
 
     /**
      * 이 세션의 카메라가 쓸 수 있는 썸네일을 주지 못한다.
@@ -192,7 +230,7 @@ class PhotoImageManager @Inject constructor(
             queuedPaths.clear()
         }
         synchronized(thumbnailCacheLock) {
-            _loadingThumbnails.value = emptySet()
+            _loadingThumbnails.clear()
         }
     }
 
@@ -232,7 +270,7 @@ class PhotoImageManager @Inject constructor(
             var n = 0
             for (photo in photos) {
                 // 이미 받았거나 대기열에 있으면 넣지 않는다.
-                if (_thumbnailCache.value.containsKey(photo.path)) continue
+                if (_thumbnailCache.containsKey(photo.path)) continue
                 if (!queuedPaths.add(photo.path)) continue
                 pendingThumbnails.addLast(photo)
                 n++
@@ -259,8 +297,8 @@ class PhotoImageManager @Inject constructor(
                     ?: break
 
                 // 대기 중에 다른 경로로 이미 받았을 수 있다.
-                if (_thumbnailCache.value.containsKey(photo.path) ||
-                    _loadingThumbnails.value.contains(photo.path)
+                if (_thumbnailCache.containsKey(photo.path) ||
+                    _loadingThumbnails.contains(photo.path)
                 ) {
                     synchronized(pendingLock) { queuedPaths.remove(photo.path) }
                     continue
@@ -282,7 +320,7 @@ class PhotoImageManager @Inject constructor(
 
                 // 로딩 상태에 추가 — 동시 launch 간 손상 방지를 위해 최신 값 기준으로 갱신
                 synchronized(thumbnailCacheLock) {
-                    _loadingThumbnails.value = _loadingThumbnails.value + photo.path
+                    _loadingThumbnails.add(photo.path)
                 }
 
                 try {
@@ -309,27 +347,12 @@ class PhotoImageManager @Inject constructor(
                                     return@launch
                                 }
 
-                                val newSize = synchronized(thumbnailCacheLock) {
-                                    val updated = _thumbnailCache.value.toMutableMap()
-                                    // 캐시 크기 제한 적용 (삽입 순서 기준 FIFO 축출)
-                                    if (updated.size >= Constants.Cache.MAX_THUMBNAIL_CACHE_SIZE) {
-                                        val oldestKey = updated.keys.firstOrNull()
-                                        if (oldestKey != null) {
-                                            updated.remove(oldestKey)
-                                        }
-                                    }
-                                    updated[photo.path] = thumbnailData
-                                    _thumbnailCache.value = updated
-                                    updated.size
-                                }
+                                val newSize = putThumbnail(photo.path, thumbnailData)
                                 Log.d(TAG, "썸네일 캐시 저장 완료: ${photo.name} (캐시 크기: $newSize)")
                             } else {
                                 Log.w(TAG, "빈 썸네일 데이터 수신: ${photo.name}")
                                 // 빈 데이터도 캐시에 저장하여 재시도 방지
-                                synchronized(thumbnailCacheLock) {
-                                    _thumbnailCache.value =
-                                        _thumbnailCache.value + (photo.path to ByteArray(0))
-                                }
+                                putThumbnail(photo.path, ByteArray(0))
                             }
                         },
                         onFailure = { exception ->
@@ -369,10 +392,7 @@ class PhotoImageManager @Inject constructor(
                             }
 
                             // 영구적 실패(파일 없음 등)만 빈 데이터로 캐시하여 재시도 방지
-                            synchronized(thumbnailCacheLock) {
-                                _thumbnailCache.value =
-                                    _thumbnailCache.value + (photo.path to ByteArray(0))
-                            }
+                            putThumbnail(photo.path, ByteArray(0))
                         }
                     )
                 } catch (exception: CancellationException) {
@@ -380,15 +400,12 @@ class PhotoImageManager @Inject constructor(
                 } catch (exception: Exception) {
                     Log.e(TAG, "썸네일 로딩 중 예외: ${photo.name}", exception)
                     if (isManagerActive) {
-                        synchronized(thumbnailCacheLock) {
-                            _thumbnailCache.value =
-                                _thumbnailCache.value + (photo.path to ByteArray(0))
-                        }
+                        putThumbnail(photo.path, ByteArray(0))
                     }
                 } finally {
                     // 로딩 상태에서 제거 — 최신 값 기준으로 갱신
                     synchronized(thumbnailCacheLock) {
-                        _loadingThumbnails.value = _loadingThumbnails.value - photo.path
+                        _loadingThumbnails.remove(photo.path)
                     }
                     synchronized(pendingLock) { queuedPaths.remove(photo.path) }
                 }
@@ -783,7 +800,7 @@ class PhotoImageManager @Inject constructor(
      * 이미지에서 썸네일 가져오기
      */
     fun getThumbnail(photoPath: String): ByteArray? {
-        return _thumbnailCache.value[photoPath]
+        return _thumbnailCache[photoPath]
     }
 
     /**
@@ -909,10 +926,13 @@ class PhotoImageManager @Inject constructor(
         managerScope.coroutineContext.job.cancel()
         managerScope = createManagerScope()
         isManagerActive = true
-        _thumbnailCache.value = emptyMap()
+        synchronized(thumbnailCacheLock) {
+            _thumbnailCache.clear()
+            thumbnailInsertOrder.clear()
+        }
         _fullImageCache.value = emptyMap()
         _downloadingImages.value = emptySet()
-        _loadingThumbnails.value = emptySet()
+        _loadingThumbnails.clear()
         _exifCache.value = emptyMap()
         synchronized(persistedPathsLock) { persistedPaths.clear() }
     }

@@ -289,7 +289,10 @@ fun PhotoPreviewScreen(
         val fullImageCache by viewModel.fullImageCache.collectAsStateWithLifecycle()
         // StateFlow 구독 — 일반 함수(getThumbnail)로 읽으면 캐시가 채워져도
         // recomposition이 없어 썸네일이 영영 placeholder로 남는다(2026-07-03 실측).
-        val thumbnailCache by viewModel.thumbnailCache.collectAsStateWithLifecycle()
+        // ⚠️ collectAsStateWithLifecycle 로 받지 않는다. 스냅샷 맵을 그냥 읽으면 Compose 가
+        // **읽은 키만** 추적해, 그 썸네일이 도착할 때 해당 항목만 다시 그린다.
+        // 통째로 구독하면 썸네일 한 장마다 화면의 모든 항목이 다시 그려진다(원래 증상).
+        val thumbnailCache = viewModel.thumbnailCache
         val downloadingImages by viewModel.downloadingImages.collectAsStateWithLifecycle()
 
         LaunchedEffect(photo.path) {
@@ -912,7 +915,9 @@ private fun PhotoGrid(
     val lazyGridState = rememberLazyStaggeredGridState()
     val fullImageCache by viewModel.fullImageCache.collectAsStateWithLifecycle()
     // StateFlow 구독 — getThumbnail 함수 호출로는 캐시 갱신 시 recomposition이 없다.
-    val thumbnailCache by viewModel.thumbnailCache.collectAsStateWithLifecycle()
+    // ⚠️ 스냅샷 맵이라 통째로 구독하지 않는다(위 PhotoImageManager 주석 참조).
+    // 각 항목이 자기 경로의 키만 읽으므로 그 썸네일이 올 때 그 항목만 다시 그려진다.
+    val thumbnailCache = viewModel.thumbnailCache
 
     val widthSizeClass = LocalWindowSizeClass.current.widthSizeClass
     val gridColumns = when (widthSizeClass) {
@@ -958,11 +963,17 @@ private fun PhotoGrid(
         }
 
         // 나머지
+        // ⚠️ `photos.drop(1)` 을 쓰지 않는다. 그 호출은 재구성마다 목록 전체를 새 리스트로
+        // 복사하는데, 사진이 수백 장이면 그 자체가 비용이고 새 인스턴스라 안정성도 깨진다.
+        // 첫 장은 위에서 따로 그리므로 시작 인덱스만 옮겨 같은 리스트를 그대로 쓴다.
+        val gridItemCount = if (isMultiSelectMode) photos.size else (photos.size - 1).coerceAtLeast(0)
+        val gridItemOffset = if (isMultiSelectMode) 0 else 1
         items(
-            items = if (isMultiSelectMode) photos else photos.drop(1),
-            key = { photo -> photo.path },
+            count = gridItemCount,
+            key = { index -> photos[index + gridItemOffset].path },
             contentType = { "photo_thumbnail" }
-        ) { photo ->
+        ) { index ->
+            val photo = photos[index + gridItemOffset]
             FluidPhotoThumbnail(
                 photo = photo,
                 thumbnailData = thumbnailCache[photo.path],

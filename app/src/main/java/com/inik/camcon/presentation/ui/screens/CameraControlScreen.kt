@@ -920,6 +920,11 @@ private fun PortraitCameraLayout(
         // 무거운 조회는 전부 이 화면이 열릴 때로 미룬다. 연결 시점에 읽으면 커맨드 큐를
         // 잡아 미리보기 탭의 카드 탐색이 통째로 밀린다(EV·스토리지 칩 9.5초, 기능 정보 7.2초).
         // 둘 다 이 화면에서만 쓰이고, 없어도 기능이 막히지 않는다.
+        //
+        // 탭을 다시 열 때마다 이 이펙트가 다시 도는 것은 그대로 두었다. 실제 왕복을 막는 것은
+        // [CameraSettingsManager] 의 세션 캐시이고, 그쪽이 값을 이미 갖고 있으면 즉시 돌아온다.
+        // 여기서 조건을 더 붙이면 "화면은 열렸는데 값이 비어 있는" 상태를 만들기 쉽다 —
+        // 캐시가 세션 경계에서 비워지므로 재연결 직후에는 이 호출이 실제로 필요하다.
         LaunchedEffect(uiState.isConnected) {
             if (uiState.isConnected) {
                 viewModel.loadExposureAndStorageChips()

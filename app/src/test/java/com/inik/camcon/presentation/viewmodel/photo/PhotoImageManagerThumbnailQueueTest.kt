@@ -108,18 +108,16 @@ class PhotoImageManagerThumbnailQueueTest {
     }
 
     @Test
-    fun `받은 썸네일이 캐시 StateFlow 로 방출된다`() = runTest(dispatcher) {
+    fun `받은 썸네일이 캐시에 담긴다`() = runTest(dispatcher) {
         val photos = (1..2).map { photo(it) }
 
         manager.loadThumbnailsForPhotos(photos)
 
-        manager.thumbnailCache.test {
-            val cache = expectMostRecentItem()
-            assertEquals(2, cache.size)
-            assertTrue(cache.containsKey(photo(1).path))
-            assertTrue(cache.containsKey(photo(2).path))
-            cancelAndConsumeRemainingEvents()
-        }
+        // thumbnailCache 는 Compose 스냅샷 맵이라 Flow 가 아니다 — 직접 읽어 확인한다.
+        val cache = manager.thumbnailCache
+        assertEquals(2, cache.size)
+        assertTrue(cache.containsKey(photo(1).path))
+        assertTrue(cache.containsKey(photo(2).path))
     }
 
     @Test

@@ -437,6 +437,12 @@ class CameraViewModel @Inject constructor(
                 // updatePtpipConnectionState 를 먼저 호출한다(내부에서 예약 set).
                 uiStateManager.updatePtpipConnectionState(isConnected)
 
+                // 연결 상태가 바뀌면 설정 세션 캐시를 비운다. 기능 정보·EV·스토리지는 바디마다
+                // 다르므로 세션을 넘겨 유지하면 다음 카메라에 이전 값이 보인다.
+                if (isConnected != wasConnected) {
+                    settingsManager.onCameraSessionChanged()
+                }
+
                 // false→true(재연결) 전이에서만 라이브뷰 자동 재개를 시도한다.
                 if (isConnected && !wasConnected) {
                     resumeLiveViewAfterReconnectIfNeeded()
@@ -465,6 +471,10 @@ class CameraViewModel @Inject constructor(
                 // PTP/IP 로 붙어 있는 동안에는 USB 플래그가 내려가도 그 카메라 정보를 지우면 안 된다.
                 if (wasConnected && !isConnected && !uiState.value.isPtpipConnected) {
                     uiStateManager.onCameraDisconnected()
+                }
+                // USB 세션 경계에서도 설정 세션 캐시를 비운다(위 PTP/IP 경로와 대칭).
+                if (isConnected != wasConnected) {
+                    settingsManager.onCameraSessionChanged()
                 }
                 wasConnected = isConnected
             }
